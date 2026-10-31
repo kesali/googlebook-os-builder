@@ -9,13 +9,13 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | working | First laptop built-ins (tracked in Laptop hardware) |
+| [Kernel (GKI)](kernel.md) | working | — (the first laptop built-ins are in; more drivers are tracked in Laptop hardware) |
 | [Boot chain](boot.md) | working | Laptop GRUB entry and command line (tracked in Laptop hardware) |
 | [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | working (softpipe, slow) | Plan accelerated rendering |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | planned | M1: kernel built-ins, then the Android USB image |
+| [Laptop hardware](laptop-hardware.md) | planned | M1: the Android USB image, tested in QEMU first |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·

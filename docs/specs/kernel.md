@@ -1,7 +1,7 @@
 # Kernel (GKI)
 
 **Status:** working — Google's exact kernel rebuilt from source; Google's modules load.
-**Last verified:** 2026-10-31 — `make gki`: exports identical to Google's (4501, same CRCs); `make qemu-check` passes.
+**Last verified:** 2026-11-01 — `make gki` with the laptop built-ins: config check passes, exports identical to Google's (4501, same CRCs); `make test` and `make qemu-check` pass (logs in `out/m1-validation/`).
 
 ## Goal
 Build Google's Googlebook kernel from source with the instruction emulator compiled in, identical
@@ -10,10 +10,13 @@ enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEM
 ## Current state
 Verified: release `6.18.21-android17-5-g3938c8d97142-ab16302624` from tag
 `android17-6.18-2026-06_r52` (commit `3938c8d97142`);
-config identical to Google's except the trusted key in [kernel/gki.config](../../kernel/gki.config);
+config identical to Google's except the trusted key and the first-laptop-boot built-ins (touchpad
+drivers; simpledrm and drm_log for the on-screen kernel log) in [kernel/gki.config](../../kernel/gki.config);
 exported symbols and CRCs identical to Google's `vmlinux.symvers`; Google's certificate trusted;
-Google's prebuilt virtio GPU/input/net modules load in QEMU.
-Not verified: any physical-laptop driver (amdgpu, Wi-Fi, audio, touchpad).
+Google's prebuilt virtio GPU/input/net modules load in QEMU, which still reaches the setup screen.
+The built-ins add 106 KB to the bzImage (26,162,176 → 26,268,672 B).
+Not verified: any physical-laptop driver. QEMU's direct-kernel boot has no firmware framebuffer, so
+simpledrm and drm_log have not run yet; the laptop (or a UEFI boot in QEMU) is their first test.
 
 ## Decisions
 - Google's exact toolchain (clang r584948c, Rust 1.91.1.p3, bindgen 0.72.1, pahole 1.31 from
@@ -62,7 +65,9 @@ _None agreed._
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Decision relaxed (owner-agreed laptop plan): built-ins are allowed for the
+- 2026-11-01 (this commit) — Added the M1 built-ins to `gki.config` (18 settings: 6 touchpad, 12
+  screen log incl. selected ones). First `make gki` passed config and ABI checks (69 s); QEMU still boots.
+- 2026-10-31 `9c78a5d` — Decision relaxed (owner-agreed laptop plan): built-ins are allowed for the
   first laptop boot only; larger drivers stay modules. Docs only; the config is unchanged.
 - 2026-10-31 `9dfd0cf` — Google's prebuilt QEMU modules replace ours; config is Google's plus the
   trusted key (TRIM restored with Google's ABI list, vgem gone). Relink 76 s; `make qemu-check` passes.

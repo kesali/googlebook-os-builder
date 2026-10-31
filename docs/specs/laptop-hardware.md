@@ -1,8 +1,9 @@
 # Laptop hardware
 
-**Status:** planned — first boot plan (M1) agreed; Android has not been booted on the MSI laptop yet.
-**Last verified:** 2026-10-31 — diagnostic USB only: owner confirmed boot/shutdown;
-[hardware report](../../out/laptop-boot-2026-10-31/hardware.txt) and
+**Status:** planned — M1 agreed and its kernel built-ins are in; Android has not been booted on the MSI laptop yet.
+**Last verified:** 2026-11-01 — M1 built-ins: `make gki` (config and ABI checks), `make test` and
+`make qemu-check` pass (logs in `out/m1-validation/`). 2026-10-31 — diagnostic USB only: owner
+confirmed boot/shutdown; [hardware report](../../out/laptop-boot-2026-10-31/hardware.txt) and
 [kernel log](../../out/laptop-boot-2026-10-31/kernel.log) reviewed. The BUP Slim was measured
 read-only: [drive notes](../../out/laptop-boot-2026-10-31/usb-drive.txt).
 
@@ -12,9 +13,14 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), adding drivers one at a t
 updating the USB incrementally instead of reflashing.
 
 ## Current state
-Not started for Android. The QEMU work shares the kernel, boot chain and OS image with this.
+Not started for Android on the laptop. The QEMU work shares the kernel, boot chain and OS image with this.
 The first diagnostic boot passed both instruction-emulation tests and registered the internal
 keyboard and ELAN0307 touchpad with `hid-multitouch`. Pointer motion/gestures were not tested.
+The same boot drew the screen through simpledrm at 0.50 s (`simple-framebuffer.0`, 128x48 text).
+The Android kernel (`make gki`) now has the M1 built-ins: the touchpad drivers and simpledrm with
+drm_log ([gki.config](../../kernel/gki.config)). Google's ABI is unchanged and QEMU still boots to
+the setup screen; they have not run on the laptop, and QEMU's direct-kernel boot has no firmware
+framebuffer for simpledrm to use.
 The USB for Android is the BUP Slim (232.9 GiB). It linked at USB 2.0 (480 Mb/s, 39 MB/s
 sequential, 0.34 ms random reads); Linux calls it rotational, but the media type is unknown.
 In Google's disk (`out/android/disk.img`) EFI-SYSTEM (64 MiB) and `KERN-A` (512 MiB) are all zeros.
@@ -64,13 +70,15 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
 - Reference ports (not in Git): `reference/project-churro-msi-modern-15-B7M`, `reference/gbos-x86-msi-modern-15-B7M`.
 
 ## Verify
-Planned for M1, in this order (none of it has been run yet):
+M1, in this order:
 1. `make test`, `make gki JOBS=12` (config, ABI and certificate checks), then `make qemu-check JOBS=12`.
+   Run for the built-ins on 2026-11-01: all pass; QEMU's `screen.png` shows the setup language list.
 2. Boot the USB image in QEMU through UEFI and GRUB with the disk attached as USB storage:
    first-stage init finds its partitions and Android starts as in the direct-kernel boot.
-3. Write the USB with the owner's approval; read it back and check the ESP files read-only.
+   Not run yet.
+3. Write the USB with the owner's approval; read it back and check the ESP files read-only. Not run yet.
 4. Boot the laptop. Evidence: a photo of the screen showing the kernel log, saved in `out/`.
-   M1 does not claim "boots": that needs a usable Android screen.
+   M1 does not claim "boots": that needs a usable Android screen. Not run yet.
 
 ## Pitfalls
 - Googlebook userspace uses instructions this CPU lacks; the kernel's emulator patch is required (see [kernel.md](kernel.md)).
@@ -90,10 +98,6 @@ Planned for M1, in this order (none of it has been run yet):
 
 ## Actions
 M1, in order; each step is its own commit with this spec updated.
-- [ ] Kernel built-ins — add to [gki.config](../../kernel/gki.config), each with its reason:
-  `X86_AMD_PLATFORM_DEVICE`, `PINCTRL_AMD`, `I2C_DESIGNWARE_CORE`, `I2C_DESIGNWARE_PLATFORM`,
-  `I2C_HID_ACPI`, `SYSFB_SIMPLEFB`, `DRM_SIMPLEDRM`, `DRM_CLIENT_LOG` — done when `make gki`
-  passes its config and ABI checks and `make qemu-check` still reaches the setup screen.
 - [ ] Android USB image — turn the Android disk into the USB layout (576 MiB EFI-SYSTEM with GRUB,
   kernel, initrd, menu and a laptop command line) as a regular file — done when QEMU boots it
   through UEFI with the disk attached as USB storage and Android starts as before.
@@ -119,7 +123,9 @@ M1, in order; each step is its own commit with this spec updated.
 - A udev rule for passwordless OS-partition writes to this one USB.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Owner agreed the first laptop boot plan: Google's GPT with a 576 MiB
+- 2026-11-01 (this commit) — M1 built-ins added to the Android kernel and checked: config, ABI (4501
+  exports unchanged) and QEMU boot pass. Next: the Android USB image, tested in QEMU through UEFI.
+- 2026-10-31 `9c78a5d` — Owner agreed the first laptop boot plan: Google's GPT with a 576 MiB
   EFI-SYSTEM, boot files via the mounted ESP, OS partitions via a sudo task, M1 first.
   BUP Slim measured at USB 2.0. Plan and QEMU spec updated; no code changes.
 - 2026-10-31 `af0f7b6` — First diagnostic boot/shutdown confirmed by the owner; logs show
