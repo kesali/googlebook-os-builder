@@ -8,6 +8,10 @@ plus the approved software KeyMint/Gatekeeper from Google's emulator. No KernelS
 installer, host-GPU passthrough or physical-disk writes. The separate USB diagnostic target is
 retained, but it does not run Android.
 
+**Status and next steps** for each component (kernel, boot, image, security, graphics, QEMU,
+laptop, USB diagnostics) are in [docs/specs/](docs/specs/README.md). AI coding agents start from
+[AGENTS.md](AGENTS.md); `/pickup <component>` and `/handoff` prompts keep the specs current.
+
 ## Build and boot
 
 For Googlebook OS, Linux needs Docker, GNU make, Python 3, `/dev/kvm` and a VNC viewer.

@@ -1,0 +1,60 @@
+# Agent guide
+
+gbos-dali: a small, readable, source-built Googlebook OS (Android 17 desktop) port for the
+MSI Modern 15 B7M, developed in QEMU first. Human documentation: [README.md](README.md).
+
+## Start here
+
+1. Read [docs/specs/README.md](docs/specs/README.md) — one spec per component with its status,
+   settled decisions, pitfalls and next actions.
+2. Read the spec for the component you are changing. Its **Decisions** are settled; reopening one
+   needs the user's agreement.
+3. Before handing back, update that spec (status, actions, handoff-log entry). The `/handoff`
+   prompt does this.
+
+## Ground rules
+
+- **Source, not binary edits.** No byte-offset patches or edited executables. Google's image changes
+  only through explicit file-level changes in [tools/android_overlay.py](tools/android_overlay.py)
+  and source patches under [android/](android/).
+- **Prebuilts only where already approved:** Google's recovery image (read-only input), Google's
+  kernel toolchain, the Android NDK, unmodified emulator KeyMint/Gatekeeper. Every download is
+  pinned by SHA-256 in [sources.mk](sources.mk).
+- **Readable for a human:** small single-purpose scripts, explicit lists of changes, a comment saying
+  *why* for anything non-obvious. Prefer a clear 20 lines over a clever 5.
+- **Out of scope unless the user asks:** KernelSU/root, dual boot, installers, GPU passthrough.
+- **Never write block devices or physical disks.** Never delete or recreate `out/android/disk.img`
+  (Android's data) or `out/src/` trees (may hold uncommitted source edits) without asking.
+- **Keep SELinux enforcing;** no permissive domains or broad policy changes.
+
+## Build and test
+
+Everything compiles inside the Debian builder container ([scripts/builder.sh](scripts/builder.sh));
+the host needs Docker, make, Python 3 and `/dev/kvm`.
+
+```sh
+make                       # list targets
+make test                  # unit tests: fast, no disks, no network
+make qemu JOBS=12          # build what changed and boot; VNC on localhost:5900
+make qemu-check JOBS=12    # bounded full boot; evidence in out/qemu/
+make console COMMAND='getprop sys.boot_completed'   # while the VM runs
+```
+
+- This machine has 12 CPUs: use `JOBS=12`. A first GKI build takes about an hour; ask before
+  starting long builds or downloads.
+- Stop the VM before `make android-image`: the disk lock rejects updates while it runs.
+- Unchanged inputs must rebuild nothing and write no disk partitions — keep it that way.
+
+## Verifying honestly
+
+- "Boots" means a usable screen with working input, confirmed by looking at a screenshot — not
+  `sys.boot_completed`, a serial shell, a logo, or a correctly sized PNG.
+- Report what was tested and what was not. Untested is not working.
+- Over the serial shell, filter on the guest (`logcat -d -s Tag | tail -n 200`); unbounded
+  `logcat -b all` can wedge the console.
+
+## Conventions
+
+- File-specific rules load automatically from [.github/instructions/](.github/instructions/):
+  shell scripts, Python tools/tests, build files, specs.
+- One commit per working milestone; the message says what was verified.
