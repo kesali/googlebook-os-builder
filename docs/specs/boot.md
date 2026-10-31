@@ -44,5 +44,6 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 _None agreed._ Change only when a VM or laptop need appears.
 
 ## Handoff log
+- 2026-10-31 `357470d` — First-stage modules declared in android/module_ramdisk/ (install.list + modules.patch); dependencies checked against the kernel build. Ramdisk byte-identical.
 - 2026-10-31 `56719c0` — Added virtio GPU/input/net modules; fixed trailing-space module list hang.
 - 2026-10-31 `2f02300` — First headless boot from Google's unmodified partitions.

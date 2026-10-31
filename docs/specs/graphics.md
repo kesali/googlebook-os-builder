@@ -52,4 +52,5 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - RADV/radeonsi + minigbm for the laptop's AMD GPU — see [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-10-31 `357470d` — Graphics properties and DRM labels are now patches (build-prop.patch, file-contexts.patch); Mesa files in android/vendor/install.list.
 - 2026-10-31 `56719c0` — Mesa softpipe from source; DRM-master patch gives real scanout; setup UI visible.

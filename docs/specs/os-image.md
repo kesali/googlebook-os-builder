@@ -63,5 +63,6 @@ _None agreed._
 - Writing the same partitions to a USB or internal disk for the laptop — see [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-10-31 `357470d` — Image changes are now lists and patches per partition, applied by android-overlay.sh; Python overlay removed. Rebuild matched the old one apart from the 3 patched text files.
 - 2026-10-31 `56719c0` — Rootless EROFS rebuilds with full metadata comparison; per-partition dependencies.
 - 2026-10-31 `2f02300` — Private disk and first boot from Google's partitions.
