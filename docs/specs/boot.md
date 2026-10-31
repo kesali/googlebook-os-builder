@@ -42,7 +42,7 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 - Ramdisk packing normalises timestamps so unchanged inputs give identical bytes.
 
 ## Actions
-_None agreed._ Change only when a VM or laptop need appears.
+_None agreed._ The laptop's GRUB entry and command line are tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
 - 2026-10-31 (this commit) — QEMU modules are Google's prebuilt ones (`GKI_VIRT`), not compiled

@@ -21,7 +21,9 @@ Not verified: any physical-laptop driver (amdgpu, Wi-Fi, audio, touchpad).
 - QEMU drivers are Google's prebuilt modules from its virtual-device build of the same release
   (`GKI_VIRT` in [sources.mk](../../sources.mk)), not compiled here. They are unsigned, so they may
   use only the exports in Google's `abi_symbollist.raw` — which ours keeps, like Google's
-  (`CONFIG_TRIM_UNUSED_KSYMS`). Future drivers are modules only, so every CRC stays Google's.
+  (`CONFIG_TRIM_UNUSED_KSYMS`). Laptop drivers are modules too, except the few built-ins agreed for
+  the first laptop boot ([laptop-hardware.md](laptop-hardware.md)); `make gki` must still show
+  Google's exports and CRCs.
 - Churro's `vex-emulate.patch` (downloaded, SHA-pinned) emulates VEX GFNI/AVX-VNNI — Googlebook
   userspace is built for Intel Panther Lake; this Zen 3 CPU lacks those instructions.
 - Builds fail rather than publish a kernel whose config, release string or ABI differs from Google's.
@@ -60,7 +62,9 @@ _None agreed._
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Google's prebuilt QEMU modules replace ours; config is Google's plus the
+- 2026-10-31 (this commit) — Decision relaxed (owner-agreed laptop plan): built-ins are allowed for the
+  first laptop boot only; larger drivers stay modules. Docs only; the config is unchanged.
+- 2026-10-31 `9dfd0cf` — Google's prebuilt QEMU modules replace ours; config is Google's plus the
   trusted key (TRIM restored with Google's ABI list, vgem gone). Relink 76 s; `make qemu-check` passes.
 - 2026-10-31 `d9fc850` — Kernel relinks are reproducible (`KBUILD_BUILD_VERSION=1`); modules and
   the module ramdisk are replaced only when a module changes. Checked by two forced relinks.

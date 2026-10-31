@@ -54,10 +54,13 @@ The log ends at the self-test; shutdown is the owner's observation, not captured
   behavior are not validated by this test.
 
 ## Actions
-_None agreed._
+_None agreed._ The BUP Slim moves to the Android layout ([laptop-hardware.md](laptop-hardware.md));
+flash this image again only when a hardware check is needed.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Owner confirmed first laptop boot/shutdown; reviewed and preserved
+- 2026-10-31 (this commit) — Parked: the stick is being repurposed for Android; the diagnostic
+  image stays buildable with `make usb`. No code changes.
+- 2026-10-31 `af0f7b6` — Owner confirmed first laptop boot/shutdown; reviewed and preserved
   both USB logs. Instruction tests pass, ELAN multitouch registers and internal NVMe is absent
   from the block-device report. Touchpad motion and Android remain untested.
 - 2026-10-31 `8626359` — Flashed the explicitly approved USB; read-back, GPT and FAT checks

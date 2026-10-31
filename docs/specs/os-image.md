@@ -64,10 +64,7 @@ must print no partition writes and leave output timestamps unchanged.
   `diff -u --label a/PATH --label b/PATH original edited`. Patches apply with `--fuzz=0`.
 
 ## Actions
-_None agreed._
-
-### Ideas (not approved)
-- Writing the same partitions to a USB or internal disk for the laptop — see [laptop-hardware.md](laptop-hardware.md).
+_None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
 - 2026-10-31 (this commit) — Partitions use LZ4HC level 9 instead of 12: system rebuild 25 s → 17 s,

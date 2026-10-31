@@ -1,7 +1,6 @@
 # Project plan
 
-Updated: 2026-10-31. Current focus: understand and simplify the existing build; the first
-diagnostic USB boot on the laptop is complete.
+Updated: 2026-10-31. Current focus: the first Android boot on the laptop; QEMU polish is parked.
 
 ## Priorities
 
@@ -34,6 +33,9 @@ removable once upstream covers it.
 - The owner confirmed the diagnostic USB (`make usb`) booted and shut down on the laptop.
   Its saved logs show passing instruction tests and ELAN touchpad registration; pointer
   motion/gestures remain untested. See [USB diagnostics](specs/usb-diagnostic.md).
+- The owner agreed the first laptop boot plan (M1, below). QEMU already boots to the setup screen,
+  which is enough for now. The BUP Slim USB linked at USB 2.0 (about 39 MB/s); it needs a
+  USB 3 port before Android's speed means anything.
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
 Detailed status, evidence and handoffs live in the [component specs](specs/README.md).
@@ -43,7 +45,24 @@ This plan orders the work; it does not replace those records.
 
 This is a flexible order, not a commitment to do every item.
 
-1. **Understand and simplify the build — current.**
+1. **First Android boot on the laptop — current.**
+   Milestone M1 (agreed): the QEMU disk's partition layout on the USB, our GKI kernel and Android
+   initrd loaded by GRUB, and the keyboard, touchpad and kernel log on the laptop's screen. The
+   Android UI is not expected yet. Kernel and initrd updates reach the USB through its mounted
+   boot partition, without sudo; OS partitions are rewritten with sudo and the owner's approval.
+   The same USB image is booted in QEMU through UEFI first. See
+   [laptop hardware](specs/laptop-hardware.md). The existing diagnostic USB is a separate system:
+   see [USB diagnostics](specs/usb-diagnostic.md).
+
+2. **Laptop graphics and drivers — next.**
+   The `amdgpu` module and firmware (M2), then Android's UI on the AMD GPU (M3), then Wi-Fi,
+   Bluetooth, audio and power (M4), one device at a time. Each step is planned with the owner first.
+
+3. **Improve performance — once the desktop runs on the laptop.**
+   Measure build time, startup time and UI responsiveness separately. Identify the main bottleneck
+   and compare simple options before changing the graphics path. See [graphics](specs/graphics.md).
+
+4. **Understand and simplify the build — alongside the laptop work.**
    Follow one build path at a time, starting with image changes and partition rebuilding. Prefer
    explaining and simplifying existing code over adding features. Keep incremental builds fast and
    verify that Android data is preserved. See [OS image](specs/os-image.md) and [boot](specs/boot.md).
@@ -54,18 +73,9 @@ This is a flexible order, not a commitment to do every item.
    new tag or patch recompiles only the files that changed; optionally add ccache. Checking it
    needs one full kernel rebuild.
 
-2. **Make QEMU useful for development — next.**
+5. **Make QEMU useful for development — parked.**
    Finish setup, reach the desktop and verify network access. Check that the VM can restart
    without losing Android data. See [QEMU](specs/qemu.md) and [security](specs/security.md).
-
-3. **Improve performance — after the desktop works.**
-   Measure build time, startup time and UI responsiveness separately. Identify the main bottleneck
-   and compare simple options before changing the graphics path. See [graphics](specs/graphics.md).
-
-4. **Try the OS on the laptop — later.**
-   First decide the smallest useful driver set and a safe boot/update method. Add hardware support
-   one device at a time. The existing USB target is only a separate diagnostic system. See
-   [laptop hardware](specs/laptop-hardware.md) and [USB diagnostics](specs/usb-diagnostic.md).
 
 ## How we track progress
 
