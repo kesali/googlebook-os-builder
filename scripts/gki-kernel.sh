@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Read: kernel source, Google's kernel (config, certificates, release string), Google's
-# symbol list, our config changes, Google's toolchain.
-# Write: <out>/bzImage, <out>/modules/ and its file list <out>/modules.sha256.
+# symbol list and ABI symbol list, our config changes, Google's toolchain.
+# Write: <out>/bzImage.
 #
-#   gki-kernel.sh <source> <out> <toolchain> <google kernel> <google symvers> <changes.config>
+#   gki-kernel.sh <source> <out> <toolchain> <google kernel> <google symvers> <google abi list> <changes.config>
 #
-# Same source, configuration, compilers and release string as Google's build: the
-# result loads Google's prebuilt modules (ramdisks, system_dlkm, vendor_dlkm) and
-# the extra drivers the changes add. Kbuild runs each time and is incremental.
+# Same source, configuration, compilers and release string as Google's build, plus the
+# instruction emulator: the result loads Google's prebuilt modules (ramdisks, system_dlkm,
+# vendor_dlkm and the QEMU drivers). Kbuild runs each time and is incremental.
 set -euo pipefail
 source=$(realpath "$1") out=$(realpath -m "$2") toolchain=$(realpath "$3")
-google=$(realpath "$4") google_symvers=$(realpath "$5") changes=$(realpath "$6")
+google=$(realpath "$4") google_symvers=$(realpath "$5") abi_list=$(realpath "$6") changes=$(realpath "$7")
 tools=$(cd "$(dirname "$0")/../tools" && pwd)
 build=$out/build
 release=$(sed -nE 's/^Linux version ([^ ]+) .*/\1/p' "$google/version.txt")
@@ -31,12 +31,14 @@ mk=(make --no-print-directory -C "$source" O="$build" ARCH=x86_64 LLVM=1 LLVM_IA
     KERNELRELEASE="$release" KBUILD_GENDWARFKSYMS_STABLE=1 -j"${JOBS:-4}")
 
 # Configure only when an input changed; a new .config can rebuild a lot.
-config_hash=$(cat "$google/config" "$changes" "$0" | sha256sum | cut -d' ' -f1)
+config_hash=$(cat "$google/config" "$abi_list" "$changes" "$0" | sha256sum | cut -d' ' -f1)
 if [ ! -f "$build/config.inputs" ] || [ "$config_hash" != "$(cat "$build/config.inputs")" ]; then
     python3 "$tools/kernel_certs.py" "$google/vmlinux" "$build/google-certs.pem"
-    # Names of signed modules whose symbols unsigned modules may not replace. Every
-    # module we load is signed, by Google or by this build, so the list stays empty.
+    # Names of signed modules whose exports unsigned modules may not replace. Google's build
+    # lists its system_dlkm modules; ours is empty, so this safeguard is off.
     : > "$build/protected_module_names_list"
+    # CONFIG_UNUSED_KSYMS_WHITELIST: the exports kept for (and usable by) unsigned modules.
+    cp "$abi_list" "$build/abi_symbollist.raw"
     cp "$google/config" "$build/.config"
     "$source/scripts/kconfig/merge_config.sh" -m -O "$build" "$build/.config" "$changes"
     "${mk[@]}" olddefconfig
@@ -44,6 +46,8 @@ if [ ! -f "$build/config.inputs" ] || [ "$config_hash" != "$(cat "$build/config.
     printf '%s\n' "$config_hash" > "$build/config.inputs"
 fi
 
+# Google's in-tree modules are compiled too, only to find which exports they use; they
+# are not installed (Google's signed copies are in the image).
 "${mk[@]}" bzImage modules
 [ "$(cat "$build/include/config/kernel.release")" = "$release" ] || {
     echo "Kernel release is not Google's $release" >&2
@@ -51,18 +55,6 @@ fi
 }
 python3 "$tools/kabi_check.py" "$google_symvers" "$build/Module.symvers"
 
-rm -rf "$out/modules.partial"
-"${mk[@]}" INSTALL_MOD_PATH="$out/modules.partial" INSTALL_MOD_STRIP=1 modules_install
-# Replace the installed modules only when one changed, so the module ramdisk is rebuilt only then.
-(cd "$out/modules.partial" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) \
-    > "$out/modules.sha256.partial"
-if [ -d "$out/modules" ] && cmp -s "$out/modules.sha256.partial" "$out/modules.sha256"; then
-    rm -rf "$out/modules.partial" "$out/modules.sha256.partial"
-else
-    rm -rf "$out/modules"
-    mv "$out/modules.partial" "$out/modules"
-    mv "$out/modules.sha256.partial" "$out/modules.sha256"
-fi
 if ! cmp -s "$build/arch/x86/boot/bzImage" "$out/bzImage"; then
     cp "$build/arch/x86/boot/bzImage" "$out/bzImage.partial"
     mv "$out/bzImage.partial" "$out/bzImage"

@@ -9,7 +9,7 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | working | Decide whether to keep the unused vgem module |
+| [Kernel (GKI)](kernel.md) | working | — (stable; change only for the laptop or a VM need) |
 | [Boot chain](boot.md) | working | — (stable; change only for a VM need) |
 | [OS image and disk](os-image.md) | working | — (stable) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |

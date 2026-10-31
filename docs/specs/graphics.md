@@ -20,7 +20,7 @@ Not verified / not done: acceptable performance, Vulkan, hardware acceleration, 
   [android/system_ext/dali-qemu.rc](../../android/system_ext/dali-qemu.rc), not Android properties (name-length limits).
 - [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch): Mesa drops DRM master after
   opening the primary node, so the composer can drive the display. A source patch, no added privileges.
-- Only virtio-gpu is loaded (no vgem). Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
+- Only virtio-gpu is loaded (Google's prebuilt module; vgem is not built). Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
   DRM node labels: [android/vendor/file-contexts.patch](../../android/vendor/file-contexts.patch).
 - No host-GPU passthrough.
 

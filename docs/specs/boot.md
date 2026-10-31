@@ -18,13 +18,14 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 - Bootconfig is Google's plus [android/bootconfig.txt](../../android/bootconfig.txt): slot A,
   orange/unlocked verified boot, external boot source, StrongBox disabled.
 - Only the QEMU modules needed are added: `virtio_dma_buf`, `virtio-gpu`, `virtio_input`,
-  `failover`, `net_failover`, `virtio_net`. vgem is deliberately not loaded.
+  `failover`, `net_failover`, `virtio_net` — Google's prebuilt, unsigned copies from its
+  virtual-device build of our exact kernel release.
 
 ## Files
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
 - [android/bootconfig.txt](../../android/bootconfig.txt), [tools/bootconfig.py](../../tools/bootconfig.py) — settings and packing.
 - [android/module_ramdisk/](../../android/module_ramdisk/) — first-stage modules (`install.list`) and their load lines (`modules.patch`).
-- [scripts/android-modules.sh](../../scripts/android-modules.sh) — applies them; checks `modules.patch` dependencies against our kernel build.
+- [scripts/android-modules.sh](../../scripts/android-modules.sh) — applies them; checks the kernel release and `modules.patch` dependencies against Google's QEMU driver build.
 - [scripts/android-initrd.sh](../../scripts/android-initrd.sh) — initrd assembly.
 
 ## Verify
@@ -44,6 +45,8 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 _None agreed._ Change only when a VM or laptop need appears.
 
 ## Handoff log
+- 2026-10-31 (this commit) — QEMU modules are Google's prebuilt ones (`GKI_VIRT`), not compiled
+  here. Checked by `make qemu-check` (all six load; GPU, input and Ethernet up).
 - 2026-10-31 `357470d` — First-stage modules declared in android/module_ramdisk/ (install.list + modules.patch); dependencies checked against the kernel build. Ramdisk byte-identical.
 - 2026-10-31 `56719c0` — Added virtio GPU/input/net modules; fixed trailing-space module list hang.
 - 2026-10-31 `2f02300` — First headless boot from Google's unmodified partitions.

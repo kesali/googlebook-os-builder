@@ -27,6 +27,14 @@ GRUB_SHA := f3c97391f7c4eaa677a78e090c7e97e6dc47b16f655f04683ebd37bef7fe0faa
 GKI_BUILD := 16302624
 GKI_SYMVERS_URL := https://ci.android.com/builds/submitted/$(GKI_BUILD)/kernel_x86_64/latest/raw/vmlinux.symvers
 GKI_SYMVERS_SHA := db64611c9710f624c60f57219649645d5539c392579a7a8d8d5066b1cc099598
+# The exports vendor (unsigned) modules may use. Like Google's build, ours keeps only these
+# and what Google's own modules use (CONFIG_TRIM_UNUSED_KSYMS).
+GKI_ABI_URL := https://ci.android.com/builds/submitted/$(GKI_BUILD)/kernel_x86_64/latest/raw/abi_symbollist.raw
+GKI_ABI_SHA := 75f644ab8d3208d0ee9de45664d831a1721a5a5c283c77dea3cae599884e62ed
+# QEMU's virtio drivers (GPU, input, network), prebuilt by Google for this same kernel in its
+# virtual-device build. Only the modules listed in android/module_ramdisk/install.list are used.
+GKI_VIRT_URL := https://ci.android.com/builds/submitted/$(GKI_BUILD)/kernel_virt_x86_64/latest/raw/initramfs.img
+GKI_VIRT_SHA := f827c140e5e20d9cd512e86fac9b22376a26b738af75b3a8b79c3e1f2dcaa9cb
 
 # Google's compilers for that kernel. Each repository holds many versions; we fetch
 # only the *_DIR we need. Git verifies the commits.

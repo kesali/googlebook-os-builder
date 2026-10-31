@@ -107,7 +107,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [tools/deploy.py](tools/deploy.py) | Bundle verification and file-level USB updates |
 | [tools/boot_test.py](tools/boot_test.py), [tests/test_deploy.py](tests/test_deploy.py) | Boot and incremental-update checks |
 | [scripts/git-fetch.sh](scripts/git-fetch.sh), [scripts/pahole.sh](scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
-| [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our listed changes, with config/ABI checks |
+| [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our one change, with config/ABI checks |
 | [android/cmdline.txt](android/cmdline.txt), [android/bootconfig.txt](android/bootconfig.txt) | Settings Android boots with: Google's + our listed changes |
 | [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's module-extended initrd and private persistent data disk |
 | [scripts/qemu.sh](scripts/qemu.sh) | The QEMU virtual machine Android runs in |
@@ -159,18 +159,23 @@ googlesource.com archives of the pinned commits, and [scripts/git-fetch.sh](scri
 uses Git to prove the files match those commits. pahole is compiled from Google's pinned dwarves
 source.
 
-[scripts/gki-kernel.sh](scripts/gki-kernel.sh) starts from Google's `config`, applies the short
-list of changes in [kernel/gki.config](kernel/gki.config), and refuses to build if:
+[scripts/gki-kernel.sh](scripts/gki-kernel.sh) starts from Google's `config`, applies the
+changes in [kernel/gki.config](kernel/gki.config) (only: trust Google's signing key), and refuses
+to build if:
 
 - a requested change did not take effect;
 - any other built-in option differs from Google's;
 - a compiler version differs from Google's ([tools/kconfig_check.py](tools/kconfig_check.py)).
 
-After building, it refuses to publish a kernel whose release string differs from Google's, or
-that is missing any of Google's exported symbols or exports one with a different checksum
-([tools/kabi_check.py](tools/kabi_check.py)). Google's signing certificate is extracted from
-Google's kernel ([tools/kernel_certs.py](tools/kernel_certs.py)) and trusted, so Google's signed
-modules and our newly built ones both load. Outputs: `out/gki/bzImage` and `out/gki/modules/`.
+Like Google's build, it keeps only the exports listed in Google's published
+`abi_symbollist.raw` plus those Google's own modules use. After building, it refuses to publish a
+kernel whose release string differs from Google's, or that is missing any of Google's exported
+symbols or exports one with a different checksum ([tools/kabi_check.py](tools/kabi_check.py)).
+Google's signing certificate is extracted from Google's kernel
+([tools/kernel_certs.py](tools/kernel_certs.py)) and trusted, so Google's signed modules load.
+QEMU's virtio GPU, input and network drivers are not compiled here: they are Google's prebuilt
+modules for this same kernel, from its virtual-device build (`GKI_VIRT` in
+[sources.mk](sources.mk)). Output: `out/gki/bzImage`.
 
 ## Googlebook OS in QEMU
 
@@ -188,7 +193,7 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
 
 - **Kernel:** `out/gki/bzImage` from `make gki`.
 - **Command line:** [android/cmdline.txt](android/cmdline.txt), Google's with the listed changes.
-- **Initrd** (`make android-initrd`): Google's boot ramdisks plus our matching
+- **Initrd** (`make android-initrd`): Google's boot ramdisks plus Google's prebuilt
   virtio-gpu, input and network modules, then the boot settings: Google's
   plus [android/bootconfig.txt](android/bootconfig.txt), packed by
   [tools/bootconfig.py](tools/bootconfig.py).

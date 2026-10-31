@@ -26,4 +26,4 @@ applyTo: "android/**"
   (`make test` checks this).
 - New first-stage modules: add them to `android/module_ramdisk/install.list` and to both
   `modules.dep` and `modules.load` in `modules.patch`; the build checks the dependencies against
-  our kernel. No trailing space after `name.ko:`.
+  Google's QEMU driver build. No trailing space after `name.ko:`.

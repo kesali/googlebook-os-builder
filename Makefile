@@ -17,6 +17,8 @@ BUSYBOX_SRC := $(OUT)/src/busybox-$(BUSYBOX_SHA)
 GRUB_SRC := $(OUT)/src/grub-$(GRUB_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
 GKI_SYMVERS := $(DL)/vmlinux-$(GKI_BUILD)-$(GKI_SYMVERS_SHA).symvers
+GKI_ABI_LIST := $(DL)/abi_symbollist-$(GKI_BUILD)-$(GKI_ABI_SHA).raw
+GKI_VIRT := $(DL)/virt-initramfs-$(GKI_BUILD)-$(GKI_VIRT_SHA).img
 TOOLCHAIN := $(OUT)/toolchain
 GKI := $(OUT)/gki
 ANDROID := $(OUT)/android
@@ -134,13 +136,16 @@ $(TOOLCHAIN)/.ready: $(TOOLCHAIN)/clang-$(CLANG_REV)/.ready $(TOOLCHAIN)/rust-$(
 
 $(GKI_SYMVERS): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(GKI_SYMVERS_URL)" "$(GKI_SYMVERS_SHA)" "$@"
+$(GKI_ABI_LIST): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(GKI_ABI_URL)" "$(GKI_ABI_SHA)" "$@"
+$(GKI_VIRT): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(GKI_VIRT_URL)" "$(GKI_VIRT_SHA)" "$@"
 
-gki: $(GKI)/bzImage ## Rebuild Google's kernel + kernel/gki.config drivers, check kABI
-# One run writes both; each is replaced only when its bytes change.
-$(GKI)/bzImage $(GKI)/modules.sha256 &: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) \
+gki: $(GKI)/bzImage ## Rebuild Google's kernel with the instruction emulator, check kABI
+$(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) $(GKI_ABI_LIST) \
 		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
-		"$(GKI_SYMVERS)" kernel/gki.config
+		"$(GKI_SYMVERS)" "$(GKI_ABI_LIST)" kernel/gki.config
 
 # Android's QEMU userspace: pinned source graphics + unmodified software security HALs.
 $(MESA_TAR): | $(BUILD_READY)
@@ -192,10 +197,10 @@ $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
 	@mkdir -p $(@D)
 	$(BUILDER) avbtool make_vbmeta_image --algorithm NONE --flags 3 --padding_size 4096 --output "$@"
 
-$(ANDROID)/modules.lz4: $(GKI)/modules.sha256 scripts/android-modules.sh scripts/android-overlay.sh \
+$(ANDROID)/modules.lz4: $(GOOGLE)/inventory.txt $(GKI_VIRT) scripts/android-modules.sh scripts/android-overlay.sh \
 		android/module_ramdisk $(wildcard android/module_ramdisk/*)
-	$(BUILDER) fakeroot bash scripts/android-modules.sh "$(GOOGLE)" android/module_ramdisk "$(GKI)/modules" "$@"
-android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks, our QEMU drivers and boot settings
+	$(BUILDER) fakeroot bash scripts/android-modules.sh "$(GOOGLE)" android/module_ramdisk "$(GKI_VIRT)" "$@"
+android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks and QEMU drivers, our boot settings
 $(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
 	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$(ANDROID)/modules.lz4" "$@"
 
