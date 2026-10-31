@@ -1,7 +1,9 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-10-31 — patch-file rebuild compared file by file with the previous build (only the 3 patched text files differ in bytes; all metadata identical); no-op build wrote nothing; `make qemu-check` passed.
+**Last verified:** 2026-10-31 — `make test` (22 tests); rebuilt all three partitions and the module
+ramdisk byte-identically to a fresh build of `23b8773`; no-op build preserved output timestamps
+and wrote no partitions. QEMU was not rerun for this review; the boot artifacts are unchanged.
 
 ## Goal
 Turn Google's read-only recovery image into a private QEMU disk with a short list of explicit
@@ -22,6 +24,8 @@ Not verified: writing any of this to a real disk or USB (deliberately not done).
   then installed. **No byte-offset edits and no change logic in Python.**
 - Patches are applied to copies and written back in place, so patched files keep their owner,
   mode and SELinux label. Every file in a change directory must be used (`make test` checks).
+- Reject symlinked parents before removing, installing or patching files; a patch target must
+  itself be a regular file, not a symlink. Readability refactors must retain these guards.
 - The overlay script only applies changes; checks live elsewhere. Vendor programs we install may
   link only to vendor `lib64` or the platform LLNDK
   ([scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh), run by the vendor build).
@@ -65,6 +69,13 @@ _None agreed._
 - Writing the same partitions to a USB or internal disk for the laptop — see [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-10-31 (this commit) — Restored symlink guards lost in the overlay simplification; new tests
+  reproduced four unsafe cases before the fix. All 22 tests now pass; fresh baseline/current
+  builds are byte-identical and a second build writes nothing.
+- 2026-10-31 `67098bc` — Explained partition packing and system paths; named the Makefile's
+  partition stem explicitly. No runtime configuration changes.
+- 2026-10-31 `441bad5` — Simplified remove/install/patch processing; moved vendor library checking
+  into its own script and unused-file checking into tests. Symlink regression corrected above.
 - 2026-10-31 `357470d` — Image changes are now lists and patches per partition, applied by android-overlay.sh; Python overlay removed. Rebuild matched the old one apart from the 3 patched text files.
 - 2026-10-31 `56719c0` — Rootless EROFS rebuilds with full metadata comparison; per-partition dependencies.
 - 2026-10-31 `2f02300` — Private disk and first boot from Google's partitions.

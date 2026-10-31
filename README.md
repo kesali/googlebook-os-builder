@@ -246,7 +246,7 @@ alone is not a passing result. The captured screen also needs visual inspection.
 
 Verified locally: the actual Googlebook welcome/setup screen at 1280x720, with Mesa softpipe,
 software keys and SELinux enforcing, VNC connection, mouse navigation into the language picker,
-and clean guest shutdown. Twenty focused tests pass; unchanged builds preserve output
+and clean guest shutdown. Twenty-two focused tests pass; unchanged builds preserve output
 timestamps and write no OS partitions, and a running VM rejects disk updates. Allow several minutes
 for CPU-rendered startup. Setup completion, Google account sign-in, hardware-backed attestation
 and laptop performance are **not** claimed as tested. Bluetooth, Wi-Fi and audio hardware are

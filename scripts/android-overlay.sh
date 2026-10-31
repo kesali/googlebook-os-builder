@@ -12,7 +12,7 @@
 #                 Text before the first --- line explains the change.
 # All paths are relative to ROOT. Run under fakeroot so owners, modes and labels survive.
 set -euo pipefail
-changes=$1 root=$2
+changes=$1 root=$(realpath -e "$2")
 shift 2
 inputs=("$@")
 test -n "${FAKEROOTKEY:-}" || { echo "android-overlay.sh requires fakeroot" >&2; exit 1; }
@@ -30,8 +30,12 @@ entries() {
 # Lists may only name paths inside ROOT.
 check_path() {
     case "/$1/" in
-        //* | */../*) fail "not a path inside the partition: $1" ;;
+        //* | */../* | */./*) fail "not a path inside the partition: $1" ;;
     esac
+    local parent
+    parent=$(dirname "$root/${1%/}")
+    [ "$(realpath -e "$parent")" = "$parent" ] \
+        || fail "parent directory is missing or a symlink: $1"
 }
 
 # True if the path exists, even as a broken symlink.
@@ -90,7 +94,8 @@ for patch in "$changes"/*.patch; do
     test -n "$files" || fail "$name changes no files"
     for path in $files; do
         check_path "$path"
-        test -f "$root/$path" || fail "$name: $path is not an existing file"
+        [ -f "$root/$path" ] && [ ! -L "$root/$path" ] \
+            || fail "$name: $path is not an existing regular file"
         mkdir -p "$(dirname "$copies/$path")"
         cp -- "$root/$path" "$copies/$path"
     done

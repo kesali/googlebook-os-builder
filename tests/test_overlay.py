@@ -109,6 +109,39 @@ class OverlayTests(unittest.TestCase):
         result = subprocess.run(check, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_refuses_symlinked_parent_for_each_operation(self):
+        outside = self.work / "outside"
+        outside.mkdir()
+        (self.root / "linked").symlink_to(outside, target_is_directory=True)
+        (self.inputs / "tool").write_text("tool\n")
+        cases = {
+            "remove.list": "linked/build.prop\n",
+            "install.list": "linked/new 0644 0:0 - input/tool\n",
+            "props.patch": "--- a/linked/build.prop\n+++ b/linked/build.prop\n"
+                           "@@ -1 +1 @@\n-a=1\n+a=2\n",
+        }
+        for name, text in cases.items():
+            with self.subTest(operation=name):
+                (outside / "build.prop").write_text("a=1\n")
+                self.write(name, text)
+                result = self.run_overlay()
+                (self.changes / name).unlink()
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertIn("parent directory is missing or a symlink", result.stderr)
+                self.assertEqual((outside / "build.prop").read_text(), "a=1\n")
+                self.assertFalse((outside / "new").exists())
+
+    def test_refuses_patching_a_symlink(self):
+        outside = self.work / "outside.prop"
+        outside.write_text("a=1\n")
+        (self.root / "etc/link.prop").symlink_to(outside)
+        self.write("props.patch", "--- a/etc/link.prop\n+++ b/etc/link.prop\n"
+                                 "@@ -1 +1 @@\n-a=1\n+a=2\n")
+        result = self.run_overlay()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("not an existing regular file", result.stderr)
+        self.assertEqual(outside.read_text(), "a=1\n")
+
 
 class ChangeDataTests(unittest.TestCase):
     def test_install_lists_have_five_columns(self):
