@@ -289,7 +289,8 @@ compatibility. Keep that distinction when evaluating new userspace binaries.
 Validated locally: nine deployment/safety tests; UEFI QEMU boot through GRUB and the
 source-built kernel; both supported instruction tests trapping into the emulator; saved USB logs;
 clean poweroff; unchanged output timestamps on a no-op build; and no kernel/loader rebuild
-for an initramfs-only change. Physical USB flashing and laptop boot are not claimed as tested.
+for an initramfs-only change. Physical USB flashing, read-back comparison and filesystem checks
+are verified; laptop boot remains untested.
 
 ## Source attribution
 

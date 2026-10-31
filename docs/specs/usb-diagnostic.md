@@ -1,7 +1,8 @@
 # USB diagnostics
 
 **Status:** parked — works in QEMU; not tested on the laptop; not being developed now.
-**Last verified:** 2026-10-31 — rebuilt from `4360357`, then `make test smoke JOBS=12`.
+**Last verified:** 2026-10-31 — rebuilt from `4360357`, then `make test smoke JOBS=12`;
+physical USB write/read-back, GPT and FAT checks.
 [Build, image checksum, payload checks, boot logs and console screenshots](../../out/usb-validation-4360357/).
 
 ## Goal
@@ -14,7 +15,10 @@ both supported instruction encodings trap into the emulator; clean poweroff; `ma
 writes only changed files and nothing on a no-op.
 The default interactive menu also boots without a serial port: the visible console, keyboard
 command execution, saved report and clean shutdown were verified on a disposable image copy.
-Not verified: flashing a real USB, booting the laptop.
+Physical USB: written with the owner's explicit approval; full-image read-back matched.
+The backup GPT was moved to the drive's end; the boot filesystem still matched the image,
+and read-only FAT checks passed. The USB was left unmounted.
+Not verified: booting the laptop.
 
 ## Decisions
 - BusyBox is busybox.net's official static binary and GRUB is Debian's package, both unchanged:
@@ -41,10 +45,13 @@ Not verified: flashing a real USB, booting the laptop.
 
 ## Actions
 - [ ] Boot the diagnostic USB on the laptop — done when `/boot/logs/hardware.txt` from the real
-  laptop is reviewed. Needs the user to flash a USB.
+  laptop is reviewed. The USB is flashed; the user needs to boot it.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Rebuilt the current prebuilt-based image; verified payload hashes,
+- 2026-10-31 (this commit) — Flashed the explicitly approved USB; read-back, GPT and FAT checks
+  passed. [Flash log](../../out/usb-validation-4360357/flash.log) retained; one-time flashing
+  script/task removed. Laptop boot remains untested.
+- 2026-10-31 `0e6bd03` — Rebuilt the current prebuilt-based image; verified payload hashes,
   22 tests, UEFI smoke and no-serial console/input. A no-op build took 4 s and preserved all
   published contents and timestamps. Evidence above; physical laptop boot remains untested.
 - 2026-10-31 `b3f7488` — `hardware.txt` lists PCI/USB devices with their drivers, input
