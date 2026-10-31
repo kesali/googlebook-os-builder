@@ -1,140 +1,104 @@
 #!/usr/bin/env bash
-# Read: one change directory under android/. Write: those changes into an extracted Android tree.
+# Read: one change directory under android/. Write: its changes into an extracted Android tree.
 #
-# Usage: android-overlay.sh [--llndk FILE] CHANGES ROOT [NAME=DIR ...]
+#   android-overlay.sh CHANGES ROOT [NAME=DIR ...]
 #
 # A change directory holds only declared changes, applied in this order:
-#   remove.list   Paths to delete. Each must exist; directories go with their contents.
+#   remove.list   Paths to delete, one per line. Each must exist.
 #   install.list  New files: path, mode, uid:gid, SELinux type (- for none), source.
-#                 Source ./FILE is in CHANGES; NAME/FILE is in the input directory NAME=DIR.
-#                 A path ending in / is a new directory and takes source -.
-#                 To replace a file, remove it first.
+#                 Source ./FILE is in CHANGES; NAME/FILE is FILE in the input NAME=DIR.
+#                 Source - makes a directory. To replace a file, remove it first.
 #   *.patch       Unified diffs (patch -p1) of existing text files, in name order.
 #                 Text before the first --- line explains the change.
-# Paths are relative to ROOT and must not leave it. With --llndk, every installed ELF must
-# link only to ROOT/lib64 or the platform's LLNDK libraries.
-# Run under fakeroot so owners, modes and SELinux labels survive.
+# All paths are relative to ROOT. Run under fakeroot so owners, modes and labels survive.
 set -euo pipefail
-
-llndk=
-if [ "${1:-}" = --llndk ]; then
-    llndk=$(realpath "$2")
-    shift 2
-fi
-changes=$(realpath "$1") root=$(realpath "$2")
+changes=$1 root=$2
 shift 2
-fail() { echo "${changes#"$PWD"/}: $*" >&2; exit 1; }
-declare -A inputs
-for input; do
-    [[ $input == ?*=?* ]] || fail "inputs are NAME=DIR, not $input"
-    inputs[${input%%=*}]=$(realpath -m "${input#*=}")
-done
-test -n "${FAKEROOTKEY:-}" || fail "android-overlay.sh requires fakeroot"
+inputs=("$@")
+test -n "${FAKEROOTKEY:-}" || { echo "android-overlay.sh requires fakeroot" >&2; exit 1; }
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 
-# The entries of a list file, without comments and blank lines.
+fail() { echo "$changes: $*" >&2; exit 1; }
+
+# The lines of a list file, without comments and blank lines.
 entries() {
-    if [ -f "$changes/$1" ]; then
-        grep -v -e '^#' -e '^[[:space:]]*$' "$changes/$1" || true
-    fi
+    test -f "$changes/$1" || return 0
+    grep -v -e '^#' -e '^[[:space:]]*$' "$changes/$1" || true
 }
 
-# ROOT/PATH, refusing paths that could leave ROOT through .. or a symlinked parent.
-target() {
+# Lists may only name paths inside ROOT.
+check_path() {
     case "/$1/" in
-        //* | */../* | */./*) fail "unsafe path: $1" ;;
+        //* | */../*) fail "not a path inside the partition: $1" ;;
     esac
-    local file=$root/${1%/}
-    [ "$(realpath -e "$(dirname "$file")" 2>/dev/null)" = "$(dirname "$file")" ] \
-        || fail "parent directory is missing or a symlink: $1"
-    printf '%s\n' "$file"
 }
 
-# Sets $from_file to the file named by an install.list source.
-declare -A used
+# True if the path exists, even as a broken symlink.
+exists() { [ -e "$1" ] || [ -L "$1" ]; }
+
+# Sets $from to the file an install.list source names: ./FILE or NAME/FILE.
 find_source() {
-    local name=${1%%/*} dir
+    local name=${1%%/*} file=${1#*/} input
+    from=
     if [ "$name" = . ]; then
-        dir=$changes
-        used[${1#./}]=1
-    else
-        dir=${inputs[$name]:-}
-        [ -n "$dir" ] || fail "unknown input $name/ in $1"
+        from=$changes/$file
     fi
-    from_file=$dir/${1#*/}
-    [ -f "$from_file" ] || fail "missing source $1 ($from_file)"
+    for input in "${inputs[@]}"; do
+        if [ "${input%%=*}" = "$name" ]; then
+            from=${input#*=}/$file
+        fi
+    done
+    test -n "$from" || fail "unknown input $name/ in $1"
+    test -f "$from" || fail "missing source $1 ($from)"
 }
 
-removed=0
-while read -r path extra; do
-    [ -z "$extra" ] || fail "remove.list takes one path per line: $path $extra"
-    file=$(target "$path")
-    [ -e "$file" ] || [ -L "$file" ] || fail "cannot remove missing $path"
-    rm -r -- "$file"
-    removed=$((removed + 1))
+while read -r path; do
+    check_path "$path"
+    exists "$root/$path" || fail "cannot remove missing $path"
+    rm -r -- "$root/$path"
+    echo "$changes: remove $path"
 done < <(entries remove.list)
 
-installed=()
-while read -r path mode owner type from extra; do
-    [ -n "$from" ] && [ -z "$extra" ] || fail "install.list takes 5 columns: $path"
-    file=$(target "$path")
-    [ ! -e "$file" ] && [ ! -L "$file" ] || fail "$path already exists; remove it first"
-    if [ "${path%/}" != "$path" ]; then
-        [ "$from" = - ] || fail "directory $path takes source -"
-        mkdir -- "$file"
+while read -r path mode owner type source; do
+    check_path "$path"
+    test -n "$source" || fail "install.list needs 5 columns: $path"
+    if exists "$root/$path"; then
+        fail "$path already exists; remove it first"
+    fi
+    if [ "$source" = - ]; then
+        mkdir -- "$root/$path"
     else
-        find_source "$from"
-        cp -- "$from_file" "$file"
+        find_source "$source"
+        cp -- "$from" "$root/$path"
     fi
-    chmod "$mode" "$file"
-    chown "$owner" "$file"
+    chmod "$mode" "$root/$path"
+    chown "$owner" "$root/$path"
     if [ "$type" != - ]; then
-        setfattr -n security.selinux -v "u:object_r:$type:s0" "$file"
+        setfattr -n security.selinux -v "u:object_r:$type:s0" "$root/$path"
     fi
-    installed+=("$file")
+    echo "$changes: install $path"
 done < <(entries install.list)
 
-patched=0
+# GNU patch replaces each file it changes, which would drop its owner, mode and SELinux
+# label. So patch copies in a scratch directory, then write the results back in place.
 for patch in "$changes"/*.patch; do
-    [ -e "$patch" ] || continue
-    name=${patch##*/}
-    mapfile -t files < <(sed -n 's#^+++ b/\([^\t]*\).*#\1#p' "$patch")
-    [ ${#files[@]} -gt 0 ] || fail "$name changes no files"
-    rm -rf "$scratch/tree"
-    for path in "${files[@]}"; do
-        file=$(target "$path")
-        [ -f "$file" ] && [ ! -L "$file" ] || fail "$name: $path is not an existing file"
-        mkdir -p "$scratch/tree/$(dirname "$path")"
-        cp -- "$file" "$scratch/tree/$path"
+    test -e "$patch" || continue  # no *.patch files
+    name=$(basename "$patch")
+    copies=$scratch/$name
+    files=$(sed -n 's#^+++ b/\([^[:space:]]*\).*#\1#p' "$patch")
+    test -n "$files" || fail "$name changes no files"
+    for path in $files; do
+        check_path "$path"
+        test -f "$root/$path" || fail "$name: $path is not an existing file"
+        mkdir -p "$(dirname "$copies/$path")"
+        cp -- "$root/$path" "$copies/$path"
     done
-    # Patch copies, then write them back in place: GNU patch replaces the files it changes,
-    # which would drop their owner, mode and SELinux label.
+    # Exact context only; never reverse a patch, keep backups or leave .rej files.
     patch --batch --forward --fuzz=0 --no-backup-if-mismatch --reject-file=- --quiet \
-        -p1 -d "$scratch/tree" -i "$patch" || fail "$name does not apply"
-    for path in "${files[@]}"; do
-        cat "$scratch/tree/$path" > "$root/$path"
+        -p1 -d "$copies" < "$patch" || fail "$name does not apply"
+    for path in $files; do
+        cat "$copies/$path" > "$root/$path"
     done
-    patched=$((patched + 1))
+    echo "$changes: patch $name"
 done
-
-if [ -n "$llndk" ]; then
-    for file in "${installed[@]}"; do
-        needed=$(readelf -d "$file" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]$/\1/p') || continue
-        for library in $needed; do
-            [ -e "$root/lib64/$library" ] || grep -qxF "$library" "$llndk" \
-                || fail "${file#"$root"/} needs $library, which is not in lib64 or the LLNDK"
-        done
-    done
-fi
-
-# Every file in a change directory is a declared change.
-for file in "$changes"/*; do
-    name=${file##*/}
-    case "$name" in
-        remove.list | install.list | *.patch) ;;
-        *) [ -n "${used[$name]:-}" ] || fail "$name is not used by install.list" ;;
-    esac
-done
-
-echo "${changes##*/}: removed $removed, installed ${#installed[@]}, applied $patched patches"

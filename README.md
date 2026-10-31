@@ -112,6 +112,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [scripts/mesa.sh](scripts/mesa.sh) | Android Mesa, libdrm and Expat from source with the NDK |
 | [android/system/](android/system/), [android/system_ext/](android/system_ext/), [android/vendor/](android/vendor/), [android/module_ramdisk/](android/module_ramdisk/) | Every change to Google's files: `remove.list`, `install.list` and `*.patch` per target |
 | [scripts/android-overlay.sh](scripts/android-overlay.sh) | Applies one change directory: removes, installs with owner/mode/label, patches in place |
+| [scripts/check-vendor-libs.sh](scripts/check-vendor-libs.sh) | Refuses vendor programs we install that link to libraries Android would not find |
 | [scripts/android-partition.sh](scripts/android-partition.sh), [tools/fs_metadata.py](tools/fs_metadata.py) | Rootless EROFS rebuilding and complete content/metadata comparison |
 | [tools/android_sync.py](tools/android_sync.py) | Named OS partition updates, preserving Android's data |
 | [tools/android_smoke.py](tools/android_smoke.py), [tools/android_console.py](tools/android_console.py) | Full-boot checks and framed serial-shell commands |
@@ -245,7 +246,7 @@ alone is not a passing result. The captured screen also needs visual inspection.
 
 Verified locally: the actual Googlebook welcome/setup screen at 1280x720, with Mesa softpipe,
 software keys and SELinux enforcing, VNC connection, mouse navigation into the language picker,
-and clean guest shutdown. Nineteen focused tests pass; unchanged builds preserve output
+and clean guest shutdown. Twenty focused tests pass; unchanged builds preserve output
 timestamps and write no OS partitions, and a running VM rejects disk updates. Allow several minutes
 for CPU-rendered startup. Setup completion, Google account sign-in, hardware-backed attestation
 and laptop performance are **not** claimed as tested. Bluetooth, Wi-Fi and audio hardware are

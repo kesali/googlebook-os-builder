@@ -180,7 +180,7 @@ $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img: \
 # The directories catch removed files; the wildcards catch edited ones.
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*)
 $(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*)
-$(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) \
+$(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
 		$(ANDROID_EMU)/.ready $(MESA)/manifest $(ANDROID)/crossystem
 
 $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)

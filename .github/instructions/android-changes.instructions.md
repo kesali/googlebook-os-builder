@@ -18,7 +18,8 @@ applyTo: "android/**"
   Start the patch with a few lines saying why (text before the first `---` is ignored by patch).
   Patches apply with `--fuzz=0`, so a Google image update that moves the context fails loudly.
 - No Python or ad-hoc scripts that write changes; no binary or byte-offset edits.
-- Every file in a change directory must be used by `install.list` or be a list/patch.
+- Every file in a change directory must be used by `install.list` or be a list/patch
+  (`make test` checks this).
 - New first-stage modules: add them to `android/module_ramdisk/install.list` and to both
   `modules.dep` and `modules.load` in `modules.patch`; the build checks the dependencies against
   our kernel. No trailing space after `name.ko:`.

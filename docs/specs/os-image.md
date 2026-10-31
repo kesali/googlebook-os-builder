@@ -21,9 +21,10 @@ Not verified: writing any of this to a real disk or USB (deliberately not done).
   then `*.patch` (unified diffs of Google's text files, header says why). A replaced file is removed,
   then installed. **No byte-offset edits and no change logic in Python.**
 - Patches are applied to copies and written back in place, so patched files keep their owner,
-  mode and SELinux label. Every file in a change directory must be used.
-- Vendor programs may link only to vendor `lib64` or the platform LLNDK; the overlay checks every
-  installed ELF.
+  mode and SELinux label. Every file in a change directory must be used (`make test` checks).
+- The overlay script only applies changes; checks live elsewhere. Vendor programs we install may
+  link only to vendor `lib64` or the platform LLNDK
+  ([scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh), run by the vendor build).
 - Rebuild without root: `fsck.erofs` extraction and `mkfs.erofs` under fakeroot; original UUID
   kept; output must not exceed the original partition size.
 - AVB is disabled through a new vbmeta (`--algorithm NONE --flags 3`); SELinux stays enforcing.
@@ -37,6 +38,7 @@ Not verified: writing any of this to a real disk or USB (deliberately not done).
 ## Files
 - [android/system/](../../android/system/), [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/) — every change to Google's partitions.
 - [scripts/android-overlay.sh](../../scripts/android-overlay.sh) — applies one change directory; format in its header.
+- [scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh) — library check for vendor programs we install.
 - [scripts/android-partition.sh](../../scripts/android-partition.sh), [tools/fs_metadata.py](../../tools/fs_metadata.py) — rebuild and full comparison.
 - [scripts/android-disk.sh](../../scripts/android-disk.sh) — create the private disk once.
 - [tools/android_sync.py](../../tools/android_sync.py), [tools/lp.py](../../tools/lp.py) — partition updates.

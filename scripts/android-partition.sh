@@ -14,13 +14,11 @@ work=$(mktemp -d "$output.partial.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 source=$google/super/${partition}_a.img
 fsck.erofs --extract="$work/root" --xattrs --preserve "$source"
-checks=()
+bash "$scripts/android-overlay.sh" "$changes" "$work/root" "$@"
 if [ "$partition" = vendor ]; then
-    # Vendor programs may link only to vendor libraries and the platform's LLNDK.
     dump.erofs --path=/system/etc/llndk.libraries.txt --cat "$google/super/system_a.img" > "$work/llndk.txt"
-    checks=(--llndk "$work/llndk.txt")
+    bash "$scripts/check-vendor-libs.sh" "$changes/install.list" "$work/root" "$work/llndk.txt"
 fi
-bash "$scripts/android-overlay.sh" "${checks[@]}" "$changes" "$work/root" "$@"
 python3 "$tools/fs_metadata.py" record "$work/root" "$work/metadata.json"
 uuid=$(dump.erofs "$source" | awk '/UUID/ {print $NF}')
 test -n "$uuid"

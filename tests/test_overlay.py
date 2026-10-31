@@ -1,4 +1,4 @@
-"""The declared Android changes and the script that applies them (scripts/android-overlay.sh)."""
+"""The declared Android changes and the scripts that apply and check them."""
 
 from pathlib import Path
 import shutil
@@ -8,6 +8,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 OVERLAY = REPO / "scripts/android-overlay.sh"
+VENDOR_LIBS = REPO / "scripts/check-vendor-libs.sh"
 
 
 def entries(path):
@@ -31,9 +32,9 @@ class OverlayTests(unittest.TestCase):
     def write(self, name, text):
         (self.changes / name).write_text(text)
 
-    def run_overlay(self, *arguments, before="", after=""):
+    def run_overlay(self, before="", after=""):
         """Run the overlay under fakeroot, with optional shell setup and inspection around it."""
-        script = f'{before}\nbash "{OVERLAY}" {" ".join(arguments)} changes root input=inputs\n{after}'
+        script = f'{before}\nbash "{OVERLAY}" changes root input=inputs\n{after}'
         return subprocess.run(["fakeroot", "bash", "-euc", script], cwd=self.work,
                               capture_output=True, text=True)
 
@@ -56,7 +57,8 @@ class OverlayTests(unittest.TestCase):
             after="cd root; stat -c '%n %a %u:%g' etc/build.prop bin/tool etc/init etc/init/x.rc\n"
                   "getfattr -h --absolute-names -d -m security.selinux etc/build.prop bin/tool etc/init etc/init/x.rc")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("changes: removed 1, installed 3, applied 1 patches", result.stdout)
+        for line in ("changes: remove bin/old", "changes: install etc/init/x.rc", "changes: patch props.patch"):
+            self.assertIn(line, result.stdout)
         for line in ("etc/build.prop 640 0:2000", "bin/tool 755 0:2000",
                      "etc/init 755 0:0", "etc/init/x.rc 644 0:0",
                      'security.selinux="u:object_r:prop_file:s0"',
@@ -71,13 +73,12 @@ class OverlayTests(unittest.TestCase):
         patch = "--- a/etc/build.prop\n+++ b/etc/build.prop\n@@ -1 +1 @@\n-a=9\n+a=2\n"
         cases = {
             "cannot remove missing bin/none": {"remove.list": "bin/none\n"},
-            "unsafe path: ../outside": {"remove.list": "../outside\n"},
+            "not a path inside the partition: ../outside": {"remove.list": "../outside\n"},
             "bin/old already exists": {"install.list": "bin/old 0644 0:0 - input/tool\n"},
             "missing source input/none": {"install.list": "bin/new 0644 0:0 - input/none\n"},
             "unknown input other/": {"install.list": "bin/new 0644 0:0 - other/tool\n"},
-            "install.list takes 5 columns": {"install.list": "bin/new 0644 0:0 ./x\n"},
+            "install.list needs 5 columns": {"install.list": "bin/new 0644 0:0 ./x\n"},
             "bad.patch does not apply": {"bad.patch": patch},
-            "notes.txt is not used by install.list": {"notes.txt": "stray\n"},
         }
         (self.inputs / "tool").write_text("tool\n")
         for message, files in cases.items():
@@ -91,19 +92,21 @@ class OverlayTests(unittest.TestCase):
                 self.assertIn(message, result.stderr)
         self.assertEqual((self.root / "etc/build.prop").read_text(), "a=1\nb=2\n")
 
-    def test_installed_programs_must_link_to_lib64_or_llndk(self):
+    def test_vendor_programs_must_link_to_lib64_or_llndk(self):
         program = Path(shutil.which("true")).resolve()
-        shutil.copy(program, self.inputs / "program")
+        shutil.copy(program, self.root / "bin/program")
         needed = subprocess.run(["readelf", "-d", str(program)], capture_output=True, text=True).stdout
         library = needed.split("(NEEDED)")[1].split("[")[1].split("]")[0]
-        self.write("install.list", "bin/program 0755 0:0 - input/program\n")
-        (self.work / "llndk.txt").write_text("libother.so\n")
-        result = self.run_overlay("--llndk", "llndk.txt")
+        self.write("install.list", "bin/program 0755 0:0 - input/program\n"
+                                   "etc/build.prop 0644 0:0 - input/props\n")
+        llndk = self.work / "llndk.txt"
+        check = ["bash", str(VENDOR_LIBS), str(self.changes / "install.list"), str(self.root), str(llndk)]
+        llndk.write_text("libother.so\n")
+        result = subprocess.run(check, capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn(f"bin/program needs {library}", result.stderr)
-        (self.root / "bin/program").unlink()
-        (self.work / "llndk.txt").write_text(f"{library}\n")
-        result = self.run_overlay("--llndk", "llndk.txt")
+        self.assertIn(f"vendor/bin/program needs {library}", result.stderr)
+        llndk.write_text(f"{library}\n")
+        result = subprocess.run(check, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
@@ -113,6 +116,16 @@ class ChangeDataTests(unittest.TestCase):
             for entry in entries(path):
                 with self.subTest(path=path.parent.name, entry=entry[0]):
                     self.assertEqual(len(entry), 5)
+
+    def test_every_file_in_a_change_directory_is_used(self):
+        for changes in sorted(path for path in (REPO / "android").iterdir() if path.is_dir()):
+            install = changes / "install.list"
+            sources = {entry[4] for entry in entries(install)} if install.exists() else set()
+            for path in sorted(changes.iterdir()):
+                with self.subTest(path=f"{changes.name}/{path.name}"):
+                    self.assertTrue(path.name in ("remove.list", "install.list")
+                                    or path.suffix == ".patch" or f"./{path.name}" in sources,
+                                    "not a list or patch, and not a source in install.list")
 
     def test_first_stage_modules_are_loaded_in_install_order(self):
         changes = REPO / "android/module_ramdisk"
