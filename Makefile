@@ -21,15 +21,15 @@ TOOLCHAIN := $(OUT)/toolchain
 GKI := $(OUT)/gki
 ANDROID := $(OUT)/android
 MESA := $(OUT)/mesa
-MESA_TAR := $(DL)/mesa-$(MESA_VERSION).tar.xz
+MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
 MESA_PATCH := android/mesa-drm-master.patch
 MESA_PATCH_SHA := $(shell sha256sum $(MESA_PATCH) | cut -d' ' -f1)
 MESA_SRC := $(OUT)/src/mesa-$(MESA_SHA)-$(MESA_PATCH_SHA)
-LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_VERSION).tar.xz
+LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_SHA).tar.xz
 LIBDRM_SRC := $(OUT)/src/libdrm-$(LIBDRM_SHA)
-EXPAT_TAR := $(DL)/expat-$(EXPAT_VERSION).tar.xz
+EXPAT_TAR := $(DL)/expat-$(EXPAT_SHA).tar.xz
 EXPAT_SRC := $(OUT)/src/expat-$(EXPAT_SHA)
-NDK_ZIP := $(DL)/android-ndk-r30-linux.zip
+NDK_ZIP := $(DL)/android-ndk-$(NDK_SHA).zip
 NDK := $(TOOLCHAIN)/ndk-$(NDK_SHA)
 ANDROID_EMU_ZIP := $(DL)/emulator-$(ANDROID_EMU_SHA).zip
 ANDROID_EMU := $(OUT)/emulator-$(ANDROID_EMU_SHA)
@@ -56,11 +56,13 @@ unpack: $(GOOGLE)/inventory.txt ## Inspect Google's read-only recovery image
 $(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) scripts/unpack.sh tools/lp.py tools/kernel_info.py | $(BUILD_READY)
 	$(BUILDER) scripts/unpack.sh $(RECOVERY_IMAGE) $(GOOGLE)
 
-$(EMU_PATCH): scripts/fetch.sh | $(BUILD_READY)
+# A download's name contains its SHA-256: a new pin is a new file, and a file that exists
+# is never checked or fetched again.
+$(EMU_PATCH): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(EMU_URL)" "$(EMU_SHA)" "$@"
-$(BUSYBOX_TAR): scripts/fetch.sh | $(BUILD_READY)
+$(BUSYBOX_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
-$(GRUB_TAR): scripts/fetch.sh | $(BUILD_READY)
+$(GRUB_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(GRUB_URL)" "$(GRUB_SHA)" "$@"
 
 $(KERNEL_SRC)/.ready: $(EMU_PATCH) | $(BUILD_READY)
@@ -130,7 +132,7 @@ $(TOOLCHAIN)/.ready: $(TOOLCHAIN)/clang-$(CLANG_REV)/.ready $(TOOLCHAIN)/rust-$(
 	ln -sfn pahole-$(DWARVES_REV) $(TOOLCHAIN)/pahole
 	touch $@
 
-$(GKI_SYMVERS): scripts/fetch.sh | $(BUILD_READY)
+$(GKI_SYMVERS): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(GKI_SYMVERS_URL)" "$(GKI_SYMVERS_SHA)" "$@"
 
 gki: $(GKI)/bzImage ## Rebuild Google's kernel + kernel/gki.config drivers, check kABI
@@ -140,15 +142,15 @@ $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/invento
 		"$(GKI_SYMVERS)" kernel/gki.config
 
 # Android's QEMU userspace: pinned source graphics + unmodified software security HALs.
-$(MESA_TAR): sources.mk scripts/fetch.sh | $(BUILD_READY)
+$(MESA_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(MESA_URL)" "$(MESA_SHA)" "$@"
-$(LIBDRM_TAR): sources.mk scripts/fetch.sh | $(BUILD_READY)
+$(LIBDRM_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(LIBDRM_URL)" "$(LIBDRM_SHA)" "$@"
-$(EXPAT_TAR): sources.mk scripts/fetch.sh | $(BUILD_READY)
+$(EXPAT_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(EXPAT_URL)" "$(EXPAT_SHA)" "$@"
-$(NDK_ZIP): sources.mk scripts/fetch.sh | $(BUILD_READY)
+$(NDK_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(NDK_URL)" "$(NDK_SHA)" "$@"
-$(ANDROID_EMU_ZIP): sources.mk scripts/fetch.sh | $(BUILD_READY)
+$(ANDROID_EMU_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(ANDROID_EMU_URL)" "$(ANDROID_EMU_SHA)" "$@"
 $(MESA_SRC)/.ready: $(MESA_TAR) $(MESA_PATCH) scripts/source.sh
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" "$(MESA_PATCH)"
