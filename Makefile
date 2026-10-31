@@ -19,6 +19,7 @@ DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
 GKI_SYMVERS := $(DL)/vmlinux-$(GKI_BUILD)-$(GKI_SYMVERS_SHA).symvers
 TOOLCHAIN := $(OUT)/toolchain
 GKI := $(OUT)/gki
+ANDROID := $(OUT)/android
 BUILDER := scripts/builder.sh
 BUILD_READY := $(OUT)/stamps/builder
 export BUILDER_IMAGE JOBS
@@ -27,7 +28,8 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
-.PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki FORCE
+.PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki \
+	android-initrd android-disk qemu FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -122,3 +124,17 @@ $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/invento
 		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
 		"$(GKI_SYMVERS)" kernel/gki.config
+
+# Googlebook OS in QEMU: Google's partitions, booted with our kernel.
+android-initrd: $(ANDROID)/initrd.img ## Google's boot ramdisks + android/bootconfig.txt
+$(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
+	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$@"
+
+# Never rebuilt: the disk holds Android's data. Delete it to start over.
+android-disk: $(ANDROID)/disk.img ## Google's disk with a bigger, empty data partition
+$(ANDROID)/disk.img: | $(GOOGLE)/inventory.txt
+	$(BUILDER) bash scripts/android-disk.sh "$(RECOVERY_IMAGE)" $(ANDROID_DATA_GIB) "$@"
+
+qemu: $(GKI)/bzImage $(ANDROID)/initrd.img $(ANDROID)/disk.img ## Boot Googlebook OS in QEMU (Ctrl-A X quits)
+	$(BUILDER) bash scripts/qemu.sh "$(GKI)/bzImage" "$(ANDROID)/initrd.img" "$(ANDROID)/disk.img" \
+		android/cmdline.txt "$(OUT)/qemu" $(QEMU_CPUS) $(QEMU_MEMORY)

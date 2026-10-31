@@ -1,0 +1,49 @@
+# Kernel command line: one argument per line, # starts a comment.
+#
+# This is Google's vendor_boot command line (out/google/vendor_boot/info.txt) with
+# these changes, nothing else:
+#   - Intel-only driver settings dropped (Googlebooks are Intel; ours is AMD):
+#       kvm-intel.pkvm=1 intel_iommu=igfx_off xe.mem_monitor_enabled=1 xe.enable_psr=1
+#       xe.enable_panel_replay=0 snd_intel_sdw_acpi.sdw_link_mask=0x5 and =0xF
+#       snd_intel_dspcfg.dsp_driver=3 snd_sof_intel_hda_common.sof_use_tplg_nhlt=1
+#       snd_sof_pci.ipc_type=1
+#   - Firmware flash writing NOT unlocked: spi-intel.writeable=1 and
+#     spi-intel.ignore_protection_status=1 dropped, flash/TPM drivers blacklisted.
+#   - console=null dropped: the runner (QEMU or boot loader) chooses the console.
+
+# Logging
+8250.nr_uarts=4
+console_msg_format=syslog
+log_buf_len=1M
+no_console_suspend
+reserve_mem=20M:2M:trace
+trace_instance=boot_mapped^traceoff@trace
+trace_instance=backup=boot_mapped
+drm.trace=0x106
+
+# Android
+root=/dev/ram0
+firmware_class.path=/vendor/firmware
+binder.impl=rust
+proc_mem.force_override=ptrace
+# Read androidboot.* settings from the bootconfig appended to the initrd.
+bootconfig
+
+# Never write firmware: no SPI flash drivers, and no TPM (Google's tools send Googlebook
+# security-chip commands to /dev/tpm0). cros_ec_debugfs is Google's own entry.
+module_blacklist=cros_ec_debugfs,spi_intel,spi_intel_pci,tpm,tpm_tis,tpm_tis_core,tpm_crb,tpm_tis_spi,tpm_tis_i2c_cr50
+
+# Scheduler, memory and power
+cgroup_disable=pressure
+sched_proxy_exec=1
+cpufreq.default_governor=performance
+pm.dpm_watchdog_enabled=1
+
+# Security hardening
+fred=on
+ia32_emulation=false
+vsyscall=none
+
+# Lockups panic (and reboot) instead of hanging
+softlockup_panic=1
+nmi_watchdog=panic

@@ -30,7 +30,13 @@ if [ -t 0 ] && [ -t 1 ]; then
     terminal=(--tty)
 fi
 
-exec docker run --rm --interactive "${terminal[@]}" \
+# QEMU (`make qemu`) uses the host's hardware virtualization when it is available.
+devices=()
+if [ -e /dev/kvm ]; then
+    devices=(--device /dev/kvm --group-add "$(stat -c %g /dev/kvm)")
+fi
+
+exec docker run --rm --interactive "${terminal[@]}" "${devices[@]}" \
     --user "$(id -u):$(id -g)" --env HOME=/tmp --env JOBS --env SOURCE_DATE_EPOCH \
     "${mounts[@]}" --workdir "$PWD" \
     "$image" "$@"

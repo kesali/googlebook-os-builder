@@ -19,3 +19,9 @@ USB_IMAGE := $(OUT)/dali-usb.img
 
 # `make deploy USB=/run/media/...` accepts only an already-mounted Dali USB ESP.
 USB ?=
+
+# `make qemu`: Android's data partition size (GiB, sparse: uses only what Android writes),
+# and the virtual machine's CPUs and memory.
+ANDROID_DATA_GIB ?= 32
+QEMU_CPUS ?= 4
+QEMU_MEMORY ?= 6G

@@ -1,0 +1,18 @@
+# Boot settings a Googlebook's firmware would pass to Android (one key=value per line).
+# Appended to Google's own vendor bootconfig (out/google/vendor_boot/bootconfig).
+# The build adds androidboot.boot_part_uuid: the disk Android looks for its partitions on.
+
+# Boot the A slot as a normal (not recovery) boot.
+androidboot.slot_suffix=_a
+androidboot.force_normal_boot=1
+
+# An unlocked device: Android accepts partitions that differ from Google's signatures
+# (orange state), which our changed partitions do.
+androidboot.verifiedbootstate=orange
+androidboot.vbmeta.device_state=unlocked
+androidboot.veritymode=enforcing
+
+# Booted from removable media (like a Googlebook recovery USB), not an internal disk.
+androidboot.boot_source=external
+
+androidboot.serialno=DALI0001

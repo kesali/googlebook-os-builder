@@ -72,7 +72,7 @@ use `make deploy`, **not** another whole-stick flash.
 | File | Responsibility |
 |---|---|
 | [Makefile](Makefile) | Dependencies and commands; `make` lists targets |
-| [config.mk](config.mk) | Output path, jobs, recovery path, USB mountpoint |
+| [config.mk](config.mk) | Output path, jobs, recovery path, USB mountpoint, QEMU sizes |
 | [sources.mk](sources.mk) | Source URLs, exact revisions and SHA-256 pins |
 | [docker/Dockerfile](docker/Dockerfile) | Debian build/test tools |
 | [scripts/fetch.sh](scripts/fetch.sh), [scripts/source.sh](scripts/source.sh) | Verified download and source extraction |
@@ -87,6 +87,9 @@ use `make deploy`, **not** another whole-stick flash.
 | [tools/boot_test.py](tools/boot_test.py), [tests/test_deploy.py](tests/test_deploy.py) | Boot and incremental-update checks |
 | [scripts/git-fetch.sh](scripts/git-fetch.sh), [scripts/pahole.sh](scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
 | [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our listed changes, with config/ABI checks |
+| [android/cmdline.txt](android/cmdline.txt), [android/bootconfig.txt](android/bootconfig.txt) | Settings Android boots with: Google's + our listed changes |
+| [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's initrd and disk, assembled from Google's unmodified parts |
+| [scripts/qemu.sh](scripts/qemu.sh) | The QEMU virtual machine Android runs in |
 
 `make sources` creates editable trees under `out/src/`. `make kernel` always runs Kbuild so
 edits there are detected, not hidden by a top-level "done" stamp. Published outputs retain their
@@ -140,6 +143,33 @@ that is missing any of Google's exported symbols or exports one with a different
 ([tools/kabi_check.py](tools/kabi_check.py)). Google's signing certificate is extracted from
 Google's kernel ([tools/kernel_certs.py](tools/kernel_certs.py)) and trusted, so Google's signed
 modules and our newly built ones both load. Outputs: `out/gki/bzImage` and `out/gki/modules/`.
+
+## Googlebook OS in QEMU
+
+```sh
+make qemu                # builds what changed, then boots; Ctrl-A X quits
+less out/qemu/kernel.log # kernel and Android init log of the last run
+```
+
+The first step before real hardware: Google's unmodified Android partitions, started the way a
+Googlebook's firmware starts them, in a virtual machine on this laptop's CPU (`-cpu host`, KVM).
+The terminal becomes Android's serial shell once Android is up.
+
+- **Kernel:** `out/gki/bzImage` from `make gki`.
+- **Command line:** [android/cmdline.txt](android/cmdline.txt), Google's with the listed changes.
+- **Initrd** (`make android-initrd`): Google's boot ramdisks, then the boot settings: Google's
+  plus [android/bootconfig.txt](android/bootconfig.txt), packed by
+  [tools/bootconfig.py](tools/bootconfig.py).
+- **Disk** (`make android-disk`): `out/android/disk.img`, a copy of Google's recovery image,
+  instant and space-sharing on btrfs. [scripts/android-disk.sh](scripts/android-disk.sh) moves
+  the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), and marks
+  slot A bootable. Its partition table is written next to it as `disk.img.layout.txt`. The disk
+  holds Android's data, so it is never rebuilt: **delete it to reset Android**.
+
+Status: with Google's partitions unmodified, Android starts second stage within seconds and the
+serial shell works. Startup then stops at `vold` waiting for the key store: Google's KeyMint
+runs in a Trusty security virtual machine that needs Intel's protected KVM, which neither QEMU
+nor AMD processors provide. Next: Android's software KeyMint instead.
 
 ## Hardware scope and next steps
 
