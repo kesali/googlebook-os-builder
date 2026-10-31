@@ -1,4 +1,9 @@
-# Downloaded source, not executables. Verify Git commit IDs or archive SHA-256.
+# Downloaded source, not executables. Read the release tag or version; the build checks
+# the Git commit ID or archive SHA-256 next to it.
+
+# Google's Android 17 kernel, June 2026 release 52. A tag can be moved, so the build also
+# checks that it still points at the commit GKI_BUILD (below) was built from.
+KERNEL_TAG := android17-6.18-2026-06_r52
 KERNEL_REV := 3938c8d97142d5cf31543aa96f864a2cf832dda0
 KERNEL_URL := https://android.googlesource.com/kernel/common
 
@@ -13,9 +18,10 @@ BUSYBOX_SHA := 3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4
 GRUB_URL := https://ftp.gnu.org/gnu/grub/grub-2.12.tar.xz
 GRUB_SHA := f3c97391f7c4eaa677a78e090c7e97e6dc47b16f655f04683ebd37bef7fe0faa
 
-# Google's own build of KERNEL_REV, the kernel in the recovery image. Its symbol list
-# (CRCs) is what our rebuild must match. The toolchain pins below come from this
-# build's manifest: .../$(GKI_BUILD)/kernel_x86_64/latest/raw/manifest_$(GKI_BUILD).xml
+# Google's own build of KERNEL_TAG, the kernel in the recovery image. Its symbol list
+# (CRCs) is what our rebuild must match. The compiler and pahole commits below have no
+# release tags; compare them with this build's manifest, which lists every commit used:
+# .../$(GKI_BUILD)/kernel_x86_64/latest/raw/manifest_$(GKI_BUILD).xml
 GKI_BUILD := 16302624
 GKI_SYMVERS_URL := https://ci.android.com/builds/submitted/$(GKI_BUILD)/kernel_x86_64/latest/raw/vmlinux.symvers
 GKI_SYMVERS_SHA := db64611c9710f624c60f57219649645d5539c392579a7a8d8d5066b1cc099598

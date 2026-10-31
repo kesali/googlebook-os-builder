@@ -8,7 +8,8 @@ Build Google's Googlebook kernel from source, identical enough that Google's sig
 modules (ramdisks, system_dlkm, vendor_dlkm) still load, plus a short, listed set of extra drivers.
 
 ## Current state
-Verified: release `6.18.21-android17-5-g3938c8d97142-ab16302624` from commit `3938c8d97142`;
+Verified: release `6.18.21-android17-5-g3938c8d97142-ab16302624` from tag
+`android17-6.18-2026-06_r52` (commit `3938c8d97142`);
 config identical to Google's except [kernel/gki.config](../../kernel/gki.config); symbol CRCs match;
 Google's certificate trusted; virtio GPU/input/net modules load in QEMU.
 Not verified: any physical-laptop driver (amdgpu, Wi-Fi, audio, touchpad).

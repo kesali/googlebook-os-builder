@@ -8,6 +8,9 @@ applyTo: ["Makefile", "*.mk", "docker/**"]
   simple rules over nested Make functions; explain non-obvious automatic variables where used.
 - Every user-facing target has `## help text`; `make` lists them.
 - Anything that compiles or runs tools goes through `$(BUILDER)`, not the host.
+- Pin by something a person can read: a release tag or version. A Git source with a release tag
+  gets `*_TAG` plus its commit in `*_REV`; the build checks they match, because tags can move.
+  Without a tag, say in a comment where a person can check the commit (e.g. Google's manifest).
 - A new input is URL + version + SHA-256 in [sources.mk](../../sources.mk). Paths include the hash
   (e.g. `$(OUT)/src/mesa-$(MESA_SHA)-$(MESA_PATCH_SHA)`), so a pin or patch change gets a fresh tree.
 - Prefer an upstream release or commit that already has a needed fix over carrying a patch. When a

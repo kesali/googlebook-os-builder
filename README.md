@@ -97,7 +97,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [sources.mk](sources.mk) | Source URLs, exact revisions and SHA-256 pins |
 | [docker/Dockerfile](docker/Dockerfile) | Debian build/test tools |
 | [scripts/fetch.sh](scripts/fetch.sh), [scripts/source.sh](scripts/source.sh) | Verified download and source extraction |
-| [scripts/kernel-source.sh](scripts/kernel-source.sh) | Exact Git commit checkout + verified emulator source patch |
+| [scripts/kernel-source.sh](scripts/kernel-source.sh) | Release-tag checkout, checked against the pinned commit, + verified emulator source patch |
 | [scripts/kernel.sh](scripts/kernel.sh) | Kbuild plus the diagnostic hardware config |
 | [kernel/msi-diagnostic.config](kernel/msi-diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
 | [scripts/busybox.sh](scripts/busybox.sh), [scripts/grub.sh](scripts/grub.sh) | Static shell utilities and UEFI loader builds |
@@ -286,7 +286,8 @@ for an initramfs-only change. Physical USB flashing and laptop boot are not clai
 
 ## Source attribution
 
-- Kernel: [Android common](https://android.googlesource.com/kernel/common/), GPL-2.0.
+- Kernel: [Android common](https://android.googlesource.com/kernel/common/), tag
+  `android17-6.18-2026-06_r52`, GPL-2.0.
 - BusyBox: [1.37.0](https://busybox.net/), GPL-2.0; upstream published SHA-256.
 - GRUB: [2.12](https://www.gnu.org/software/grub/), GPL-3.0-or-later; hash also recorded by
   [Buildroot](https://github.com/buildroot/buildroot/blob/2024.02/boot/grub2/grub2.hash).

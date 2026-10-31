@@ -64,7 +64,8 @@ $(GRUB_TAR): scripts/fetch.sh | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(GRUB_URL)" "$(GRUB_SHA)" "$@"
 
 $(KERNEL_SRC)/.ready: $(EMU_PATCH) | $(BUILD_READY)
-	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_REV)" "$(EMU_PATCH)" "$(KERNEL_SRC)"
+	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_TAG)" "$(KERNEL_REV)" \
+		"$(EMU_PATCH)" "$(KERNEL_SRC)"
 $(BUSYBOX_SRC)/.ready: $(BUSYBOX_TAR)
 	$(BUILDER) bash scripts/source.sh "$(BUSYBOX_TAR)" "$(BUSYBOX_SRC)"
 $(GRUB_SRC)/.ready: $(GRUB_TAR)
