@@ -38,7 +38,7 @@ builder packages. There is no root container, host package installation or loop-
 
 ```sh
 make builder
-make usb                 # source -> kernel, initramfs, EFI loader -> out/dali-usb.img
+make usb                 # kernel from source + BusyBox + GRUB -> out/dali-usb.img
 make smoke               # boot a disposable copy through UEFI in QEMU
 make test                # focused deployment and safety tests
 ```
@@ -100,7 +100,6 @@ use `make deploy`, **not** another whole-stick flash.
 | [scripts/kernel-source.sh](scripts/kernel-source.sh) | Release-tag checkout, checked against the pinned commit, + verified emulator source patch |
 | [scripts/kernel.sh](scripts/kernel.sh) | Kbuild plus the diagnostic hardware config |
 | [kernel/msi-diagnostic.config](kernel/msi-diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
-| [scripts/busybox.sh](scripts/busybox.sh), [scripts/grub.sh](scripts/grub.sh) | Static shell utilities and UEFI loader builds |
 | [boot/init](boot/init) | The complete runtime startup sequence |
 | [boot/menu.cfg](boot/menu.cfg), [boot/loader.cfg](boot/loader.cfg) | Readable GRUB configurations |
 | [scripts/initramfs.sh](scripts/initramfs.sh), [scripts/image.sh](scripts/image.sh) | Standard cpio/FAT/GPT assembly |
@@ -126,7 +125,8 @@ timestamps if their bytes are unchanged. The source trees and outputs are ignore
 `make clean` deleting your source experiments.
 
 The compiler and other host tools come from Debian packages; they are not bit-for-bit pinned.
-The **target kernel, BusyBox and EFI loader** are compiled here, not downloaded executables.
+The **target kernel** is compiled here. BusyBox is busybox.net's official static binary (pinned
+by SHA-256) and the EFI loader is Debian's GRUB package; both are used unchanged.
 Changing the compiler or a source pin warrants a fresh build output directory (`OUT=out/new`).
 
 ## Google's image
@@ -285,8 +285,8 @@ GFNI (the initial boot test confirmed that the latter raises SIGILL). The positi
 checks VEX `vgf2p8mulb` and `vpdpbusd` results, not every instruction/encoding or full Android
 compatibility. Keep that distinction when evaluating new userspace binaries.
 
-Validated locally: nine deployment/safety tests; UEFI QEMU boot through the source-built
-GRUB/kernel; both supported instruction tests trapping into the emulator; saved USB logs;
+Validated locally: nine deployment/safety tests; UEFI QEMU boot through GRUB and the
+source-built kernel; both supported instruction tests trapping into the emulator; saved USB logs;
 clean poweroff; unchanged output timestamps on a no-op build; and no kernel/loader rebuild
 for an initramfs-only change. Physical USB flashing and laptop boot are not claimed as tested.
 
@@ -294,9 +294,9 @@ for an initramfs-only change. Physical USB flashing and laptop boot are not clai
 
 - Kernel: [Android common](https://android.googlesource.com/kernel/common/), tag
   `android17-6.18-2026-06_r52`, GPL-2.0.
-- BusyBox: [1.37.0](https://busybox.net/), GPL-2.0; upstream published SHA-256.
-- GRUB: [2.12](https://www.gnu.org/software/grub/), GPL-3.0-or-later; hash also recorded by
-  [Buildroot](https://github.com/buildroot/buildroot/blob/2024.02/boot/grub2/grub2.hash).
+- BusyBox: [1.35.0](https://busybox.net/downloads/binaries/) official static binary, GPL-2.0.
+- GRUB: [2.12](https://www.gnu.org/software/grub/), GPL-3.0-or-later; Debian's
+  `grub-efi-amd64-bin` package.
 - Graphics: [Mesa](https://mesa3d.org/), [libdrm](https://dri.freedesktop.org/libdrm/) and
   [Expat](https://libexpat.github.io/), built from the pinned upstream sources and their licences.
 - Development security HALs: unmodified binaries from Google's pinned Android 17 emulator

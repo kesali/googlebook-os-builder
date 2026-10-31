@@ -51,7 +51,7 @@ def main():
         subprocess.run(["mcopy", "-i", fat, "::/logs/kernel.log", str(work / "kernel.log")], check=True)
         if "ISA_SMOKE_OK" not in (work / "kernel.log").read_text():
             raise SystemExit("Kernel log was not persisted on the USB image")
-        print(f"PASS: UEFI -> source-built GRUB/kernel -> USB discovery -> GFNI/VNNI emulation -> saved logs -> poweroff. Log: {log}")
+        print(f"PASS: UEFI -> GRUB -> source-built kernel -> USB discovery -> GFNI/VNNI emulation -> saved logs -> poweroff. Log: {log}")
 
 
 if __name__ == "__main__":

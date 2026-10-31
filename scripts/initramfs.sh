@@ -10,7 +10,7 @@ cp "$busybox" "$root/bin/busybox"
 cp "$smoke" "$root/bin/isa-smoke"
 cp "$init" "$root/init"
 chmod 755 "$root/init" "$root/bin/busybox" "$root/bin/isa-smoke"
-for applet in $("$busybox" --list); do
+for applet in $("$root/bin/busybox" --list); do
     [ "$applet" = busybox ] || ln -s busybox "$root/bin/$applet"
 done
 find "$root" -exec touch -h -d @0 {} +

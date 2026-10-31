@@ -10,11 +10,8 @@ endif
 GOOGLE := $(OUT)/google
 DL := $(OUT)/downloads
 EMU_PATCH := $(DL)/emulator-$(EMU_SHA).patch
-BUSYBOX_TAR := $(DL)/busybox-$(BUSYBOX_SHA).tar.bz2
-GRUB_TAR := $(DL)/grub-$(GRUB_SHA).tar.xz
+BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
 KERNEL_SRC := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
-BUSYBOX_SRC := $(OUT)/src/busybox-$(BUSYBOX_SHA)
-GRUB_SRC := $(OUT)/src/grub-$(GRUB_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
 GKI_SYMVERS := $(DL)/vmlinux-$(GKI_BUILD)-$(GKI_SYMVERS_SHA).symvers
 GKI_ABI_LIST := $(DL)/abi_symbollist-$(GKI_BUILD)-$(GKI_ABI_SHA).raw
@@ -62,36 +59,32 @@ $(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) scripts/unpack.sh tools/lp.py tools/k
 # is never checked or fetched again.
 $(EMU_PATCH): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(EMU_URL)" "$(EMU_SHA)" "$@"
-$(BUSYBOX_TAR): | $(BUILD_READY)
+$(BUSYBOX): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
-$(GRUB_TAR): | $(BUILD_READY)
-	$(BUILDER) bash scripts/fetch.sh "$(GRUB_URL)" "$(GRUB_SHA)" "$@"
 
 $(KERNEL_SRC)/.ready: $(EMU_PATCH) | $(BUILD_READY)
 	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_TAG)" "$(KERNEL_REV)" \
 		"$(EMU_PATCH)" "$(KERNEL_SRC)"
-$(BUSYBOX_SRC)/.ready: $(BUSYBOX_TAR)
-	$(BUILDER) bash scripts/source.sh "$(BUSYBOX_TAR)" "$(BUSYBOX_SRC)"
-$(GRUB_SRC)/.ready: $(GRUB_TAR)
-	$(BUILDER) bash scripts/source.sh "$(GRUB_TAR)" "$(GRUB_SRC)"
 
-sources: $(KERNEL_SRC)/.ready $(BUSYBOX_SRC)/.ready $(GRUB_SRC)/.ready ## Fetch pinned source trees (editable under out/src/)
+sources: $(KERNEL_SRC)/.ready ## Fetch the pinned kernel source tree (editable under out/src/)
 
 # FORCE lets the upstream build systems see source edits. Published files keep
 # their timestamps when their contents do not change, so downstream steps skip.
 kernel: $(OUT)/kernel/bzImage ## Incrementally compile the diagnostic kernel
 $(OUT)/kernel/bzImage: FORCE $(KERNEL_SRC)/.ready kernel/msi-diagnostic.config scripts/kernel.sh $(BUILD_READY)
 	$(BUILDER) bash scripts/kernel.sh "$(KERNEL_SRC)" "$(OUT)/kernel" kernel/msi-diagnostic.config
-$(OUT)/busybox/busybox: FORCE $(BUSYBOX_SRC)/.ready scripts/busybox.sh $(BUILD_READY)
-	$(BUILDER) bash scripts/busybox.sh "$(BUSYBOX_SRC)" "$(OUT)/busybox"
-$(OUT)/grub/BOOTX64.EFI: FORCE $(GRUB_SRC)/.ready scripts/grub.sh boot/loader.cfg $(BUILD_READY)
-	$(BUILDER) bash scripts/grub.sh "$(GRUB_SRC)" "$(OUT)/grub" "$(abspath boot/loader.cfg)"
+# Debian's GRUB as one removable-media EFI file, with boot/loader.cfg built in.
+$(OUT)/grub/BOOTX64.EFI: boot/loader.cfg $(BUILD_READY)
+	@mkdir -p $(@D)
+	$(BUILDER) grub-mkstandalone -O x86_64-efi --locales= --fonts= \
+		--modules="part_gpt fat normal linux configfile regexp probe serial test" \
+		--output="$@" "boot/grub/grub.cfg=boot/loader.cfg"
 
 $(OUT)/isa-smoke: tools/isa-smoke.c $(BUILD_READY)
 	$(BUILDER) gcc -O2 -Wall -Wextra -Werror -static -o "$@" "$<"
 initramfs: $(OUT)/initramfs.gz ## Pack BusyBox, boot/init and the CPU self-test
-$(OUT)/initramfs.gz: $(OUT)/busybox/busybox boot/init $(OUT)/isa-smoke scripts/initramfs.sh
-	$(BUILDER) bash scripts/initramfs.sh "$(OUT)/busybox/busybox" boot/init "$(OUT)/isa-smoke" "$@"
+$(OUT)/initramfs.gz: $(BUSYBOX) boot/init $(OUT)/isa-smoke scripts/initramfs.sh
+	$(BUILDER) bash scripts/initramfs.sh "$(BUSYBOX)" boot/init "$(OUT)/isa-smoke" "$@"
 
 $(OUT)/boot/manifest.json: $(OUT)/kernel/bzImage $(OUT)/initramfs.gz $(OUT)/grub/BOOTX64.EFI boot/menu.cfg tools/deploy.py
 	$(BUILDER) python3 tools/deploy.py bundle "$(OUT)/kernel/bzImage" "$(OUT)/initramfs.gz" "$(OUT)/grub/BOOTX64.EFI" boot/menu.cfg "$(OUT)/boot"
