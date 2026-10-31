@@ -256,8 +256,9 @@ not presented to this VM; QEMU provides a virtual Ethernet adapter instead.
 
 For iterations, stop the VM, edit the relevant source/configuration, and rerun `make qemu`.
 Mesa source/toolchain/patch changes get separate build caches; ordinary source edits rebuild
-incrementally. Only affected EROFS filesystems are rebuilt, and only changed OS partitions are
-copied into the existing disk. An unchanged build writes no disk partitions.
+incrementally. Downloads are kept by SHA-256 and never refetched; Meson configures again only when
+its settings change. Only affected EROFS filesystems are rebuilt, and only changed OS partitions
+are copied into the existing disk. An unchanged build writes no disk partitions.
 
 ## Hardware scope and next steps
 

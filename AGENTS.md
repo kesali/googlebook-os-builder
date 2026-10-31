@@ -61,8 +61,10 @@ The priority is that a person can understand how to build, update and deploy it,
   Do not narrate obvious commands or add comments merely to repeat the code.
 - Keep documentation short and link to the code instead of repeating it. Put language-specific
   details in [.github/instructions/](.github/instructions/).
-- Keep iteration fast: build only affected components and preserve outputs when their bytes do not
-  change. Measure build time separately from guest startup or UI performance.
+- **Slow first build, fast repeat builds.** Keep everything that can be reused: downloads, source
+  trees, toolchains and build directories, named by a hash of their inputs. A repeat build
+  redoes only work whose inputs changed; an unchanged build takes seconds and writes nothing.
+  Measure build time separately from guest startup or UI performance.
 - Before optimizing runtime, measure the bottleneck and compare the smallest practical options.
   Keep the working softpipe setup as a fallback until the faster path is verified.
 

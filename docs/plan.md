@@ -9,7 +9,8 @@ In order of importance:
 
 1. Code and build steps that are easy to read and understand.
 2. Little maintenance: use upstream code unchanged; patch only when nothing else works.
-3. Fast, simple iteration: rebuild only what changed and preserve Android data.
+3. Fast repeat builds: the first build may take hours; after that, rebuild only what changed,
+   in seconds where possible, and preserve Android data.
 4. Good runtime performance on this machine.
 
 This is a personal project, not a public distribution. Prefer a simple solution for this setup over
@@ -23,6 +24,10 @@ patch small, explained and removable once upstream covers it.
   screen with working input. Softpipe is a slow correctness baseline, not the performance goal.
 - Image changes are readable lists and patches. Incremental updates preserve Android data; the
   current image and module ramdisk match the previous build byte-for-byte.
+- Repeat builds of `make android-image`: about 10 s when nothing changed (Kbuild's own check 5 s,
+  Mesa 1.5 s, disk check 3 s); about 17 s to rebuild `system` and 8 s for `vendor`. A kernel
+  config or `gki-kernel.sh` edit relinks in about 50 s; a new kernel or Mesa source tree rebuilds
+  it fully (kernel about an hour, Mesa about a minute).
 - Setup completion, usable Internet access and Android on the physical laptop remain unverified.
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
@@ -40,6 +45,9 @@ This is a flexible order, not a commitment to do every item.
    Review each carried change (the `*.patch` files under [android/](../android/), the Churro kernel
    patch and [crossystem-qemu.c](../android/crossystem-qemu.c)). Keep it only if upstream code
    or settings cannot do the job, and record why.
+   Caching idea (not approved): keep one source tree per component and update it in place, so a
+   new tag or patch recompiles only the files that changed; optionally add ccache. Checking it
+   needs one full kernel rebuild.
 
 2. **Make QEMU useful for development — next.**
    Finish setup, reach the desktop and verify network access. Check that the VM can restart
