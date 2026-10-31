@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Read: kernel source, Google's kernel (config, certificates, release string), Google's
-# symbol list, our config changes, Google's toolchain. Write: <out>/bzImage, <out>/modules/.
+# symbol list, our config changes, Google's toolchain.
+# Write: <out>/bzImage, <out>/modules/ and its file list <out>/modules.sha256.
 #
 #   gki-kernel.sh <source> <out> <toolchain> <google kernel> <google symvers> <changes.config>
 #
@@ -22,6 +23,8 @@ export LIBCLANG_PATH=$toolchain/clang/lib # bindgen reads C headers with Google'
 export RUSTC_FORCE_RUSTC_VERSION=rustc-android
 export KBUILD_BUILD_USER=dali KBUILD_BUILD_HOST=builder
 export KBUILD_BUILD_TIMESTAMP='2026-10-01 00:00:00 UTC'
+# Google's build number (#1); otherwise Kbuild counts links and every relink changes the bytes.
+export KBUILD_BUILD_VERSION=1
 # KERNELRELEASE: Google's string, not one made from Git; module vermagic must match it.
 # KBUILD_GENDWARFKSYMS_STABLE: compute symbol CRCs the way Google's build does.
 mk=(make --no-print-directory -C "$source" O="$build" ARCH=x86_64 LLVM=1 LLVM_IAS=1
@@ -50,8 +53,16 @@ python3 "$tools/kabi_check.py" "$google_symvers" "$build/Module.symvers"
 
 rm -rf "$out/modules.partial"
 "${mk[@]}" INSTALL_MOD_PATH="$out/modules.partial" INSTALL_MOD_STRIP=1 modules_install
-rm -rf "$out/modules"
-mv "$out/modules.partial" "$out/modules"
+# Replace the installed modules only when one changed, so the module ramdisk is rebuilt only then.
+(cd "$out/modules.partial" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) \
+    > "$out/modules.sha256.partial"
+if [ -d "$out/modules" ] && cmp -s "$out/modules.sha256.partial" "$out/modules.sha256"; then
+    rm -rf "$out/modules.partial" "$out/modules.sha256.partial"
+else
+    rm -rf "$out/modules"
+    mv "$out/modules.partial" "$out/modules"
+    mv "$out/modules.sha256.partial" "$out/modules.sha256"
+fi
 if ! cmp -s "$build/arch/x86/boot/bzImage" "$out/bzImage"; then
     cp "$build/arch/x86/boot/bzImage" "$out/bzImage.partial"
     mv "$out/bzImage.partial" "$out/bzImage"

@@ -41,7 +41,12 @@ compiler, release-string or ABI mismatch. Then `make qemu-check JOBS=12`.
 - The gitiles source tarball is not byte-stable; the kernel comes from a shallow Git fetch checked against the commit.
 - Lazy Git fetches of huge toolchain blobs can stall for many minutes; `git-fetch.sh` downloads files from gitiles and verifies them with Git instead.
 - Legacy SSE-encoded GFNI (`66 0f 38 cf`) still raises SIGILL; only VEX encodings are emulated.
-- The GKI script reinstalls modules every run; later steps normalise timestamps so this causes no rebuild.
+- The GKI script installs modules every run but replaces `out/gki/modules/` and
+  `out/gki/modules.sha256` only when a module's bytes changed; the module ramdisk follows that list.
+- `KBUILD_BUILD_VERSION=1` (Google's `#1`) keeps relinks reproducible; without it, Kbuild counts
+  links and each relink produces a different kernel.
+- The config step's hash includes `gki-kernel.sh`, so any edit to it (even a comment) reconfigures
+  and relinks (about 50 s).
 
 ## Actions
 - [ ] Decide on vgem — it is built (`CONFIG_DRM_VGEM=m`) but no longer loaded, and its comment in
@@ -52,4 +57,6 @@ compiler, release-string or ABI mismatch. Then `make qemu-check JOBS=12`.
 - Laptop drivers as modules — see [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-10-31 (this commit) — Kernel relinks are reproducible (`KBUILD_BUILD_VERSION=1`); modules and
+  the module ramdisk are replaced only when a module changes. Checked by two forced relinks.
 - 2026-10-31 `8ae83c6` — Exact GKI from source with Google's toolchain; all 4501 exports match.

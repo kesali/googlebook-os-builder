@@ -136,7 +136,8 @@ $(GKI_SYMVERS): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(GKI_SYMVERS_URL)" "$(GKI_SYMVERS_SHA)" "$@"
 
 gki: $(GKI)/bzImage ## Rebuild Google's kernel + kernel/gki.config drivers, check kABI
-$(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) \
+# One run writes both; each is replaced only when its bytes change.
+$(GKI)/bzImage $(GKI)/modules.sha256 &: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) \
 		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
 		"$(GKI_SYMVERS)" kernel/gki.config
@@ -191,7 +192,7 @@ $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
 	@mkdir -p $(@D)
 	$(BUILDER) avbtool make_vbmeta_image --algorithm NONE --flags 3 --padding_size 4096 --output "$@"
 
-$(ANDROID)/modules.lz4: FORCE $(GKI)/bzImage scripts/android-modules.sh scripts/android-overlay.sh \
+$(ANDROID)/modules.lz4: $(GKI)/modules.sha256 scripts/android-modules.sh scripts/android-overlay.sh \
 		android/module_ramdisk $(wildcard android/module_ramdisk/*)
 	$(BUILDER) fakeroot bash scripts/android-modules.sh "$(GOOGLE)" android/module_ramdisk "$(GKI)/modules" "$@"
 android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks, our QEMU drivers and boot settings

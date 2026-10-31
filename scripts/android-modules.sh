@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Read: Google's module ramdisk, its change directory and our GKI modules.
-# Write: the merged first-stage module ramdisk, only when it changed.
+# Write: the merged first-stage module ramdisk.
 # Usage: android-modules.sh GOOGLE CHANGES GKI_MODULES OUTPUT (under fakeroot)
 set -euo pipefail
 google=$(realpath "$1") changes=$2 modules=$(realpath "$3") output=$(realpath -m "$4")
@@ -33,6 +33,4 @@ done
 find "$work/root" -exec touch -h -d @0 {} +
 (cd "$work/root" && find . -print0 | LC_ALL=C sort -z | cpio --null -o -H newc --owner=0:0 --reproducible) \
     | lz4 -l -12 -q > "$work/modules"
-if ! cmp -s "$work/modules" "$output"; then
-    mv "$work/modules" "$output"
-fi
+mv "$work/modules" "$output"
