@@ -58,7 +58,10 @@ _None agreed._ The BUP Slim moves to the Android layout ([laptop-hardware.md](la
 flash this image again only when a hardware check is needed.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Parked: the stick is being repurposed for Android; the diagnostic
+- 2026-11-01 (this commit) — deploy.py gained a second bundle kind (`android`, for the laptop's
+  disk); the diagnostic marker bytes and flow are unchanged. `make test`, `make usb` and `make smoke`
+  pass; `make deploy` to a mounted stick was not re-run (its tests are in `test_deploy.py`).
+- 2026-10-31 `9c78a5d` — Parked: the stick is being repurposed for Android; the diagnostic
   image stays buildable with `make usb`. No code changes.
 - 2026-10-31 `af0f7b6` — Owner confirmed first laptop boot/shutdown; reviewed and preserved
   both USB logs. Instruction tests pass, ELAN multitouch registers and internal NVMe is absent

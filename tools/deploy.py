@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Publish a build bundle or update the boot filesystem of a mounted Dali USB.
 
-New kernel/initramfs files are content-addressed. The menu switches last, after
-read-back verification. No partition table, other partition, or user file is edited.
+A bundle holds either the diagnostic shell or Android for the laptop, and installs only onto a
+boot filesystem of its own kind. New kernel/initramfs files are content-addressed. The menu
+switches last, after read-back verification. No partition table, other partition, or user file
+is edited.
 """
 
 import argparse
@@ -10,11 +12,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import tempfile
 
-FORMAT = b"gbos-dali-diagnostic-v1\n"
+# The marker file dali/format names what a boot filesystem holds, so one kind never overwrites the other.
+FORMATS = {"diagnostic": b"gbos-dali-diagnostic-v1\n", "android": b"gbos-dali-android-v1\n"}
 COMPONENTS = ("kernel", "initramfs.gz", "BOOTX64.EFI", "menu.cfg")
 
 
@@ -63,32 +67,60 @@ def replace_file(root, relative, data):
     return True
 
 
-def bundle(inputs, destination):
-    destination.mkdir(parents=True, exist_ok=True)
-    hashes = {}
+def flatten_cmdline(text):
+    """A kernel command line file (one argument per line, # starts a comment) as one line."""
+    words = []
+    for line in text.splitlines():
+        words += line.split("#")[0].split()
+    for word in words:
+        if not re.fullmatch(r"[A-Za-z0-9_.,:=/@^+%~-]+", word):
+            raise ValueError(f"Kernel argument needs GRUB quoting, which is not supported: {word}")
+    return " ".join(words)
+
+
+def fill_cmdline(menu, cmdline_file):
+    """Put the kernel command line where the menu has @CMDLINE@; the two must come together."""
+    if cmdline_file is None:
+        if b"@CMDLINE@" in menu:
+            raise ValueError("The menu has @CMDLINE@ but no kernel command line file was given")
+        return menu
+    if b"@CMDLINE@" not in menu:
+        raise ValueError("The menu has no @CMDLINE@ for the kernel command line file")
+    return menu.replace(b"@CMDLINE@", flatten_cmdline(cmdline_file.read_text()).encode())
+
+
+def bundle(inputs, destination, kind, cmdline=None):
+    if kind not in FORMATS:
+        raise ValueError(f"Unknown bundle kind: {kind}")
+    files = {}
     for name, source in zip(COMPONENTS, inputs, strict=True):
-        data = source.read_bytes()
-        if not data:
+        files[name] = source.read_bytes()
+        if not files[name]:
             raise ValueError(f"Empty build output: {source}")
+    # Everything is checked before the first write, so a mistake never leaves a half-updated bundle.
+    files["menu.cfg"] = fill_cmdline(files["menu.cfg"], cmdline)
+    destination.mkdir(parents=True, exist_ok=True)
+    for name, data in files.items():
         replace_file(destination, name, data)
-        hashes[name] = digest(data)
-    manifest = json.dumps(hashes, sort_keys=True, indent=2).encode() + b"\n"
+    hashes = {name: digest(data) for name, data in files.items()}
+    manifest = json.dumps({"kind": kind, "sha256": hashes}, sort_keys=True, indent=2).encode() + b"\n"
     replace_file(destination, "manifest.json", manifest)
 
 
 def read_bundle(source):
-    hashes = json.loads((source / "manifest.json").read_text())
-    if set(hashes) != set(COMPONENTS):
+    manifest = json.loads((source / "manifest.json").read_text())
+    kind, hashes = manifest.get("kind"), manifest.get("sha256")
+    if kind not in FORMATS or not isinstance(hashes, dict) or set(hashes) != set(COMPONENTS):
         raise ValueError("Invalid build bundle manifest")
     files = {name: (source / name).read_bytes() for name in COMPONENTS}
     for name, data in files.items():
         if not data or digest(data) != hashes[name]:
             raise ValueError(f"Build bundle checksum mismatch: {name}")
-    return files, hashes
+    return kind, files, hashes
 
 
 def install(source, destination, initialize=False):
-    files, hashes = read_bundle(source)
+    kind, files, hashes = read_bundle(source)
     destination = destination.absolute()
     if destination.is_symlink() or not destination.is_dir():
         raise ValueError("Destination must be a real directory")
@@ -96,8 +128,8 @@ def install(source, destination, initialize=False):
     if initialize:
         if any(destination.iterdir()):
             raise ValueError("Image staging directory must be empty")
-    elif not marker.is_file() or marker.read_bytes() != FORMAT:
-        raise ValueError("Not a Dali diagnostic USB; create and flash an image first")
+    elif not marker.is_file() or marker.read_bytes() != FORMATS[kind]:
+        raise ValueError(f"Not a Dali {kind} boot filesystem; create and flash a {kind} image first")
 
     kernel = f"dali/kernel-{hashes['kernel']}"
     initramfs = f"dali/initramfs-{hashes['initramfs.gz']}"
@@ -107,7 +139,7 @@ def install(source, destination, initialize=False):
         kernel: files["kernel"],
         initramfs: files["initramfs.gz"],
         "EFI/BOOT/BOOTX64.EFI": files["BOOTX64.EFI"],
-        "dali/format": FORMAT,
+        "dali/format": FORMATS[kind],
     }
     # Check all destinations and available space before writing the first byte.
     for name in (*payloads, "dali/grub.cfg", "dali/grub.previous.cfg"):
@@ -174,6 +206,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     prepare = sub.add_parser("bundle")
+    prepare.add_argument("--kind", required=True, choices=sorted(FORMATS))
+    prepare.add_argument("--cmdline", type=Path, metavar="FILE",
+                         help="kernel command line file; it replaces @CMDLINE@ in the menu")
     prepare.add_argument("inputs", nargs=4, type=Path, metavar="FILE")
     prepare.add_argument("destination", type=Path)
     stage = sub.add_parser("stage", help="populate a NEW empty image staging directory")
@@ -185,7 +220,7 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == "bundle":
-            bundle(args.inputs, args.destination)
+            bundle(args.inputs, args.destination, args.kind, args.cmdline)
         else:
             if args.command == "usb":
                 verify_usb_mount(args.destination)

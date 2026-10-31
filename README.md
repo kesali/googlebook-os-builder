@@ -104,12 +104,13 @@ use `make deploy`, **not** another whole-stick flash.
 | [boot/init](boot/init) | The complete runtime startup sequence |
 | [boot/menu.cfg](boot/menu.cfg), [boot/loader.cfg](boot/loader.cfg) | Readable GRUB configurations |
 | [scripts/initramfs.sh](scripts/initramfs.sh), [scripts/image.sh](scripts/image.sh) | Standard cpio/FAT/GPT assembly |
-| [tools/deploy.py](tools/deploy.py) | Bundle verification and file-level USB updates |
+| [tools/deploy.py](tools/deploy.py) | Bundle verification (diagnostic or Android kind) and file-level USB updates |
 | [tools/boot_test.py](tools/boot_test.py), [tests/test_deploy.py](tests/test_deploy.py) | Boot and incremental-update checks |
 | [scripts/git-fetch.sh](scripts/git-fetch.sh), [scripts/pahole.sh](scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
 | [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our one change, with config/ABI checks |
 | [android/cmdline.txt](android/cmdline.txt), [android/bootconfig.txt](android/bootconfig.txt) | Settings Android boots with: Google's + our listed changes |
 | [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's module-extended initrd and private disk: persistent data, FAT32 boot partition |
+| [boot/android-menu.cfg](boot/android-menu.cfg), [scripts/android-boot.sh](scripts/android-boot.sh) | The laptop's GRUB menu for Android, and writing its boot files into the disk's FAT32 partition |
 | [scripts/qemu.sh](scripts/qemu.sh) | The QEMU virtual machine Android runs in |
 | [scripts/mesa.sh](scripts/mesa.sh) | Android Mesa, libdrm and Expat from source with the NDK |
 | [android/system/](android/system/), [android/system_ext/](android/system_ext/), [android/vendor/](android/vendor/), [android/module_ramdisk/](android/module_ramdisk/) | Every change to Google's files: `remove.list`, `install.list` and `*.patch` per target |
@@ -203,13 +204,20 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), marks
   slot A bootable, and merges Google's empty 64 MiB EFI-SYSTEM with the empty 512 MiB `KERN-A`
   beside it into one 576 MiB FAT32 partition labelled `DALI-BOOT` for the laptop's boot files
-  (still empty; the script refuses unless both are all zeros). Its partition table is written
+  (the script refuses unless both are all zeros). Its partition table is written
   next to it as `disk.img.layout.txt`. The disk holds Android's data, so it is never recreated
   automatically.
-- **Update** (`make android-image`): rebuild changed inputs and copy only changed OS
-  partitions into that disk, with checksum read-back. `userdata`, `metadata` and the partition
-  layout remain unchanged. Stop the VM first: a shared lock prevents updates while it runs.
-  An interrupted OS update is repaired by rerunning the command, not by deleting Android's data.
+- **Boot files** (`make android-boot`): GRUB, the GKI kernel, the initrd and the menu
+  [boot/android-menu.cfg](boot/android-menu.cfg) are written into that FAT32 partition with
+  mtools, without root or a mount. QEMU's direct-kernel boot does not read them; the laptop's
+  firmware will. The menu is Google's command line plus laptop-only arguments, including one that
+  hides the internal NVMe. The script refuses any partition not labelled `DALI-BOOT`, replaces the
+  `EFI/` and `dali/` trees as a whole and writes nothing when they already match.
+- **Update** (`make android-image`): rebuild changed inputs, copy only changed OS
+  partitions into that disk with checksum read-back, and refresh the boot files. `userdata`,
+  `metadata` and the partition layout remain unchanged. Stop the VM first: a shared lock
+  prevents updates while it runs. An interrupted update is repaired by rerunning the command,
+  not by deleting Android's data.
 
 ### Explicit VM changes
 

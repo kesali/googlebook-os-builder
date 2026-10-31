@@ -1,6 +1,6 @@
 # Project plan
 
-Updated: 2026-10-31. Current focus: the first Android boot on the laptop; QEMU polish is parked.
+Updated: 2026-11-01. Current focus: the first Android boot on the laptop; QEMU polish is parked.
 
 ## Priorities
 
@@ -34,8 +34,10 @@ removable once upstream covers it.
   Its saved logs show passing instruction tests and ELAN touchpad registration; pointer
   motion/gestures remain untested. See [USB diagnostics](specs/usb-diagnostic.md).
 - The owner agreed the first laptop boot plan (M1, below). QEMU already boots to the setup screen,
-  which is enough for now. The BUP Slim USB linked at USB 2.0 (about 39 MB/s); it needs a
-  USB 3 port before Android's speed means anything.
+  which is enough for now. So far: the kernel built-ins, the disk's FAT32 boot partition and the
+  boot files in it (`make android-boot`). Next: the same disk booted through UEFI in QEMU. The BUP
+  Slim USB linked at USB 2.0 (about 39 MB/s); it needs a USB 3 port before Android's speed means
+  anything.
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
 Detailed status, evidence and handoffs live in the [component specs](specs/README.md).

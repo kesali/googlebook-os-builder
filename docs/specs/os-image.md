@@ -1,10 +1,11 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-01 — `make test` (24 tests); a recreated `out/android/disk.img` differs from
+**Last verified:** 2026-11-01 — `make test` (40 tests); a recreated `out/android/disk.img` differs from
 the previous disk's table only by the missing `KERN-A` and the larger EFI-SYSTEM; 25 partitions are
-byte-identical to Google's; `fsck.vfat` is clean on the ESP; a second `make android-image` wrote
-nothing; `make qemu-check` passed (logs in `out/m1-validation/`).
+byte-identical to Google's; with the boot files written, `fsck.vfat` is clean on the ESP, a second
+`make android-image` wrote nothing, the bytes outside the ESP were unchanged and `make qemu-check`
+passed (logs in `out/m1-validation/`).
 2026-10-31 — all three partitions rebuilt with LZ4HC level 9 and fit; repeat rebuilds
 byte-identical; a no-op build (about 10 s) preserved output timestamps and wrote no partitions.
 
@@ -16,7 +17,7 @@ changes, and update only the changed OS partitions without touching Android's da
 Verified: `system_a`, `vendor_a`, `system_ext_a` rebuilt as EROFS with every file's bytes,
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
 `out/android/disk.img` with a 32 GiB sparse userdata and a 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`,
-empty, Google's PARTUUID); updates copy only changed partitions
+Google's PARTUUID) holding the laptop's boot files; updates copy only changed partitions
 with read-back hashes; unchanged builds write nothing; updates refuse to run while the VM holds the disk lock.
 Not verified: writing any of this to a real disk or USB (deliberately not done), and whether UEFI
 firmware accepts the FAT32 partition (the UEFI boot test in [laptop-hardware.md](laptop-hardware.md)).
@@ -44,6 +45,10 @@ firmware accepts the FAT32 partition (the UEFI boot test in [laptop-hardware.md]
   files; it keeps its PARTUUID, which the initrd uses to find the disk. The script refuses unless
   both partitions are adjacent and all zeros, so a newer Google image is never formatted over.
   QEMU's direct-kernel boot ignores it.
+- The boot files go into that partition with mtools, never a mount or loop device
+  ([scripts/android-boot.sh](../../scripts/android-boot.sh)), and only when the partition is
+  the FAT32 labelled `DALI-BOOT`. `EFI/` and `dali/` are replaced as a whole and read back; if
+  they already match, nothing is written. Only these two trees are touched.
 - The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vbmeta_a` — never
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
 - Dependencies are per partition: `android/vendor/`, Mesa, emulator and crossystem rebuild vendor
@@ -56,14 +61,16 @@ firmware accepts the FAT32 partition (the UEFI boot test in [laptop-hardware.md]
 - [scripts/android-partition.sh](../../scripts/android-partition.sh), [tools/fs_metadata.py](../../tools/fs_metadata.py) — rebuild and full comparison.
 - [scripts/android-disk.sh](../../scripts/android-disk.sh) — create the private disk once: data partition, FAT32 boot partition.
 - [tests/test_android_disk.py](../../tests/test_android_disk.py) — its layout and refusals on a synthetic Google-shaped disk.
+- [scripts/android-boot.sh](../../scripts/android-boot.sh), [tests/test_android_boot.py](../../tests/test_android_boot.py) — boot files into the FAT32 partition; its refusals, no-op and repair on a synthetic disk.
 - [tools/android_sync.py](../../tools/android_sync.py), [tools/lp.py](../../tools/lp.py) — partition updates.
 - [scripts/unpack.sh](../../scripts/unpack.sh) — Google image inventory (`out/google/inventory.txt`).
 
 ## Verify
 `make test` (sync, lock and overlay tests in [tests/test_overlay.py](../../tests/test_overlay.py);
-disk layout in [tests/test_android_disk.py](../../tests/test_android_disk.py)),
+disk layout in [tests/test_android_disk.py](../../tests/test_android_disk.py); boot files in
+[tests/test_android_boot.py](../../tests/test_android_boot.py)),
 then `make android-image JOBS=12`. A second run
-must print no partition writes and leave output timestamps unchanged.
+must print no partition or boot-file writes and leave output timestamps unchanged.
 
 ## Pitfalls
 - fakeroot does keep ownership and xattrs, but only because the comparison checks every entry;
@@ -81,7 +88,10 @@ must print no partition writes and leave output timestamps unchanged.
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
-- 2026-11-01 (this commit) — EFI-SYSTEM now absorbs the blank `KERN-A` as a 576 MiB FAT32, guarded
+- 2026-11-01 (this commit) — `make android-image` also writes the boot files into the ESP
+  (`android-boot.sh`, mtools, whole-tree replace, no-op when equal); real-disk run checked, neighbours
+  unchanged, `make qemu-check` passes. UEFI/laptop use is tracked in laptop-hardware.md.
+- 2026-11-01 `4811074` — EFI-SYSTEM now absorbs the blank `KERN-A` as a 576 MiB FAT32, guarded
   and tested. Recreated disk checked and booted in QEMU. Boot files go in next (laptop-hardware.md).
 - 2026-10-31 `0a29643` — Partitions use LZ4HC level 9 instead of 12: system rebuild 25 s → 17 s,
   vendor 17 s → 8 s, about 0.2% larger; QEMU boot check passed.

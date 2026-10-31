@@ -41,7 +41,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
 .PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki \
-	android-initrd android-disk android-image android-sync mesa qemu qemu-check console FORCE
+	android-initrd android-disk android-image android-sync android-boot mesa qemu qemu-check console FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -87,7 +87,8 @@ $(OUT)/initramfs.gz: $(BUSYBOX) boot/init $(OUT)/isa-smoke scripts/initramfs.sh
 	$(BUILDER) bash scripts/initramfs.sh "$(BUSYBOX)" boot/init "$(OUT)/isa-smoke" "$@"
 
 $(OUT)/boot/manifest.json: $(OUT)/kernel/bzImage $(OUT)/initramfs.gz $(OUT)/grub/BOOTX64.EFI boot/menu.cfg tools/deploy.py
-	$(BUILDER) python3 tools/deploy.py bundle "$(OUT)/kernel/bzImage" "$(OUT)/initramfs.gz" "$(OUT)/grub/BOOTX64.EFI" boot/menu.cfg "$(OUT)/boot"
+	$(BUILDER) python3 tools/deploy.py bundle --kind diagnostic "$(OUT)/kernel/bzImage" "$(OUT)/initramfs.gz" \
+		"$(OUT)/grub/BOOTX64.EFI" boot/menu.cfg "$(OUT)/boot"
 image: $(USB_IMAGE) ## Assemble out/dali-usb.img (no root or physical disk writes)
 usb: image ## Alias for image; flash it with your preferred USB imaging tool
 $(USB_IMAGE): $(OUT)/boot/manifest.json scripts/image.sh tools/deploy.py
@@ -204,7 +205,16 @@ $(ANDROID)/disk.img: | $(GOOGLE)/inventory.txt
 
 android-sync: $(ANDROID)/disk.img $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vbmeta_a.img
 	$(BUILDER) python3 tools/android_sync.py "$(ANDROID)/disk.img" "$(ANDROID)"
-android-image: $(GKI)/bzImage $(ANDROID)/initrd.img android-sync ## Build/update the QEMU image, preserving Android data
+
+# The laptop's boot files: the same kernel and initrd QEMU boots, plus GRUB and its menu.
+$(ANDROID)/boot/manifest.json: $(GKI)/bzImage $(ANDROID)/initrd.img $(OUT)/grub/BOOTX64.EFI \
+		boot/android-menu.cfg android/cmdline.txt tools/deploy.py
+	$(BUILDER) python3 tools/deploy.py bundle --kind android --cmdline android/cmdline.txt "$(GKI)/bzImage" \
+		"$(ANDROID)/initrd.img" "$(OUT)/grub/BOOTX64.EFI" boot/android-menu.cfg "$(ANDROID)/boot"
+android-boot: $(ANDROID)/disk.img $(ANDROID)/boot/manifest.json ## Put the laptop's boot files into the disk's boot partition
+	$(BUILDER) bash scripts/android-boot.sh "$(ANDROID)/disk.img" "$(ANDROID)/boot"
+
+android-image: $(GKI)/bzImage $(ANDROID)/initrd.img android-sync android-boot ## Build/update the QEMU image and boot files, preserving Android data
 
 qemu: android-image ## Run Googlebook OS; connect a VNC viewer to localhost:5900
 	$(BUILDER) bash scripts/qemu.sh "$(GKI)/bzImage" "$(ANDROID)/initrd.img" "$(ANDROID)/disk.img" \

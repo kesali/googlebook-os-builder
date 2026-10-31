@@ -6,6 +6,9 @@ from unittest.mock import patch
 
 from tools import deploy
 
+REPO = Path(__file__).resolve().parents[1]
+ANDROID_MENU = b"linux kernel-@KERNEL@ @CMDLINE@ panic=0\ninitrd initramfs-@INITRAMFS@\n"
+
 
 class DeployTests(unittest.TestCase):
     def setUp(self):
@@ -17,6 +20,10 @@ class DeployTests(unittest.TestCase):
         for name in deploy.COMPONENTS:
             (self.inputs / name).write_bytes(name.encode())
         (self.inputs / "menu.cfg").write_bytes(b"kernel=@KERNEL@ initramfs=@INITRAMFS@")
+        self.cmdline = self.root / "cmdline.txt"
+        self.cmdline.write_text("# Logging\nlog_buf_len=1M\n\nroot=/dev/ram0  # the initrd\nbootconfig\n")
+        self.android_menu = self.root / "android-menu.cfg"
+        self.android_menu.write_bytes(ANDROID_MENU)
         self.bundle = self.root / "bundle"
         self.usb = self.root / "usb"
         self.usb.mkdir()
@@ -24,12 +31,25 @@ class DeployTests(unittest.TestCase):
         deploy.install(self.bundle, self.usb, initialize=True)
 
     def publish(self):
-        deploy.bundle([self.inputs / name for name in deploy.COMPONENTS], self.bundle)
+        deploy.bundle([self.inputs / name for name in deploy.COMPONENTS], self.bundle, "diagnostic")
 
-    def snapshot(self):
+    def publish_android(self):
+        bundle = self.root / "android-bundle"
+        inputs = [self.inputs / name for name in deploy.COMPONENTS[:3]] + [self.android_menu]
+        deploy.bundle(inputs, bundle, "android", self.cmdline)
+        return bundle
+
+    def android_stage(self):
+        stage = self.root / "android-stage"
+        stage.mkdir()
+        deploy.install(self.publish_android(), stage, initialize=True)
+        return stage
+
+    def snapshot(self, root=None):
+        root = root or self.usb
         return {
-            str(path.relative_to(self.usb)): (path.read_bytes(), path.stat().st_mtime_ns)
-            for path in self.usb.rglob("*") if path.is_file()
+            str(path.relative_to(root)): (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in root.rglob("*") if path.is_file()
         }
 
     def test_noop_writes_nothing_even_with_full_disk(self):
@@ -83,6 +103,74 @@ class DeployTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Not a Dali"):
             deploy.install(self.bundle, self.usb)
         self.assertEqual(len(self.snapshot()), len(before) - 1)
+
+    def test_android_menu_gets_the_command_line_on_one_line_and_the_android_marker(self):
+        stage = self.android_stage()
+        self.assertEqual((stage / "dali/format").read_bytes(), b"gbos-dali-android-v1\n")
+        kernel = next((stage / "dali").glob("kernel-*")).name
+        initramfs = next((stage / "dali").glob("initramfs-*")).name
+        self.assertEqual(
+            (stage / "dali/grub.cfg").read_text(),
+            f"linux {kernel} log_buf_len=1M root=/dev/ram0 bootconfig panic=0\ninitrd {initramfs}\n",
+        )
+
+    def test_a_new_command_line_rewrites_only_the_menu(self):
+        stage = self.android_stage()
+        self.cmdline.write_text("root=/dev/ram0\n")
+        self.assertEqual(deploy.install(self.publish_android(), stage), ["dali/grub.cfg"])
+
+    def test_a_bundle_installs_only_onto_its_own_kind(self):
+        # The marker of the already flashed diagnostic USB must stay what it was.
+        self.assertEqual((self.usb / "dali/format").read_bytes(), b"gbos-dali-diagnostic-v1\n")
+        stage = self.android_stage()
+        usb_before, stage_before = self.snapshot(), self.snapshot(stage)
+        with self.assertRaisesRegex(ValueError, "Not a Dali android"):
+            deploy.install(self.publish_android(), self.usb)
+        with self.assertRaisesRegex(ValueError, "Not a Dali diagnostic"):
+            deploy.install(self.bundle, stage)
+        self.assertEqual(usb_before, self.snapshot())
+        self.assertEqual(stage_before, self.snapshot(stage))
+
+    def test_menu_and_command_line_come_together_and_nothing_is_written_otherwise(self):
+        diagnostic_inputs = [self.inputs / name for name in deploy.COMPONENTS]
+        android_inputs = [*diagnostic_inputs[:3], self.android_menu]
+        cases = [
+            ("a command line for a menu without @CMDLINE@", diagnostic_inputs, self.cmdline, "no @CMDLINE@"),
+            ("a menu with @CMDLINE@ and no command line", android_inputs, None, "no kernel command line"),
+        ]
+        for name, inputs, cmdline, message in cases:
+            with self.subTest(name):
+                destination = self.root / "never-written"
+                with self.assertRaisesRegex(ValueError, message):
+                    deploy.bundle(inputs, destination, "android", cmdline)
+                self.assertFalse(destination.exists())
+
+    def test_command_line_is_flattened_and_cannot_need_grub_quoting(self):
+        self.assertEqual(deploy.flatten_cmdline("# note\n a=1  b # inline\n\nc=/x,y:z@w^v\n"), "a=1 b c=/x,y:z@w^v")
+        for argument in ("a;b", "x=$y", "'q'", "a|b", 'say="hi"', "a{b}", "a*"):
+            with self.subTest(argument):
+                with self.assertRaisesRegex(ValueError, "GRUB quoting"):
+                    deploy.flatten_cmdline(f"ok=1\n{argument}\n")
+
+    def test_unknown_kind_is_rejected_when_bundling_and_installing(self):
+        with self.assertRaisesRegex(ValueError, "Unknown bundle kind"):
+            deploy.bundle([self.inputs / name for name in deploy.COMPONENTS], self.root / "x", "recovery")
+        manifest = json.loads((self.bundle / "manifest.json").read_text())
+        manifest["kind"] = "recovery"
+        (self.bundle / "manifest.json").write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, "Invalid build bundle manifest"):
+            deploy.install(self.bundle, self.usb)
+
+    def test_the_repository_android_menu_and_command_line_make_a_bundle(self):
+        inputs = [*(self.inputs / name for name in deploy.COMPONENTS[:3]), REPO / "boot/android-menu.cfg"]
+        bundle = self.root / "real-bundle"
+        deploy.bundle(inputs, bundle, "android", REPO / "android/cmdline.txt")
+        menu = (bundle / "menu.cfg").read_text()
+        self.assertNotIn("@CMDLINE@", menu)
+        kernel_arguments = next(line for line in menu.splitlines() if line.lstrip().startswith("linux ")).split()
+        self.assertIn("root=/dev/ram0", kernel_arguments)
+        # Android must never probe the internal NVMe, which holds another system.
+        self.assertIn("initcall_blacklist=nvme_init", kernel_arguments)
 
     def test_symlink_is_rejected_before_writes(self):
         (self.usb / "dali/grub.previous.cfg").symlink_to(self.inputs / "kernel")

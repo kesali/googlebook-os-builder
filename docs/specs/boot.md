@@ -23,6 +23,7 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 
 ## Files
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
+- [boot/android-menu.cfg](../../boot/android-menu.cfg) — the laptop's GRUB menu: this command line plus laptop-only arguments (see [laptop-hardware.md](laptop-hardware.md)). QEMU does not use it.
 - [android/bootconfig.txt](../../android/bootconfig.txt), [tools/bootconfig.py](../../tools/bootconfig.py) — settings and packing.
 - [android/module_ramdisk/](../../android/module_ramdisk/) — first-stage modules (`install.list`) and their load lines (`modules.patch`).
 - [scripts/android-modules.sh](../../scripts/android-modules.sh) — applies them; checks the kernel release and `modules.patch` dependencies against Google's QEMU driver build.
@@ -45,7 +46,10 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 _None agreed._ The laptop's GRUB entry and command line are tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
-- 2026-10-31 (this commit) — QEMU modules are Google's prebuilt ones (`GKI_VIRT`), not compiled
+- 2026-11-01 (this commit) — Added `boot/android-menu.cfg`, the laptop's GRUB entry: this command
+  line (flattened by deploy.py, which rejects words needing GRUB quoting) plus laptop-only
+  arguments. Written into the ESP by `make android-boot`; not booted through firmware yet.
+- 2026-10-31 `9dfd0cf` — QEMU modules are Google's prebuilt ones (`GKI_VIRT`), not compiled
   here. Checked by `make qemu-check` (all six load; GPU, input and Ethernet up).
 - 2026-10-31 `357470d` — First-stage modules declared in android/module_ramdisk/ (install.list + modules.patch); dependencies checked against the kernel build. Ramdisk byte-identical.
 - 2026-10-31 `56719c0` — Added virtio GPU/input/net modules; fixed trailing-space module list hang.
