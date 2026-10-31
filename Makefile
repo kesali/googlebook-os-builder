@@ -15,6 +15,10 @@ GRUB_TAR := $(DL)/grub-$(GRUB_SHA).tar.xz
 KERNEL_SRC := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
 BUSYBOX_SRC := $(OUT)/src/busybox-$(BUSYBOX_SHA)
 GRUB_SRC := $(OUT)/src/grub-$(GRUB_SHA)
+DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
+GKI_SYMVERS := $(DL)/vmlinux-$(GKI_BUILD)-$(GKI_SYMVERS_SHA).symvers
+TOOLCHAIN := $(OUT)/toolchain
+GKI := $(OUT)/gki
 BUILDER := scripts/builder.sh
 BUILD_READY := $(OUT)/stamps/builder
 export BUILDER_IMAGE JOBS
@@ -23,7 +27,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
-.PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke FORCE
+.PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -86,3 +90,35 @@ smoke: image ## UEFI-boot a temporary image in QEMU and test instruction emulati
 	$(BUILDER) python3 tools/boot_test.py "$(USB_IMAGE)" "$(OUT)"
 shell: $(BUILD_READY) ## Open a shell inside the builder
 	$(BUILDER) bash
+
+# Googlebook OS: Google's kernel (GKI) rebuilt from source with Google's compilers.
+$(TOOLCHAIN)/clang-$(CLANG_REV)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh "$(CLANG_URL)" "$(CLANG_REV)" "$(@D)" "$(CLANG_DIR)"
+$(TOOLCHAIN)/rust-$(RUST_REV)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh "$(RUST_URL)" "$(RUST_REV)" "$(@D)" "$(RUST_DIR)"
+$(TOOLCHAIN)/bindgen-$(BINDGEN_REV)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh "$(BINDGEN_URL)" "$(BINDGEN_REV)" "$(@D)" \
+		linux-x86/bin/bindgen linux-x86/lib64/libc++.so
+$(DWARVES_SRC)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh "$(DWARVES_URL)" "$(DWARVES_REV)" "$(@D)"
+$(TOOLCHAIN)/pahole-$(DWARVES_REV)/pahole: $(DWARVES_SRC)/.ready $(KERNEL_SRC)/.ready scripts/pahole.sh
+	$(BUILDER) bash scripts/pahole.sh "$(DWARVES_SRC)" "$(KERNEL_SRC)" "$(@D)"
+
+# Stable names for the pinned versions: out/toolchain/{clang,rust,bindgen,pahole}.
+toolchain: $(TOOLCHAIN)/.ready ## Fetch Google's kernel compilers (about 7 GB), build pahole
+$(TOOLCHAIN)/.ready: $(TOOLCHAIN)/clang-$(CLANG_REV)/.ready $(TOOLCHAIN)/rust-$(RUST_REV)/.ready \
+		$(TOOLCHAIN)/bindgen-$(BINDGEN_REV)/.ready $(TOOLCHAIN)/pahole-$(DWARVES_REV)/pahole
+	ln -sfn clang-$(CLANG_REV)/$(CLANG_DIR) $(TOOLCHAIN)/clang
+	ln -sfn rust-$(RUST_REV)/$(RUST_DIR) $(TOOLCHAIN)/rust
+	ln -sfn bindgen-$(BINDGEN_REV)/linux-x86/bin $(TOOLCHAIN)/bindgen
+	ln -sfn pahole-$(DWARVES_REV) $(TOOLCHAIN)/pahole
+	touch $@
+
+$(GKI_SYMVERS): scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(GKI_SYMVERS_URL)" "$(GKI_SYMVERS_SHA)" "$@"
+
+gki: $(GKI)/bzImage ## Rebuild Google's kernel + kernel/gki.config drivers, check kABI
+$(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) \
+		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py
+	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
+		"$(GKI_SYMVERS)" kernel/gki.config

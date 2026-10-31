@@ -9,12 +9,15 @@ FROM debian:trixie-slim
 # mkbootimg     unpack_bootimg / mkbootimg: Android boot images
 # lz4           unpacks Google's LZ4-compressed kernel
 # curl, ca-certificates   download pinned sources
+# cmake, libdw-dev        build pahole, which Google's kernel build needs for BTF
+# kmod          depmod: writes the module dependency lists
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         python3 jq fdisk erofs-utils mkbootimg lz4 curl ca-certificates \
         build-essential bc bison flex libssl-dev libelf-dev pkg-config \
         git patch xz-utils bzip2 cpio gettext gawk dosfstools mtools \
         qemu-system-x86 ovmf \
+        cmake libdw-dev kmod \
     && rm -rf /var/lib/apt/lists/*
 
 # avbtool: reads and writes Android Verified Boot (vbmeta) data. A single

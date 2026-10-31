@@ -85,6 +85,8 @@ use `make deploy`, **not** another whole-stick flash.
 | [scripts/initramfs.sh](scripts/initramfs.sh), [scripts/image.sh](scripts/image.sh) | Standard cpio/FAT/GPT assembly |
 | [tools/deploy.py](tools/deploy.py) | Bundle verification and file-level USB updates |
 | [tools/boot_test.py](tools/boot_test.py), [tests/test_deploy.py](tests/test_deploy.py) | Boot and incremental-update checks |
+| [scripts/git-fetch.sh](scripts/git-fetch.sh), [scripts/pahole.sh](scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
+| [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our listed changes, with config/ABI checks |
 
 `make sources` creates editable trees under `out/src/`. `make kernel` always runs Kbuild so
 edits there are detected, not hidden by a top-level "done" stamp. Published outputs retain their
@@ -110,8 +112,34 @@ Android**. Recovery models are listed at <https://aluminium-os.com/googlebookos/
 
 The inspected Lenovo Googlebook 15 (`ruby`) image contains Android 17 and kernel
 `6.18.21-android17-5-g3938c8d97142-ab16302624`. Our diagnostic build uses that kernel's source
-commit, but a smaller upstream defconfig, GCC and its own release suffix. Reproducing the GKI
-configuration, toolchain and ABI remains necessary before using Google's vendor modules.
+commit, but a smaller upstream defconfig, GCC and its own release suffix. Google's vendor modules
+need the GKI build below instead.
+
+## Googlebook OS kernel (GKI)
+
+```sh
+make toolchain           # Google's pinned clang, Rust and bindgen (about 7 GB) + pahole from source
+make gki JOBS=10         # about an hour the first time; incremental afterwards
+```
+
+This rebuilds Google's own kernel from source so that Google's unmodified modules still load.
+The compilers are the exact versions named in Google's build manifest. They come from
+googlesource.com archives of the pinned commits, and [scripts/git-fetch.sh](scripts/git-fetch.sh)
+uses Git to prove the files match those commits. pahole is compiled from Google's pinned dwarves
+source.
+
+[scripts/gki-kernel.sh](scripts/gki-kernel.sh) starts from Google's `config`, applies the short
+list of changes in [kernel/gki.config](kernel/gki.config), and refuses to build if:
+
+- a requested change did not take effect;
+- any other built-in option differs from Google's;
+- a compiler version differs from Google's ([tools/kconfig_check.py](tools/kconfig_check.py)).
+
+After building, it refuses to publish a kernel whose release string differs from Google's, or
+that is missing any of Google's exported symbols or exports one with a different checksum
+([tools/kabi_check.py](tools/kabi_check.py)). Google's signing certificate is extracted from
+Google's kernel ([tools/kernel_certs.py](tools/kernel_certs.py)) and trusted, so Google's signed
+modules and our newly built ones both load. Outputs: `out/gki/bzImage` and `out/gki/modules/`.
 
 ## Hardware scope and next steps
 
