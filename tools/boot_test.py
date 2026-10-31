@@ -51,6 +51,9 @@ def main():
         subprocess.run(["mcopy", "-i", fat, "::/logs/kernel.log", str(work / "kernel.log")], check=True)
         if "ISA_SMOKE_OK" not in (work / "kernel.log").read_text():
             raise SystemExit("Kernel log was not persisted on the USB image")
+        subprocess.run(["mcopy", "-i", fat, "::/logs/hardware.txt", str(work / "hardware.txt")], check=True)
+        if '"xhci_hcd"' not in (work / "hardware.txt").read_text():
+            raise SystemExit("Hardware report does not show the USB controller's driver")
         print(f"PASS: UEFI -> GRUB -> source-built kernel -> USB discovery -> GFNI/VNNI emulation -> saved logs -> poweroff. Log: {log}")
 
 

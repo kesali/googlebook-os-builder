@@ -50,11 +50,23 @@ mkdir -p /boot/logs || fail "Cannot create log directory"
 if [ -f /boot/logs/kernel.log ]; then
     mv /boot/logs/kernel.log /boot/logs/kernel.previous.log || fail "Cannot rotate log"
 fi
+section() { printf '\n== %s\n' "$1"; }
 {
+    section "Kernel"
     uname -a
     cat /proc/cmdline
-    cat /proc/cpuinfo
+    section "PCI: slot, class, vendor, device, subsystem vendor, subsystem, driver"
+    lspci -mk | sort
+    section "USB: bus, device, vendor:product"
+    lsusb | sort
+    section "Input (laptop keyboard: AT Translated Set 2, touchpad: ELAN0307)"
+    cat /proc/bus/input/devices
+    section "I2C (touchpad: i2c-ELAN0307:00)"
+    ls /sys/bus/i2c/devices
+    section "Partitions"
     cat /proc/partitions
+    section "CPU"
+    cat /proc/cpuinfo
 } > /boot/logs/hardware.txt || fail "Cannot write hardware log"
 
 /bin/isa-smoke >/dev/kmsg 2>&1 || fail "CPU instruction emulation self-test failed"

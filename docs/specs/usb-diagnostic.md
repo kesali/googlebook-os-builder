@@ -41,7 +41,9 @@ Not verified: flashing a real USB, booting the laptop.
   laptop is reviewed. Needs the user to flash a USB.
 
 ## Handoff log
-- 2026-10-31 (this commit) — BusyBox and GRUB are official/Debian prebuilts instead of source
+- 2026-10-31 (this commit) — `hardware.txt` lists PCI/USB devices with their drivers, input
+  and I2C devices; `make smoke` checks the USB controller's driver appears.
+- 2026-10-31 `bb5a38f` — BusyBox and GRUB are official/Debian prebuilts instead of source
   builds; `scripts/busybox.sh` and `scripts/grub.sh` removed. Checked by `make smoke`, `make test`
   and a QEMU boot without a serial port (GRUB does not pause).
 - 2026-10-31 `73027fe` — Source-built diagnostic USB and incremental deploy; nine tests.

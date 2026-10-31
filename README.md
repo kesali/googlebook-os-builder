@@ -52,7 +52,8 @@ the laptop's input devices are being brought up.
 The root filesystem is temporary RAM. `/boot` is this USB's FAT filesystem, selected by the
 UUID passed from GRUB, not by scanning internal disks for a label. The kernel has internal
 NVMe/SATA/MMC, SPI flash, TPM and EFI capsule writing disabled. No Google firmware updater or
-installer is included. Logs are `/boot/logs/kernel.log`, `kernel.previous.log`, and `hardware.txt`.
+installer is included. Logs are `/boot/logs/kernel.log`, `kernel.previous.log`, and `hardware.txt`
+(PCI and USB devices with the driver each one got, input devices, I2C devices, partitions, CPU).
 Use `umount /boot && poweroff -f` to shut down cleanly before removing the USB.
 
 ## The fast development loop
