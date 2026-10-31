@@ -272,7 +272,7 @@ are copied into the existing disk. An unchanged build writes no disk partitions.
 | Ryzen 5 7530U | Source-based VEX GFNI/AVX-VNNI emulation + small boot self-test | Broader emulator correctness/performance testing |
 | USB xHCI/storage/HID | Built into kernel | More device coverage |
 | UEFI display | Firmware framebuffer console | `amdgpu`, Mesa RADV/GBM, minigbm |
-| AMD GPIO / I2C HID | Compiled in; physical test still needed | ELAN0307 touchpad integration |
+| ELAN0307 touchpad (AMD I2C, GPIO, I2C HID, multitouch) | Compiled in; physical test still needed | Same drivers in the Android kernel |
 | MT7922 Wi-Fi / Bluetooth | Not enabled yet | `mt7921e`, `btusb`/`btmtk`, firmware |
 | Audio | Not enabled yet | HDA + AMD ACP |
 | Internal NVMe | Deliberately disabled | Explicit dev partition support later |

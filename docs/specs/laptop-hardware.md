@@ -10,14 +10,20 @@ updating the USB incrementally instead of reflashing.
 
 ## Current state
 Not started for Android. The QEMU work shares the kernel, boot chain and OS image with this.
+The devices below were read from this laptop running a desktop Linux (`lspci -nnk`, `lsusb`,
+`/proc/bus/input/devices`).
 
-| Part | Needed for Android |
-|---|---|
-| Display / GPU | `amdgpu` module, Mesa radeonsi/RADV, minigbm/composer for AMD |
-| Keyboard, touchpad | i8042/AT keyboard, AMD GPIO + I2C HID (ELAN0307) |
-| Wi-Fi / Bluetooth | `mt7921e`, `btusb`/`btmtk` + firmware |
-| Audio | HDA + AMD ACP |
-| Storage | Boot from USB first; internal NVMe stays untouched |
+| Part | Device [ID] | Linux driver | Needed for Android |
+|---|---|---|---|
+| Display / GPU | Radeon "Barcelo" [1002:15e7] | `amdgpu` | `amdgpu` module, Mesa radeonsi/RADV, minigbm/composer for AMD |
+| Keyboard | i8042 "AT Translated Set 2" | `atkbd` | Built into GKI already |
+| Touchpad | ELAN0307:00 [04F3:3282] on I2C controller AMDI0010:03 | `i2c_hid_acpi` + `hid-multitouch` | AMD I2C, GPIO and I2C HID drivers (see Pitfalls) |
+| Wi-Fi | MediaTek MT7922 [14c3:0616] | `mt7921e` | Module + firmware |
+| Bluetooth | MediaTek USB [0e8d:0616] | `btusb` | Module + firmware |
+| Audio | HDA [1022:15e3], HDMI [1002:1637], ACP [1022:15e2] | `snd_hda_intel`, `snd_rn_pci_acp3x` | HDA + AMD ACP |
+| USB | xHCI [1022:1639] ×2 | `xhci_hcd` | Built into GKI already |
+| Camera, SD reader | USB [30c9:0042], [0bda:0129] | `uvcvideo`, `rtsx_usb` | Later |
+| Storage | Samsung PM9C1a NVMe [144d:a80d] | `nvme` | Boot from USB first; internal NVMe stays untouched |
 
 ## Decisions
 - QEMU first; the laptop comes after the VM is usable. No installer and no dual boot for now.
@@ -34,10 +40,19 @@ To be defined with the first action.
 
 ## Pitfalls
 - Googlebook userspace uses instructions this CPU lacks; the kernel's emulator patch is required (see [kernel.md](kernel.md)).
+- The touchpad needs `X86_AMD_PLATFORM_DEVICE` (built-in only: it sets the AMD I2C clock),
+  `PINCTRL_AMD`, `I2C_DESIGNWARE_PLATFORM` and `I2C_HID_ACPI`; Google's GKI config has none of them.
+  The diagnostic USB enables all of them, so it shows whether the touchpad works with them.
+  The reference port never got this touchpad working.
 
 ## Actions
 - [ ] Plan the first laptop boot — done when the user agrees on: USB layout, how partitions are
   updated incrementally on the USB, and the first driver set (display + keyboard).
+- [ ] Find out if the touchpad needs `X86_AMD_PLATFORM_DEVICE` — done when the diagnostic USB
+  has been booted with and without it (`make deploy` after removing it from
+  [msi-diagnostic.config](../../kernel/msi-diagnostic.config)) and the touchpad result is recorded here.
 
 ## Handoff log
+- 2026-10-31 (this commit) — Device IDs and drivers recorded from the laptop's desktop Linux;
+  touchpad drivers added to the diagnostic kernel. Not yet booted on the laptop.
 - 2026-10-31 — Spec created; no laptop Android work yet.
