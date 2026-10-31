@@ -15,8 +15,9 @@ In order of importance:
 
 This is a personal project, not a public distribution. Prefer a simple solution for this setup over
 general-purpose infrastructure. Keep checks that protect data or catch likely regressions; match
-validation effort to the change. Build from source, never edit binaries, and keep every carried
-patch small, explained and removable once upstream covers it.
+validation effort to the change. Use official prebuilts unchanged where they fit, build from
+source what we change, never edit binaries, and keep every carried patch small, explained and
+removable once upstream covers it.
 
 ## Where we are
 

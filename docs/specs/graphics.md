@@ -4,7 +4,7 @@
 **Last verified:** 2026-10-31 — `make qemu-check` + manual screenshot `out/qemu/input-screen.png`; SurfaceFlinger reports softpipe.
 
 ## Goal
-Show Googlebook OS on screen using graphics built from source. First correctness (softpipe),
+Show Googlebook OS on screen. First correctness (softpipe),
 then speed (accelerated rendering), later the laptop's AMD GPU.
 
 ## Current state

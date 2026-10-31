@@ -11,6 +11,8 @@ applyTo: ["Makefile", "*.mk", "docker/**"]
 - Pin by something a person can read: a release tag or version. A Git source with a release tag
   gets `*_TAG` plus its commit in `*_REV`; the build checks they match, because tags can move.
   Without a tag, say in a comment where a person can check the commit (e.g. Google's manifest).
+- Before adding a source build, look for an official prebuilt that works unchanged. A source pin's
+  comment says why it is built (we patch it, or no suitable prebuilt exists).
 - A new input is URL + version + SHA-256 in [sources.mk](../../sources.mk). Download and source
   paths include the hash (e.g. `$(DL)/mesa-$(MESA_SHA).tar.xz`,
   `$(OUT)/src/mesa-$(MESA_SHA)-$(MESA_PATCH_SHA)`), so a pin or patch change gets a new file or

@@ -1,7 +1,9 @@
-# Downloaded source, not executables. Read the release tag or version; the build checks
-# the Git commit ID or archive SHA-256 next to it.
+# Every download: official prebuilts used unchanged, and source we build because we change it
+# or no suitable prebuilt exists. Read the release tag or version; the build checks the Git
+# commit ID or archive SHA-256 next to it.
 
-# Google's Android 17 kernel, June 2026 release 52. A tag can be moved, so the build also
+# Google's Android 17 kernel, June 2026 release 52. Built from source because the instruction
+# emulator below must be compiled into it. A tag can be moved, so the build also
 # checks that it still points at the commit GKI_BUILD (below) was built from.
 KERNEL_TAG := android17-6.18-2026-06_r52
 KERNEL_REV := 3938c8d97142d5cf31543aa96f864a2cf832dda0
@@ -37,11 +39,14 @@ RUST_DIR := 1.91.1.p3
 BINDGEN_URL := https://android.googlesource.com/platform/prebuilts/clang-tools
 BINDGEN_REV := 4155cb466dcd9b53c6f873829c53aa6f905449dd
 
-# pahole (writes the kernel's BTF type information), built from Google's source.
+# pahole (writes the kernel's BTF type information), built from Google's source. Google's
+# kernel build compiles this same commit (Kleaf's pahole_from_sources); the prebuilt in
+# kernel/prebuilts/build-tools is an older pahole (1.27).
 DWARVES_URL := https://android.googlesource.com/platform/external/dwarves
 DWARVES_REV := d884153887ce06fec729061016f7a0b412f08fc6
 
-# QEMU's software renderer. No LLVM, Vulkan or hardware-specific Mesa drivers yet.
+# QEMU's software renderer. No LLVM, Vulkan or hardware-specific Mesa drivers yet. Built from
+# source: Mesa publishes no Android binaries, and we patch it (android/mesa-drm-master.patch).
 MESA_VERSION := 26.3.0-rc3
 MESA_URL := https://archive.mesa3d.org/mesa-$(MESA_VERSION).tar.xz
 MESA_SHA := 3600c01f11439628d0a85de5ed9cb76f297d13e9783cdeecb91aa685055c9942
