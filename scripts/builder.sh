@@ -17,6 +17,10 @@ image=${BUILDER_IMAGE:-gbos-dali-builder}
 
 mounts=(--volume "$repo:$repo")
 for path in ${EXTRA_MOUNTS:-}; do
+    if [ ! -e "$path" ]; then
+        echo "Missing read-only input mount: $path" >&2
+        exit 1
+    fi
     mounts+=(--volume "$path:$path:ro")
 done
 
@@ -27,6 +31,6 @@ if [ -t 0 ] && [ -t 1 ]; then
 fi
 
 exec docker run --rm --interactive "${terminal[@]}" \
-    --user "$(id -u):$(id -g)" --env HOME=/tmp \
+    --user "$(id -u):$(id -g)" --env HOME=/tmp --env JOBS --env SOURCE_DATE_EPOCH \
     "${mounts[@]}" --workdir "$PWD" \
     "$image" "$@"

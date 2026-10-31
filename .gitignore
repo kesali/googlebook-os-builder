@@ -8,3 +8,4 @@
 *.bin
 *.img
 *.zip
+__pycache__/

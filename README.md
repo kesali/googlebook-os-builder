@@ -1,88 +1,156 @@
 # gbos-dali
 
-A Googlebook OS (Android 17 "android-desktop") USB stick for the **MSI Modern 15 B7M**, built from
-Google's official recovery image plus parts we build ourselves from source, with a build that a
-person can read.
+A small, readable build for developing a Googlebook OS port on the **MSI Modern 15 B7M**.
+Google's recovery image is a read-only input, not something we patch with byte offsets.
 
-## Principles
+**Current runnable target: a diagnostic USB, not an Android desktop.** It builds the kernel,
+BusyBox and GRUB from pinned source, boots a shell, tests this Ryzen's missing CPU instructions,
+and saves logs on the USB. Android userspace, AMD graphics and software security integration are
+the next step. The diagnostic kernel is **not GKI-module-compatible**; do not combine it with
+Google's prebuilt vendor modules.
 
-1. **Google's recovery image is a read-only input.** We never edit bytes inside a binary.
-2. **Everything we add is built from pinned source** (plus our patches) or is a plain text file
-   (properties, init `.rc`, configs). Unmodified upstream prebuilts are allowed only where building
-   from source would mean building all of AOSP; they are pinned by sha256.
-3. **One script, one step.** Every script starts with a header saying what it reads and writes.
-   Binary formats are handled by upstream tools (`unpack_bootimg`, `avbtool`, `mkfs.erofs`, ...) or
-   by small Python tools in `tools/` that use the field names of the official format definitions.
-4. **`make` knows what depends on what**, so only changed parts rebuild; updating the stick will
-   rewrite only what changed (planned: `make deploy`).
-5. **This laptop first.** More hardware is added later, one driver at a time.
+## Build and boot
 
-## Quick start
-
-Needs Linux, Docker, `make`, and about 10 GB free for now.
+Needs Linux, Docker, GNU make, Python 3 and about 15 GB free. Compilation runs as your user in
+Debian, with four jobs by default (`JOBS=6` overrides it). The first run downloads source and
+builder packages. There is no root container, host package installation or loop-device setup.
 
 ```sh
-make            # list the targets
-make builder    # once: the Docker image with every build tool (docker/Dockerfile)
-make unpack     # recovery image -> out/google/   (under a minute on NVMe)
+make builder
+make usb                 # source -> kernel, initramfs, EFI loader -> out/dali-usb.img
+make smoke               # boot a disposable copy through UEFI in QEMU
+make test                # focused deployment and safety tests
+```
+
+Flash `out/dali-usb.img` with your preferred USB imaging tool, carefully selecting the USB.
+**Flashing erases that USB.** `make usb` itself only creates a 514 MiB regular image file;
+it never chooses or writes a physical disk. Disable Secure Boot and boot the USB's UEFI entry.
+The shell uses the laptop screen and keyboard. An external USB keyboard is a fallback while
+the laptop's input devices are being brought up.
+
+The root filesystem is temporary RAM. `/boot` is this USB's FAT filesystem, selected by the
+UUID passed from GRUB, not by scanning internal disks for a label. The kernel has internal
+NVMe/SATA/MMC, SPI flash, TPM and EFI capsule writing disabled. No Google firmware updater or
+installer is included. Logs are `/boot/logs/kernel.log`, `kernel.previous.log`, and `hardware.txt`.
+Use `umount /boot && poweroff -f` to shut down cleanly before removing the USB.
+
+## The fast development loop
+
+Back in Linux, mount the USB's **DALI-BOOT** partition through your file manager. Then:
+
+```sh
+# Edit boot/init, then:
+make deploy USB=/run/media/$USER/DALI-BOOT
+```
+
+This invokes the upstream incremental builds, but only changed outputs are published:
+
+| Changed input | Rebuilt | Written to USB |
+|---|---|---|
+| `boot/init` | initramfs | new initramfs + boot menu |
+| kernel source or `kernel/msi-diagnostic.config` | kernel via Kbuild | new kernel + boot menu |
+| `boot/menu.cfg` | boot menu | boot menu only |
+| nothing | nothing | **no files** |
+
+Deployment refuses raw devices, non-mountpoints, internal disks, read-only/non-FAT filesystems,
+symlinks and USBs without the Dali marker. It verifies bundle hashes, checks the actual destination
+contents, writes and reads back new files, then changes the menu last. Logs, other user files and
+other partitions are not touched. A failed transfer before that switch leaves the old menu.
+The previous menu is available in GRUB.
+
+Old content-addressed kernel/initramfs files are deliberately retained; they are not automatically
+deleted. If space runs out, deployment fails explicitly. Remove obsolete `dali/kernel-<hash>` and
+`dali/initramfs-<hash>` files only after checking that **neither** `dali/grub.cfg` **nor**
+`dali/grub.previous.cfg` references them. Do not unplug during an update: FAT is not journalled,
+and rename/fsync are not a guarantee against power loss or a USB controller lying about flushes.
+
+`make image` / `make usb` assembles a fresh image when its bundle changes. For rapid iterations
+use `make deploy`, **not** another whole-stick flash.
+
+## Where to read the code
+
+| File | Responsibility |
+|---|---|
+| [Makefile](Makefile) | Dependencies and commands; `make` lists targets |
+| [config.mk](config.mk) | Output path, jobs, recovery path, USB mountpoint |
+| [sources.mk](sources.mk) | Source URLs, exact revisions and SHA-256 pins |
+| [docker/Dockerfile](docker/Dockerfile) | Debian build/test tools |
+| [scripts/fetch.sh](scripts/fetch.sh), [scripts/source.sh](scripts/source.sh) | Verified download and source extraction |
+| [scripts/kernel-source.sh](scripts/kernel-source.sh) | Exact Git commit checkout + verified emulator source patch |
+| [scripts/kernel.sh](scripts/kernel.sh) | Kbuild plus the diagnostic hardware config |
+| [kernel/msi-diagnostic.config](kernel/msi-diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
+| [scripts/busybox.sh](scripts/busybox.sh), [scripts/grub.sh](scripts/grub.sh) | Static shell utilities and UEFI loader builds |
+| [boot/init](boot/init) | The complete runtime startup sequence |
+| [boot/menu.cfg](boot/menu.cfg), [boot/loader.cfg](boot/loader.cfg) | Readable GRUB configurations |
+| [scripts/initramfs.sh](scripts/initramfs.sh), [scripts/image.sh](scripts/image.sh) | Standard cpio/FAT/GPT assembly |
+| [tools/deploy.py](tools/deploy.py) | Bundle verification and file-level USB updates |
+| [tools/boot_test.py](tools/boot_test.py), [tests/test_deploy.py](tests/test_deploy.py) | Boot and incremental-update checks |
+
+`make sources` creates editable trees under `out/src/`. `make kernel` always runs Kbuild so
+edits there are detected, not hidden by a top-level "done" stamp. Published outputs retain their
+timestamps if their bytes are unchanged. The source trees and outputs are ignored by Git:
+**save source edits before deleting `out/` or changing pins**. There is intentionally no blanket
+`make clean` deleting your source experiments.
+
+The compiler and other host tools come from Debian packages; they are not bit-for-bit pinned.
+The **target kernel, BusyBox and EFI loader** are compiled here, not downloaded executables.
+Changing the compiler or a source pin warrants a fresh build output directory (`OUT=out/new`).
+
+## Google's image
+
+```sh
+make unpack
 less out/google/inventory.txt
 ```
 
-## Input
+[scripts/unpack.sh](scripts/unpack.sh) extracts boot images, logical partitions, properties and
+kernel identity. Set `RECOVERY_IMAGE` in [config.mk](config.mk), or on the command line. This
+inspection step is independent of the diagnostic build: the USB **does not yet contain or start
+Android**. Recovery models are listed at <https://aluminium-os.com/googlebookos/>.
 
-The recovery image of a Googlebook, `android-desktop_signed_recovery_image.bin` (about 19 GB,
-inside a ~7.8 GB `recovery.zip`). Models and builds are listed at
-<https://aluminium-os.com/googlebookos/>. Developed with the Lenovo Googlebook 15 (`ruby`) image.
-Set its path in [config.mk](config.mk) (`RECOVERY_IMAGE`) or on the command line.
+The inspected Lenovo Googlebook 15 (`ruby`) image contains Android 17 and kernel
+`6.18.21-android17-5-g3938c8d97142-ab16302624`. Our diagnostic build uses that kernel's source
+commit, but a smaller upstream defconfig, GCC and its own release suffix. Reproducing the GKI
+configuration, toolchain and ABI remains necessary before using Google's vendor modules.
 
-## How the build is organised
+## Hardware scope and next steps
 
-| Path | What it is |
-|---|---|
-| [Makefile](Makefile) | The whole pipeline: targets, and the files each one needs |
-| [config.mk](config.mk) | Settings: recovery image path, output directory, builder image name |
-| [docker/Dockerfile](docker/Dockerfile) | Every build tool, pinned, so the host needs only Docker and `make` |
-| [scripts/](scripts/) | One script per build step |
-| [tools/](tools/) | Small, readable helpers for binary formats |
-| `out/` | Everything generated (not in git); safe to delete |
-| `reference/` | The two working ports this project learns from (not in git, not used by the build) |
-
-### Steps
-
-- **`make unpack`** ([scripts/unpack.sh](scripts/unpack.sh)): copies the pieces we need out of the
-  recovery image into `out/google/`: the boot images and their contents, the logical partitions
-  inside `super` ([tools/lp.py](tools/lp.py)), Google's kernel version and config
-  ([tools/kernel_info.py](tools/kernel_info.py)), every `build.prop`, checksums, and a one-page
-  `inventory.txt`. Every later step reads from `out/google/`, never from the recovery image.
-
-## Roadmap
-
-1. [x] Skeleton, builder container, unpack + inventory of Google's image
-2. [ ] Kernel from source at the exact version Google ships, with instruction emulation for the
-       CPU features this Ryzen lacks (GFNI, AVX-VNNI) and this laptop's drivers; boot Google's
-       unmodified system from USB with logs on the stick; `make usb` and `make deploy`
-3. [ ] Graphics: Mesa (RADV, GBM) and minigbm from source, to a working desktop
-4. [ ] Wi-Fi, Bluetooth, audio, touchpad
-5. [ ] Safety: block Google's firmware flashing; setup without OTA; software security HALs
-6. [ ] Later: install to the internal NVMe (dev partition), more devices
-
-## Target hardware: MSI Modern 15 B7M
-
-| Part | Device (PCI/USB ID) | Linux driver |
+| Part | First diagnostic image | Android bring-up later |
 |---|---|---|
-| CPU | AMD Ryzen 5 7530U (Zen 3: AVX2, SHA-NI, VAES; no GFNI, no AVX-VNNI) | instruction emulation needed |
-| GPU | AMD Barcelo `1002:15e7` | `amdgpu` |
-| Wi-Fi | MediaTek MT7922 `14c3:0616` | `mt7921e` |
-| Bluetooth | MediaTek `0e8d:0616` (USB) | `btusb`, `btmtk` |
-| Audio | Ryzen HD Audio `1022:15e3`, HDMI audio `1002:1637` | `snd_hda_intel` |
-| Microphones | AMD Audio Coprocessor `1022:15e2` | `snd_rn_pci_acp3x` |
-| Touchpad | ELAN0307 (I2C HID) | `i2c_hid_acpi` |
-| Storage | Samsung PM9C1a NVMe `144d:a80d` | `nvme` |
-| USB | Renoir/Cezanne xHCI `1022:1639` | `xhci_hcd` |
+| Ryzen 5 7530U | Source-based VEX GFNI/AVX-VNNI emulation + small boot self-test | Broader emulator correctness/performance testing |
+| USB xHCI/storage/HID | Built into kernel | More device coverage |
+| UEFI display | Firmware framebuffer console | `amdgpu`, Mesa RADV/GBM, minigbm |
+| AMD GPIO / I2C HID | Compiled in; physical test still needed | ELAN0307 touchpad integration |
+| MT7922 Wi-Fi / Bluetooth | Not enabled yet | `mt7921e`, `btusb`/`btmtk`, firmware |
+| Audio | Not enabled yet | HDA + AMD ACP |
+| Internal NVMe | Deliberately disabled | Explicit dev partition support later |
 
-## Reference projects
+Before Android is enabled: source-built graphics, safe text-level init/fstab/property changes,
+firmware-updater exclusion, software KeyMint/Gatekeeper (unmodified SHA-256-pinned upstream
+prebuilts were approved), and a tested data/partition layout. A diagnostic boot is not evidence
+that Android or the physical laptop's entire hardware stack works.
 
-`reference/` holds two ports that already boot on this laptop: **project-churro** (converts the
-recovery image, kernel and graphics from source) and **gbos-x86** (fast stick updates, many
-hardware lessons in its `HANDOFF.md`). Neither has a license file: reuse only our own changes from
-them, or ask their authors first.
+**Known emulator limitation:** the imported patch handles VEX GFNI, not legacy SSE-encoded
+GFNI (the initial boot test confirmed that the latter raises SIGILL). The positive self-test
+checks VEX `vgf2p8mulb` and `vpdpbusd` results, not every instruction/encoding or full Android
+compatibility. Keep that distinction when evaluating new userspace binaries.
+
+Validated locally: nine deployment/safety tests; UEFI QEMU boot through the source-built
+GRUB/kernel; both supported instruction tests trapping into the emulator; saved USB logs;
+clean poweroff; unchanged output timestamps on a no-op build; and no kernel/loader rebuild
+for an initramfs-only change. Physical USB flashing, laptop boot and Android startup are not
+claimed as tested.
+
+## Source attribution
+
+- Kernel: [Android common](https://android.googlesource.com/kernel/common/), GPL-2.0.
+- BusyBox: [1.37.0](https://busybox.net/), GPL-2.0; upstream published SHA-256.
+- GRUB: [2.12](https://www.gnu.org/software/grub/), GPL-3.0-or-later; hash also recorded by
+  [Buildroot](https://github.com/buildroot/buildroot/blob/2024.02/boot/grub2/grub2.hash).
+- Instruction-emulation source patch: [Project Churro, pinned revision](https://github.com/kesali/project-churro-msi-modern-15-B7M/blob/488dab956808916100eca141ee251a5a5773eeba/kmod/patches/vex-emulate.patch).
+  Downloaded, checksum-verified and applied to kernel **source**, with the user's approval.
+  The reference repository has no top-level licence; resolve redistribution permissions before
+  publishing its patch or resulting images. This build does not vendor its implementation.
+
+The two original working ports remain under ignored `reference/` for comparison. Their build
+scripts and prebuilt kernels are not used. None of this pipeline edits executable bytes.

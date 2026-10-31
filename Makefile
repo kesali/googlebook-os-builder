@@ -1,38 +1,88 @@
-# gbos-dali: a Googlebook OS USB stick for the MSI Modern 15 B7M, built from
-# Google's recovery image plus our own source-built parts.
-#
-# Run `make` (or `make help`) for the list of targets. Settings: config.mk.
-# Each target names the files it needs, so `make` only redoes steps whose
-# inputs changed.
-
+# Host make describes the pipeline; all compilation happens in Debian.
 include config.mk
+include sources.mk
 
-# Pristine pieces unpacked from the recovery image; every later step reads these.
+# Keep generated files inside the repository's output area.
+ifneq ($(filter $(CURDIR)/out $(CURDIR)/out/%,$(abspath $(OUT))),$(abspath $(OUT)))
+$(error OUT must be out or a subdirectory of out)
+endif
+
 GOOGLE := $(OUT)/google
-
-# Every tool runs inside the builder container (scripts/builder.sh). The
-# recovery image is mounted read-only in case it lives outside the repository.
+DL := $(OUT)/downloads
+EMU_PATCH := $(DL)/emulator-$(EMU_SHA).patch
+BUSYBOX_TAR := $(DL)/busybox-$(BUSYBOX_SHA).tar.bz2
+GRUB_TAR := $(DL)/grub-$(GRUB_SHA).tar.xz
+KERNEL_SRC := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
+BUSYBOX_SRC := $(OUT)/src/busybox-$(BUSYBOX_SHA)
+GRUB_SRC := $(OUT)/src/grub-$(GRUB_SHA)
 BUILDER := scripts/builder.sh
-export BUILDER_IMAGE
-export EXTRA_MOUNTS := $(abspath $(RECOVERY_IMAGE))
+BUILD_READY := $(OUT)/stamps/builder
+export BUILDER_IMAGE JOBS
+export SOURCE_DATE_EPOCH := 1790812800
+export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $(image)))
 
 .DEFAULT_GOAL := help
-.PHONY: help builder unpack shell clean
+.DELETE_ON_ERROR:
+.PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke FORCE
 
 help: ## Show this list
-	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-8s %s\n", $$1, $$2 }'
+	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
 
-builder: $(OUT)/stamps/builder ## Build the Docker image with all build tools
-$(OUT)/stamps/builder: docker/Dockerfile
+builder: $(BUILD_READY) ## Build the Debian tool environment
+$(BUILD_READY): docker/Dockerfile
 	docker build -t $(BUILDER_IMAGE) docker
 	@mkdir -p $(@D) && touch $@
 
-unpack: $(GOOGLE)/inventory.txt ## Unpack the recovery image into out/google/
-$(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) scripts/unpack.sh tools/lp.py tools/kernel_info.py $(OUT)/stamps/builder
+unpack: $(GOOGLE)/inventory.txt ## Inspect Google's read-only recovery image
+$(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) scripts/unpack.sh tools/lp.py tools/kernel_info.py $(BUILD_READY)
 	$(BUILDER) scripts/unpack.sh $(RECOVERY_IMAGE) $(GOOGLE)
 
-shell: $(OUT)/stamps/builder ## Open a shell inside the builder container
-	$(BUILDER) bash
+$(EMU_PATCH): scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(EMU_URL)" "$(EMU_SHA)" "$@"
+$(BUSYBOX_TAR): scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
+$(GRUB_TAR): scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(GRUB_URL)" "$(GRUB_SHA)" "$@"
 
-clean: ## Delete out/ (the recovery image is never touched)
-	rm -rf $(OUT)
+$(KERNEL_SRC)/.ready: $(EMU_PATCH) | $(BUILD_READY)
+	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_REV)" "$(EMU_PATCH)" "$(KERNEL_SRC)"
+$(BUSYBOX_SRC)/.ready: $(BUSYBOX_TAR)
+	$(BUILDER) bash scripts/source.sh "$(BUSYBOX_TAR)" "$(BUSYBOX_SRC)"
+$(GRUB_SRC)/.ready: $(GRUB_TAR)
+	$(BUILDER) bash scripts/source.sh "$(GRUB_TAR)" "$(GRUB_SRC)"
+
+sources: $(KERNEL_SRC)/.ready $(BUSYBOX_SRC)/.ready $(GRUB_SRC)/.ready ## Fetch pinned source trees (editable under out/src/)
+
+# FORCE lets the upstream build systems see source edits. Published files keep
+# their timestamps when their contents do not change, so downstream steps skip.
+kernel: $(OUT)/kernel/bzImage ## Incrementally compile the diagnostic kernel
+$(OUT)/kernel/bzImage: FORCE $(KERNEL_SRC)/.ready kernel/msi-diagnostic.config scripts/kernel.sh $(BUILD_READY)
+	$(BUILDER) bash scripts/kernel.sh "$(KERNEL_SRC)" "$(OUT)/kernel" kernel/msi-diagnostic.config
+$(OUT)/busybox/busybox: FORCE $(BUSYBOX_SRC)/.ready scripts/busybox.sh $(BUILD_READY)
+	$(BUILDER) bash scripts/busybox.sh "$(BUSYBOX_SRC)" "$(OUT)/busybox"
+$(OUT)/grub/BOOTX64.EFI: FORCE $(GRUB_SRC)/.ready scripts/grub.sh boot/loader.cfg $(BUILD_READY)
+	$(BUILDER) bash scripts/grub.sh "$(GRUB_SRC)" "$(OUT)/grub" "$(abspath boot/loader.cfg)"
+
+$(OUT)/isa-smoke: tools/isa-smoke.c $(BUILD_READY)
+	$(BUILDER) gcc -O2 -Wall -Wextra -Werror -static -o "$@" "$<"
+initramfs: $(OUT)/initramfs.gz ## Pack BusyBox, boot/init and the CPU self-test
+$(OUT)/initramfs.gz: $(OUT)/busybox/busybox boot/init $(OUT)/isa-smoke scripts/initramfs.sh
+	$(BUILDER) bash scripts/initramfs.sh "$(OUT)/busybox/busybox" boot/init "$(OUT)/isa-smoke" "$@"
+
+$(OUT)/boot/manifest.json: $(OUT)/kernel/bzImage $(OUT)/initramfs.gz $(OUT)/grub/BOOTX64.EFI boot/menu.cfg tools/deploy.py
+	$(BUILDER) python3 tools/deploy.py bundle "$(OUT)/kernel/bzImage" "$(OUT)/initramfs.gz" "$(OUT)/grub/BOOTX64.EFI" boot/menu.cfg "$(OUT)/boot"
+image: $(USB_IMAGE) ## Assemble out/dali-usb.img (no root or physical disk writes)
+usb: image ## Alias for image; flash it with your preferred USB imaging tool
+$(USB_IMAGE): $(OUT)/boot/manifest.json scripts/image.sh tools/deploy.py
+	$(BUILDER) bash scripts/image.sh "$(OUT)/boot" "$@"
+
+deploy: $(OUT)/boot/manifest.json ## Update changed boot files: make deploy USB=/mounted/USB
+	@test -n "$(USB)" || { echo "Set USB to the mounted DALI-BOOT partition; no raw devices." >&2; exit 1; }
+	python3 tools/deploy.py usb "$(OUT)/boot" "$(USB)"
+
+test: $(BUILD_READY) ## Run focused update/safety tests (no physical disks)
+	$(BUILDER) python3 -m unittest discover -s tests -v
+smoke: image ## UEFI-boot a temporary image in QEMU and test instruction emulation
+	$(BUILDER) python3 tools/boot_test.py "$(USB_IMAGE)" "$(OUT)"
+shell: $(BUILD_READY) ## Open a shell inside the builder
+	$(BUILDER) bash
