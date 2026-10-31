@@ -29,3 +29,10 @@ RUN curl -fsSL --retry 5 --retry-delay 10 \
         | base64 -d > /usr/local/bin/avbtool \
     && echo "${AVBTOOL_SHA256}  /usr/local/bin/avbtool" | sha256sum -c - \
     && chmod 755 /usr/local/bin/avbtool
+
+# Android userspace cross-builds and rootless filesystem reconstruction.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        meson ninja-build python3-mako python3-yaml python3-ply python3-packaging \
+        unzip e2fsprogs fakeroot attr \
+    && rm -rf /var/lib/apt/lists/*

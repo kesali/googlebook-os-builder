@@ -3,13 +3,28 @@
 A small, readable build for developing a Googlebook OS port on the **MSI Modern 15 B7M**.
 Google's recovery image is a read-only input, not something we patch with byte offsets.
 
-**Current runnable target: a diagnostic USB, not an Android desktop.** It builds the kernel,
-BusyBox and GRUB from pinned source, boots a shell, tests this Ryzen's missing CPU instructions,
-and saves logs on the USB. Android userspace, AMD graphics and software security integration are
-the next step. The diagnostic kernel is **not GKI-module-compatible**; do not combine it with
-Google's prebuilt vendor modules.
+**QEMU first:** plain Googlebook OS with a source-built GKI kernel and Mesa softpipe,
+plus the approved software KeyMint/Gatekeeper from Google's emulator. No KernelSU, dual-boot
+installer, host-GPU passthrough or physical-disk writes. The separate USB diagnostic target is
+retained, but it does not run Android.
 
 ## Build and boot
+
+For Googlebook OS, Linux needs Docker, GNU make, Python 3, `/dev/kvm` and a VNC viewer.
+Allow at least 50 GB for sources, builds and recovery images, plus Android's sparse data partition.
+
+```sh
+make qemu JOBS=12         # build changed components and run; VNC viewer: localhost:5900
+make console COMMAND='getprop sys.boot_completed'   # from another terminal
+make qemu-check          # bounded graphical boot/stability check; shuts the VM down afterwards
+```
+
+`QEMU_VNC_PORT=5901` changes the localhost-only published port. Android has 4 virtual CPUs,
+6 GB RAM and a 1280x720 software-rendered display by default. Softpipe is a correctness baseline,
+**not accelerated graphics**; CPU instruction emulation is another performance cost. The next
+performance step is accelerated Mesa, not KernelSU or an installer.
+
+## Optional USB diagnostics (not Android)
 
 Needs Linux, Docker, GNU make, Python 3 and about 15 GB free. Compilation runs as your user in
 Debian, with four jobs by default (`JOBS=6` overrides it). The first run downloads source and
@@ -88,8 +103,13 @@ use `make deploy`, **not** another whole-stick flash.
 | [scripts/git-fetch.sh](scripts/git-fetch.sh), [scripts/pahole.sh](scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
 | [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our listed changes, with config/ABI checks |
 | [android/cmdline.txt](android/cmdline.txt), [android/bootconfig.txt](android/bootconfig.txt) | Settings Android boots with: Google's + our listed changes |
-| [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's initrd and disk, assembled from Google's unmodified parts |
+| [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's module-extended initrd and private persistent data disk |
 | [scripts/qemu.sh](scripts/qemu.sh) | The QEMU virtual machine Android runs in |
+| [scripts/mesa.sh](scripts/mesa.sh) | Android Mesa, libdrm and Expat from source with the NDK |
+| [tools/android_overlay.py](tools/android_overlay.py), [android/](android/) | Explicit VM filesystem changes and readable runtime settings |
+| [scripts/android-partition.sh](scripts/android-partition.sh), [tools/fs_metadata.py](tools/fs_metadata.py) | Rootless EROFS rebuilding and complete content/metadata comparison |
+| [tools/android_sync.py](tools/android_sync.py) | Named OS partition updates, preserving Android's data |
+| [tools/android_smoke.py](tools/android_smoke.py), [tools/android_console.py](tools/android_console.py) | Full-boot checks and framed serial-shell commands |
 
 `make sources` creates editable trees under `out/src/`. `make kernel` always runs Kbuild so
 edits there are detected, not hidden by a top-level "done" stamp. Published outputs retain their
@@ -147,29 +167,73 @@ modules and our newly built ones both load. Outputs: `out/gki/bzImage` and `out/
 ## Googlebook OS in QEMU
 
 ```sh
-make qemu                # builds what changed, then boots; Ctrl-A X quits
+make qemu                # builds what changed, then boots; use a VNC viewer on localhost:5900
 less out/qemu/kernel.log # kernel and Android init log of the last run
 ```
 
-The first step before real hardware: Google's unmodified Android partitions, started the way a
-Googlebook's firmware starts them, in a virtual machine on this laptop's CPU (`-cpu host`, KVM).
-The terminal becomes Android's serial shell once Android is up.
+Google's image is the read-only starting point. Only `system`, `system_ext` and `vendor` are
+rebuilt, with the changes listed below. QEMU uses this laptop's CPU (`-cpu host`, KVM);
+its only disk is `out/android/disk.img`. The serial shell and QMP monitor are local Unix sockets
+under `out/qemu/`. Use Android's shutdown menu for an orderly shutdown; Ctrl-C stops QEMU.
+Virtual ACPI S3/S4 sleep is disabled for reliable development sessions. Input uses a standard
+virtio keyboard and relative mouse; the tablet's absolute pointer protocol is not used.
 
 - **Kernel:** `out/gki/bzImage` from `make gki`.
 - **Command line:** [android/cmdline.txt](android/cmdline.txt), Google's with the listed changes.
-- **Initrd** (`make android-initrd`): Google's boot ramdisks, then the boot settings: Google's
+- **Initrd** (`make android-initrd`): Google's boot ramdisks plus our matching
+  virtio-gpu, input and network modules, then the boot settings: Google's
   plus [android/bootconfig.txt](android/bootconfig.txt), packed by
   [tools/bootconfig.py](tools/bootconfig.py).
 - **Disk** (`make android-disk`): `out/android/disk.img`, a copy of Google's recovery image,
   instant and space-sharing on btrfs. [scripts/android-disk.sh](scripts/android-disk.sh) moves
   the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), and marks
   slot A bootable. Its partition table is written next to it as `disk.img.layout.txt`. The disk
-  holds Android's data, so it is never rebuilt: **delete it to reset Android**.
+  holds Android's data, so it is never recreated automatically.
+- **Update** (`make android-image`): rebuild changed inputs and copy only changed OS
+  partitions into that disk, with checksum read-back. `userdata`, `metadata` and the partition
+  layout remain unchanged. Stop the VM first: a shared lock prevents updates while it runs.
+  An interrupted OS update is repaired by rerunning the command, not by deleting Android's data.
 
-Status: with Google's partitions unmodified, Android starts second stage within seconds and the
-serial shell works. Startup then stops at `vold` waiting for the key store: Google's KeyMint
-runs in a Trusty security virtual machine that needs Intel's protected KVM, which neither QEMU
-nor AMD processors provide. Next: Android's software KeyMint instead.
+### Explicit VM changes
+
+- Google's Trusty security VM cannot supply KeyMint here. Its service/VINTF declarations are
+  removed; software KeyMint/Gatekeeper and their missing library dependencies come **unmodified**
+  from the SHA-256-pinned Android 17 emulator. Software keys are **not hardware protected**.
+  Remote attestation provisioning is disabled; this is not a certified or Play-Integrity device.
+- Mesa EGL/GLES and softpipe are built from source, with libdrm/Expat linked statically.
+  Google's DRM composer/minigbm remain; virtio-gpu supplies buffers and display scanout.
+  [android/mesa-drm-master.patch](android/mesa-drm-master.patch) fixes Mesa's Android software
+  renderer retaining DRM master after opening a primary node, which otherwise prevents the
+  composer from displaying anything. This is a small **source patch**, not a binary edit or
+  added service privilege. [android/vendor.props](android/vendor.props) contains the graphics settings.
+- Google firmware updaters, OTA and the absent EC logger are removed. The only replacement
+  firmware command is [android/crossystem-qemu.c](android/crossystem-qemu.c), compiled from source:
+  it accepts the boot HAL's success assignments for this VM, rejects everything else, and never
+  accesses firmware.
+- EROFS extraction/rebuilding runs under fakeroot. After rebuilding, **every file's contents,
+  mode, uid/gid and xattrs (including SELinux labels) are compared** with the intended tree.
+  No mount or privileged container is used. SELinux stays enforcing.
+- AVB verification is explicitly disabled for these development partitions using `avbtool`
+  to generate a new vbmeta image. No byte-offset edits to vbmeta or executable code.
+
+`make qemu-check` waits for `sys.boot_completed=1` **and the boot animation to exit**, then requires
+stable system_server, SurfaceFlinger, KeyMint and Gatekeeper PIDs for 30 seconds, SELinux enforcing,
+a reported softpipe renderer and 1280x720 QEMU scanout. It saves `out/qemu/screen.png`,
+`boot-state.txt`, `surfaceflinger.txt`, `kernel.log` and `logcat.txt`. A serial shell or a boot logo
+alone is not a passing result. The captured screen also needs visual inspection.
+
+Verified locally: the actual Googlebook welcome/setup screen at 1280x720, with Mesa softpipe,
+software keys and SELinux enforcing, VNC connection, mouse navigation into the language picker,
+and clean guest shutdown. Seventeen focused tests pass; unchanged builds preserve output
+timestamps and write no OS partitions, and a running VM rejects disk updates. Allow several minutes
+for CPU-rendered startup. Setup completion, Google account sign-in, hardware-backed attestation
+and laptop performance are **not** claimed as tested. Bluetooth, Wi-Fi and audio hardware are
+not presented to this VM; QEMU provides a virtual Ethernet adapter instead.
+
+For iterations, stop the VM, edit the relevant source/configuration, and rerun `make qemu`.
+Mesa source/toolchain/patch changes get separate build caches; ordinary source edits rebuild
+incrementally. Only affected EROFS filesystems are rebuilt, and only changed OS partitions are
+copied into the existing disk. An unchanged build writes no disk partitions.
 
 ## Hardware scope and next steps
 
@@ -183,10 +247,8 @@ nor AMD processors provide. Next: Android's software KeyMint instead.
 | Audio | Not enabled yet | HDA + AMD ACP |
 | Internal NVMe | Deliberately disabled | Explicit dev partition support later |
 
-Before Android is enabled: source-built graphics, safe text-level init/fstab/property changes,
-firmware-updater exclusion, software KeyMint/Gatekeeper (unmodified SHA-256-pinned upstream
-prebuilts were approved), and a tested data/partition layout. A diagnostic boot is not evidence
-that Android or the physical laptop's entire hardware stack works.
+The hardware table describes the older diagnostic USB, not the QEMU GKI. Real-laptop Android
+graphics, Wi-Fi, audio and USB deployment of Android remain separate work; no installer is added.
 
 **Known emulator limitation:** the imported patch handles VEX GFNI, not legacy SSE-encoded
 GFNI (the initial boot test confirmed that the latter raises SIGILL). The positive self-test
@@ -196,8 +258,7 @@ compatibility. Keep that distinction when evaluating new userspace binaries.
 Validated locally: nine deployment/safety tests; UEFI QEMU boot through the source-built
 GRUB/kernel; both supported instruction tests trapping into the emulator; saved USB logs;
 clean poweroff; unchanged output timestamps on a no-op build; and no kernel/loader rebuild
-for an initramfs-only change. Physical USB flashing, laptop boot and Android startup are not
-claimed as tested.
+for an initramfs-only change. Physical USB flashing and laptop boot are not claimed as tested.
 
 ## Source attribution
 
@@ -205,6 +266,11 @@ claimed as tested.
 - BusyBox: [1.37.0](https://busybox.net/), GPL-2.0; upstream published SHA-256.
 - GRUB: [2.12](https://www.gnu.org/software/grub/), GPL-3.0-or-later; hash also recorded by
   [Buildroot](https://github.com/buildroot/buildroot/blob/2024.02/boot/grub2/grub2.hash).
+- Graphics: [Mesa](https://mesa3d.org/), [libdrm](https://dri.freedesktop.org/libdrm/) and
+  [Expat](https://libexpat.github.io/), built from the pinned upstream sources and their licences.
+- Development security HALs: unmodified binaries from Google's pinned Android 17 emulator
+  image. Googlebook userspace remains proprietary recovery-image content, not a source rebuild
+  or a claim of redistribution permission.
 - Instruction-emulation source patch: [Project Churro, pinned revision](https://github.com/kesali/project-churro-msi-modern-15-B7M/blob/488dab956808916100eca141ee251a5a5773eeba/kmod/patches/vex-emulate.patch).
   Downloaded, checksum-verified and applied to kernel **source**, with the user's approval.
   The reference repository has no top-level licence; resolve redistribution permissions before

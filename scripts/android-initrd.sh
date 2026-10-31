@@ -4,9 +4,9 @@
 #
 #   platform ramdisk | kernel module ramdisk | generic ramdisk | bootconfig
 #
-#   android-initrd.sh <google dir> <our bootconfig.txt> <output>
+#   android-initrd.sh <google dir> <our bootconfig.txt> <merged module ramdisk> <output>
 set -euo pipefail
-google=$1 bootconfig=$2 output=$3
+google=$1 bootconfig=$2 modules=$3 output=$4
 tools=$(cd "$(dirname "$0")/../tools" && pwd)
 mkdir -p "$(dirname "$output")"
 work=$(mktemp -d "$output.XXXXXX")
@@ -26,6 +26,6 @@ python3 "$tools/bootconfig.py" "$work/bootconfig" \
 
 # vendor_ramdisk00 is the platform ramdisk (type 1), 02 the kernel modules (type 3, "dlkm");
 # 01 is the recovery ramdisk, which a normal boot doesn't load.
-cat "$google/vendor_boot/vendor_ramdisk00" "$google/vendor_boot/vendor_ramdisk02" \
+cat "$google/vendor_boot/vendor_ramdisk00" "$modules" \
     "$google/init_boot/ramdisk" "$work/bootconfig" >"$work/initrd"
 mv "$work/initrd" "$output"

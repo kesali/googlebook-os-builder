@@ -34,3 +34,24 @@ BINDGEN_REV := 4155cb466dcd9b53c6f873829c53aa6f905449dd
 # pahole (writes the kernel's BTF type information), built from Google's source.
 DWARVES_URL := https://android.googlesource.com/platform/external/dwarves
 DWARVES_REV := d884153887ce06fec729061016f7a0b412f08fc6
+
+# QEMU's software renderer. No LLVM, Vulkan or hardware-specific Mesa drivers yet.
+MESA_VERSION := 26.3.0-rc3
+MESA_URL := https://archive.mesa3d.org/mesa-$(MESA_VERSION).tar.xz
+MESA_SHA := 3600c01f11439628d0a85de5ed9cb76f297d13e9783cdeecb91aa685055c9942
+LIBDRM_VERSION := 2.4.133
+LIBDRM_URL := https://dri.freedesktop.org/libdrm/libdrm-$(LIBDRM_VERSION).tar.xz
+LIBDRM_SHA := fc68f9d0ba2ea63c9432a299e14fea09fad7a8a66e8039fcd7802ca59f77b4f5
+EXPAT_VERSION := 2.7.3
+EXPAT_URL := https://github.com/libexpat/libexpat/releases/download/R_2_7_3/expat-$(EXPAT_VERSION).tar.xz
+EXPAT_SHA := 71df8f40706a7bb0a80a5367079ea75d91da4f8c65c58ec59bcdfbf7decdab9f
+
+# NDK r30's SHA-256 was calculated after checking Google's published SHA-1:
+# 5107f898313790e449e87eee2183d9a20602dee9 (developer.android.com/ndk/downloads).
+NDK_URL := https://dl.google.com/android/repository/android-ndk-r30-linux.zip
+NDK_SHA := 753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2
+
+# Only software KeyMint/Gatekeeper and their missing dependencies are taken from here.
+# Google's published SHA-1: 629e507fd5b737c2c836b12b52c81cd0e3b12399.
+ANDROID_EMU_URL := https://dl.google.com/android/repository/sys-img/google_apis/x86_64-37.0_r06.zip
+ANDROID_EMU_SHA := 43f1d4eadf9117a505bbd815704ac5d9aaf4c7ce61c9d99f66305245ce00a191

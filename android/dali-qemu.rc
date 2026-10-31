@@ -1,0 +1,16 @@
+# VM-only development profile. Software keys have no hardware-backed security.
+on early-init
+    setprop trusty.security_vm.enabled 0
+    setprop remote_provisioning.tee.rkp_only 0
+    setprop remote_provisioning.strongbox.rkp_only 0
+    setprop remote_provisioning.hostname ""
+    export LIBGL_ALWAYS_SOFTWARE true
+    export GALLIUM_DRIVER softpipe
+
+# No Google security chip is presented to the VM.
+service android.system.desktop.security.gscd /system/bin/gscd
+    override
+    class early_hal
+    user hsm
+    group hsm
+    disabled

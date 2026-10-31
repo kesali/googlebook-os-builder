@@ -10,9 +10,12 @@ androidboot.force_normal_boot=1
 # (orange state), which our changed partitions do.
 androidboot.verifiedbootstate=orange
 androidboot.vbmeta.device_state=unlocked
-androidboot.veritymode=enforcing
+androidboot.veritymode=disabled
 
 # Booted from removable media (like a Googlebook recovery USB), not an internal disk.
 androidboot.boot_source=external
 
 androidboot.serialno=DALI0001
+
+# The software services replace the hardware-backed StrongBox and Trusty stack.
+androidboot.vendor.apex.com.android.hardware.keymint.strongbox.desktop=none

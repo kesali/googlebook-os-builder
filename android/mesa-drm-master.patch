@@ -1,0 +1,20 @@
+--- a/src/egl/drivers/dri2/platform_android.c
++++ b/src/egl/drivers/dri2/platform_android.c
+@@ -1127,6 +1127,17 @@
+          goto next;
+       }
+ 
++      /* Android's composer, not EGL's software renderer, owns display scanout.
++       * Opening the first primary-node fd implicitly acquires DRM master.
++       */
++      if (node_type == DRM_NODE_PRIMARY && drmIsMaster(dri2_dpy->fd_render_gpu) &&
++          drmDropMaster(dri2_dpy->fd_render_gpu) != 0) {
++         _eglLog(_EGL_WARNING, "Failed to release software renderer DRM master");
++         close(dri2_dpy->fd_render_gpu);
++         dri2_dpy->fd_render_gpu = -1;
++         goto next;
++      }
++
+       /* If a vendor is explicitly provided, we use only that.
+        * Otherwise we fall-back the first device that is supported.
+        */

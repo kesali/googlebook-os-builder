@@ -6,6 +6,9 @@ mkdir -p "$(dirname "$destination")"
 temporary=$(mktemp -d "$destination.partial.XXXXXX")
 trap 'rm -rf "$temporary"' EXIT
 tar -xf "$archive" --strip-components=1 -C "$temporary"
+if [ "$#" -eq 3 ]; then
+    patch --batch --fuzz=0 -d "$temporary" -p1 < "$3"
+fi
 if [ -e "$destination" ]; then
     echo "Refusing to replace source tree $destination; preserve local edits first." >&2
     exit 1

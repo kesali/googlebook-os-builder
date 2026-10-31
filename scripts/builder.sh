@@ -36,7 +36,12 @@ if [ -e /dev/kvm ]; then
     devices=(--device /dev/kvm --group-add "$(stat -c %g /dev/kvm)")
 fi
 
-exec docker run --rm --interactive "${terminal[@]}" "${devices[@]}" \
-    --user "$(id -u):$(id -g)" --env HOME=/tmp --env JOBS --env SOURCE_DATE_EPOCH \
+ports=()
+if [ "${2:-}" = scripts/qemu.sh ]; then
+    ports=(--publish "127.0.0.1:${QEMU_VNC_PORT:-5900}:5900")
+fi
+
+exec docker run --rm --interactive "${terminal[@]}" "${devices[@]}" "${ports[@]}" \
+    --user "$(id -u):$(id -g)" --env HOME=/tmp --env JOBS --env SOURCE_DATE_EPOCH --env QEMU_VNC_PORT \
     "${mounts[@]}" --workdir "$PWD" \
     "$image" "$@"

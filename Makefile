@@ -20,16 +20,29 @@ GKI_SYMVERS := $(DL)/vmlinux-$(GKI_BUILD)-$(GKI_SYMVERS_SHA).symvers
 TOOLCHAIN := $(OUT)/toolchain
 GKI := $(OUT)/gki
 ANDROID := $(OUT)/android
+MESA := $(OUT)/mesa
+MESA_TAR := $(DL)/mesa-$(MESA_VERSION).tar.xz
+MESA_PATCH := android/mesa-drm-master.patch
+MESA_PATCH_SHA := $(shell sha256sum $(MESA_PATCH) | cut -d' ' -f1)
+MESA_SRC := $(OUT)/src/mesa-$(MESA_SHA)-$(MESA_PATCH_SHA)
+LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_VERSION).tar.xz
+LIBDRM_SRC := $(OUT)/src/libdrm-$(LIBDRM_SHA)
+EXPAT_TAR := $(DL)/expat-$(EXPAT_VERSION).tar.xz
+EXPAT_SRC := $(OUT)/src/expat-$(EXPAT_SHA)
+NDK_ZIP := $(DL)/android-ndk-r30-linux.zip
+NDK := $(TOOLCHAIN)/ndk-$(NDK_SHA)
+ANDROID_EMU_ZIP := $(DL)/emulator-$(ANDROID_EMU_SHA).zip
+ANDROID_EMU := $(OUT)/emulator-$(ANDROID_EMU_SHA)
 BUILDER := scripts/builder.sh
 BUILD_READY := $(OUT)/stamps/builder
-export BUILDER_IMAGE JOBS
+export BUILDER_IMAGE JOBS QEMU_VNC_PORT
 export SOURCE_DATE_EPOCH := 1790812800
 export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $(image)))
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
 .PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki \
-	android-initrd android-disk qemu FORCE
+	android-initrd android-disk android-image android-sync mesa qemu qemu-check console FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -40,7 +53,7 @@ $(BUILD_READY): docker/Dockerfile
 	@mkdir -p $(@D) && touch $@
 
 unpack: $(GOOGLE)/inventory.txt ## Inspect Google's read-only recovery image
-$(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) scripts/unpack.sh tools/lp.py tools/kernel_info.py $(BUILD_READY)
+$(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) scripts/unpack.sh tools/lp.py tools/kernel_info.py | $(BUILD_READY)
 	$(BUILDER) scripts/unpack.sh $(RECOVERY_IMAGE) $(GOOGLE)
 
 $(EMU_PATCH): scripts/fetch.sh | $(BUILD_READY)
@@ -125,16 +138,71 @@ $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/invento
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
 		"$(GKI_SYMVERS)" kernel/gki.config
 
-# Googlebook OS in QEMU: Google's partitions, booted with our kernel.
-android-initrd: $(ANDROID)/initrd.img ## Google's boot ramdisks + android/bootconfig.txt
-$(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
-	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$@"
+# Android's QEMU userspace: pinned source graphics + unmodified software security HALs.
+$(MESA_TAR): sources.mk scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(MESA_URL)" "$(MESA_SHA)" "$@"
+$(LIBDRM_TAR): sources.mk scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(LIBDRM_URL)" "$(LIBDRM_SHA)" "$@"
+$(EXPAT_TAR): sources.mk scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(EXPAT_URL)" "$(EXPAT_SHA)" "$@"
+$(NDK_ZIP): sources.mk scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(NDK_URL)" "$(NDK_SHA)" "$@"
+$(ANDROID_EMU_ZIP): sources.mk scripts/fetch.sh | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(ANDROID_EMU_URL)" "$(ANDROID_EMU_SHA)" "$@"
+$(MESA_SRC)/.ready: $(MESA_TAR) $(MESA_PATCH) scripts/source.sh
+	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" "$(MESA_PATCH)"
+$(LIBDRM_SRC)/.ready: $(LIBDRM_TAR)
+	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
+$(EXPAT_SRC)/.ready: $(EXPAT_TAR)
+	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
+$(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
+	$(BUILDER) bash scripts/ndk.sh "$<" "$(@D)"
+$(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) scripts/emulator.sh
+	$(BUILDER) bash scripts/emulator.sh "$<" "$(@D)"
+
+mesa: $(MESA)/manifest ## Incrementally build Android Mesa softpipe from source
+$(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready scripts/mesa.sh
+	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)"
+
+$(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
+	@mkdir -p $(@D)
+	$(BUILDER) "$(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android35-clang" \
+		-O2 -Wall -Wextra -Werror -o "$@" "$<"
+
+$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img: \
+		$(GOOGLE)/inventory.txt scripts/android-partition.sh tools/android_overlay.py tools/fs_metadata.py
+	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(patsubst %_a.img,%,$(@F))" \
+		"$(GOOGLE)" "$(ANDROID_EMU)" "$(MESA)" "$(ANDROID)/crossystem" "$@"
+
+$(ANDROID)/vendor_a.img: $(ANDROID_EMU)/.ready $(MESA)/manifest $(ANDROID)/crossystem \
+		android/vendor.props android/gatekeeper.rc
+$(ANDROID)/system_ext_a.img: android/dali-qemu.rc
+
+$(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
+	@mkdir -p $(@D)
+	$(BUILDER) avbtool make_vbmeta_image --algorithm NONE --flags 3 --padding_size 4096 --output "$@"
+
+$(ANDROID)/modules.lz4: FORCE $(GKI)/bzImage scripts/android-modules.sh tools/qemu_modules.py
+	$(BUILDER) bash scripts/android-modules.sh "$(GOOGLE)" "$(GKI)/modules" "$@"
+android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks, our QEMU drivers and boot settings
+$(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
+	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$(ANDROID)/modules.lz4" "$@"
 
 # Never rebuilt: the disk holds Android's data. Delete it to start over.
 android-disk: $(ANDROID)/disk.img ## Google's disk with a bigger, empty data partition
 $(ANDROID)/disk.img: | $(GOOGLE)/inventory.txt
 	$(BUILDER) bash scripts/android-disk.sh "$(RECOVERY_IMAGE)" $(ANDROID_DATA_GIB) "$@"
 
-qemu: $(GKI)/bzImage $(ANDROID)/initrd.img $(ANDROID)/disk.img ## Boot Googlebook OS in QEMU (Ctrl-A X quits)
+android-sync: $(ANDROID)/disk.img $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vbmeta_a.img
+	$(BUILDER) python3 tools/android_sync.py "$(ANDROID)/disk.img" "$(ANDROID)"
+android-image: $(GKI)/bzImage $(ANDROID)/initrd.img android-sync ## Build/update the QEMU image, preserving Android data
+
+qemu: android-image ## Run Googlebook OS; connect a VNC viewer to localhost:5900
 	$(BUILDER) bash scripts/qemu.sh "$(GKI)/bzImage" "$(ANDROID)/initrd.img" "$(ANDROID)/disk.img" \
 		android/cmdline.txt "$(OUT)/qemu" $(QEMU_CPUS) $(QEMU_MEMORY)
+
+qemu-check: android-image ## Verify full graphical Android startup in a bounded QEMU run
+	$(BUILDER) python3 tools/android_smoke.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY)
+
+console: ## Run a serial-shell command in the running VM: make console COMMAND='getprop'
+	python3 tools/android_console.py "$(OUT)/qemu/console.sock" "$(COMMAND)"
