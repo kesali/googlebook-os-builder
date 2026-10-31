@@ -109,7 +109,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [scripts/git-fetch.sh](scripts/git-fetch.sh), [scripts/pahole.sh](scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
 | [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our one change, with config/ABI checks |
 | [android/cmdline.txt](android/cmdline.txt), [android/bootconfig.txt](android/bootconfig.txt) | Settings Android boots with: Google's + our listed changes |
-| [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's module-extended initrd and private persistent data disk |
+| [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's module-extended initrd and private disk: persistent data, FAT32 boot partition |
 | [scripts/qemu.sh](scripts/qemu.sh) | The QEMU virtual machine Android runs in |
 | [scripts/mesa.sh](scripts/mesa.sh) | Android Mesa, libdrm and Expat from source with the NDK |
 | [android/system/](android/system/), [android/system_ext/](android/system_ext/), [android/vendor/](android/vendor/), [android/module_ramdisk/](android/module_ramdisk/) | Every change to Google's files: `remove.list`, `install.list` and `*.patch` per target |
@@ -200,9 +200,12 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   [tools/bootconfig.py](tools/bootconfig.py).
 - **Disk** (`make android-disk`): `out/android/disk.img`, a copy of Google's recovery image,
   instant and space-sharing on btrfs. [scripts/android-disk.sh](scripts/android-disk.sh) moves
-  the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), and marks
-  slot A bootable. Its partition table is written next to it as `disk.img.layout.txt`. The disk
-  holds Android's data, so it is never recreated automatically.
+  the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), marks
+  slot A bootable, and merges Google's empty 64 MiB EFI-SYSTEM with the empty 512 MiB `KERN-A`
+  beside it into one 576 MiB FAT32 partition labelled `DALI-BOOT` for the laptop's boot files
+  (still empty; the script refuses unless both are all zeros). Its partition table is written
+  next to it as `disk.img.layout.txt`. The disk holds Android's data, so it is never recreated
+  automatically.
 - **Update** (`make android-image`): rebuild changed inputs and copy only changed OS
   partitions into that disk, with checksum read-back. `userdata`, `metadata` and the partition
   layout remain unchanged. Stop the VM first: a shared lock prevents updates while it runs.

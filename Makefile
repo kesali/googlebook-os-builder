@@ -198,7 +198,7 @@ $(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bo
 	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$(ANDROID)/modules.lz4" "$@"
 
 # Never rebuilt: the disk holds Android's data. Delete it to start over.
-android-disk: $(ANDROID)/disk.img ## Google's disk with a bigger, empty data partition
+android-disk: $(ANDROID)/disk.img ## Google's disk: bigger data partition, FAT32 boot partition
 $(ANDROID)/disk.img: | $(GOOGLE)/inventory.txt
 	$(BUILDER) bash scripts/android-disk.sh "$(RECOVERY_IMAGE)" $(ANDROID_DATA_GIB) "$@"
 

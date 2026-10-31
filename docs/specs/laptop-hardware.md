@@ -1,8 +1,9 @@
 # Laptop hardware
 
-**Status:** planned — M1 agreed and its kernel built-ins are in; Android has not been booted on the MSI laptop yet.
+**Status:** planned — M1 agreed; its kernel built-ins and the disk's FAT32 boot partition are in; Android has not been booted on the MSI laptop yet.
 **Last verified:** 2026-11-01 — M1 built-ins: `make gki` (config and ABI checks), `make test` and
-`make qemu-check` pass (logs in `out/m1-validation/`). 2026-10-31 — diagnostic USB only: owner
+`make qemu-check` pass; so does `make qemu-check` on the recreated disk with the FAT32 EFI-SYSTEM
+(logs in `out/m1-validation/`). 2026-10-31 — diagnostic USB only: owner
 confirmed boot/shutdown; [hardware report](../../out/laptop-boot-2026-10-31/hardware.txt) and
 [kernel log](../../out/laptop-boot-2026-10-31/kernel.log) reviewed. The BUP Slim was measured
 read-only: [drive notes](../../out/laptop-boot-2026-10-31/usb-drive.txt).
@@ -23,8 +24,11 @@ the setup screen; they have not run on the laptop, and QEMU's direct-kernel boot
 framebuffer for simpledrm to use.
 The USB for Android is the BUP Slim (232.9 GiB). It linked at USB 2.0 (480 Mb/s, 39 MB/s
 sequential, 0.34 ms random reads); Linux calls it rotational, but the media type is unknown.
-In Google's disk (`out/android/disk.img`) EFI-SYSTEM (64 MiB) and `KERN-A` (512 MiB) are all zeros.
-Not verified: any Android boot on the laptop, and whether Google's graphics allocator accepts simpledrm.
+`out/android/disk.img` has the USB's layout: Google's all-zero EFI-SYSTEM (64 MiB) and `KERN-A`
+(512 MiB) are one 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`, still empty, same PARTUUID;
+see [os-image.md](os-image.md)). `fsck.vfat` is clean and QEMU boots it to the setup screen.
+Not verified: any Android boot on the laptop, whether UEFI firmware reads that FAT32 partition,
+and whether Google's graphics allocator accepts simpledrm.
 The devices below were read from this laptop running a desktop Linux (`lspci -nnk`, `lsusb`,
 `/proc/bus/input/devices`).
 
@@ -52,6 +56,11 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
   GRUB, kernel, initrd and menu live there and update like the diagnostic USB
   ([deploy.py](../../tools/deploy.py): new files first, the menu last, previous build kept).
   This replaces the diagnostic image on the stick; flash it again only for a hardware check.
+  QEMU's disk and the USB are the same image (owner's choice, 2026-11-01).
+- The internal NVMe stays invisible to Android on the laptop: its GRUB entry adds
+  `initcall_blacklist=nvme_init` (Google's kernel has NVMe built in). QEMU's direct-kernel boot
+  uses an NVMe disk and keeps it. The UEFI test must show a decoy NVMe disk is never enumerated
+  and stays byte-identical (owner agreed, 2026-11-01).
 - Updates: boot files go to the mounted ESP without sudo. OS partitions are raw writes to the
   stick, only with the owner's explicit approval, a checked by-id USB target and a sudo
   password typed locally (VS Code task). No udev rule.
@@ -73,6 +82,7 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
 M1, in this order:
 1. `make test`, `make gki JOBS=12` (config, ABI and certificate checks), then `make qemu-check JOBS=12`.
    Run for the built-ins on 2026-11-01: all pass; QEMU's `screen.png` shows the setup language list.
+   Run again on the recreated disk with the FAT32 EFI-SYSTEM: passes; `screen.png` shows the setup welcome page.
 2. Boot the USB image in QEMU through UEFI and GRUB with the disk attached as USB storage:
    first-stage init finds its partitions and Android starts as in the direct-kernel boot.
    Not run yet.
@@ -98,9 +108,14 @@ M1, in this order:
 
 ## Actions
 M1, in order; each step is its own commit with this spec updated.
-- [ ] Android USB image — turn the Android disk into the USB layout (576 MiB EFI-SYSTEM with GRUB,
-  kernel, initrd, menu and a laptop command line) as a regular file — done when QEMU boots it
-  through UEFI with the disk attached as USB storage and Android starts as before.
+- [ ] Boot files in the disk's ESP — GRUB, a laptop menu entry (Android's command line plus
+  `initcall_blacklist=nvme_init`), kernel and initrd written into the EFI-SYSTEM of
+  `out/android/disk.img`, keeping the previous build as a fallback — done when `mdir` lists
+  them and a second `make android-image` writes nothing.
+- [ ] UEFI boot test in QEMU — the same disk through OVMF as USB storage next to a decoy NVMe
+  disk — done when Android starts as in the direct-kernel boot, the decoy is never enumerated
+  and stays byte-identical, and an early screendump shows the kernel log. This also proves the
+  firmware reads the FAT32 partition.
 - [ ] Write the USB — a tool with strict target checks (by-id path, USB transport, not NVMe,
   nothing mounted) run through a sudo task — done when read-back matches the image and the
   drive is unmounted again. Needs the owner's explicit approval for the exact device.
@@ -123,7 +138,10 @@ M1, in order; each step is its own commit with this spec updated.
 - A udev rule for passwordless OS-partition writes to this one USB.
 
 ## Handoff log
-- 2026-11-01 (this commit) — M1 built-ins added to the Android kernel and checked: config, ABI (4501
+- 2026-11-01 (this commit) — The disk's EFI-SYSTEM is now a 576 MiB FAT32 (blank `KERN-A` absorbed),
+  checked and booted in QEMU. The owner chose one disk for QEMU and the USB, and hiding the NVMe on
+  the laptop. Next: boot files in the ESP, then the UEFI test.
+- 2026-11-01 `a9ca093` — M1 built-ins added to the Android kernel and checked: config, ABI (4501
   exports unchanged) and QEMU boot pass. Next: the Android USB image, tested in QEMU through UEFI.
 - 2026-10-31 `9c78a5d` — Owner agreed the first laptop boot plan: Google's GPT with a 576 MiB
   EFI-SYSTEM, boot files via the mounted ESP, OS partitions via a sudo task, M1 first.
