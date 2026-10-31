@@ -41,6 +41,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - Mesa uses `meson.options`, not `meson_options.txt`.
 - `--wrap-mode=nofallback` stops Meson silently using Mesa's bundled older Expat.
 - Editing the patch changes the source directory name (patch hash), so a fresh tree is extracted; edits made directly in the old tree are not carried over.
+- `mesa.sh` runs `meson setup` and CMake only when it or `cross.ini` changes (hash in
+  `out/mesa/build-*/settings`); Ninja reconfigures by itself when an upstream build file changes.
 - `drm.debug=0x1 ignore_loglevel` on the command line shows DRM open/master events — remove after diagnosing.
 
 ## Actions
@@ -52,5 +54,7 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - RADV/radeonsi + minigbm for the laptop's AMD GPU — see [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-10-31 (this commit) — Meson and CMake configure only when their settings change; no-op Mesa
+  step 3.7 s → 1.5 s.
 - 2026-10-31 `357470d` — Graphics properties and DRM labels are now patches (build-prop.patch, file-contexts.patch); Mesa files in android/vendor/install.list.
 - 2026-10-31 `56719c0` — Mesa softpipe from source; DRM-master patch gives real scanout; setup UI visible.
