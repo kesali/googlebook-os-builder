@@ -16,7 +16,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Graphics](graphics.md) | working (softpipe, slow) | Plan accelerated rendering |
 | [QEMU VM](qemu.md) | partial | Finish SetupWizard and verify networking |
 | [Laptop hardware](laptop-hardware.md) | planned | Plan Android on the real laptop |
-| [USB diagnostics](usb-diagnostic.md) | parked | Physical laptop boot test |
+| [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
 `planned` = agreed, not started · `parked` = works, not being developed now.

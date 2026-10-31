@@ -1,8 +1,10 @@
 # USB diagnostics
 
-**Status:** parked — works in QEMU; not tested on the laptop; not being developed now.
-**Last verified:** 2026-10-31 — rebuilt from `4360357`, then `make test smoke JOBS=12`;
-physical USB write/read-back, GPT and FAT checks.
+**Status:** parked — QEMU verified; first laptop boot and shutdown confirmed by the owner.
+**Last verified:** 2026-10-31 — owner's laptop test; saved
+[hardware report](../../out/laptop-boot-2026-10-31/hardware.txt) and
+[kernel log](../../out/laptop-boot-2026-10-31/kernel.log) reviewed.
+Image rebuilt from `4360357`; `make test smoke JOBS=12`, physical USB read-back, GPT and FAT checks passed.
 [Build, image checksum, payload checks, boot logs and console screenshots](../../out/usb-validation-4360357/).
 
 ## Goal
@@ -18,7 +20,12 @@ command execution, saved report and clean shutdown were verified on a disposable
 Physical USB: written with the owner's explicit approval; full-image read-back matched.
 The backup GPT was moved to the drive's end; the boot filesystem still matched the image,
 and read-only FAT checks passed. The USB was left unmounted.
-Not verified: booting the laptop.
+First laptop test: the owner reported successful boot and shutdown. The saved logs show the
+MSI Modern 15 B7M running the expected kernel, `ISA_SMOKE_OK` for both supported encodings,
+simpledrm console initialization, keyboard registration and the ELAN0307 I2C HID/multitouch
+device. The partition report contains only the USB disk and its partition, not internal NVMe.
+Not verified: physical touchpad motion/gestures, Wi-Fi, Bluetooth, audio or Android on the laptop.
+The log ends at the self-test; shutdown is the owner's observation, not captured in the log.
 
 ## Decisions
 - BusyBox is busybox.net's official static binary and GRUB is Debian's package, both unchanged:
@@ -42,13 +49,18 @@ Not verified: booting the laptop.
   `add-fw_path-variable-to-detect-config-file-on-efi`). With `$cmdpath` it stops at `grub>`.
 - A rootless cpio has no `/dev/console`; init redirects output after mounting devtmpfs.
 - Legacy SSE-encoded GFNI still raises SIGILL (see [kernel.md](kernel.md)).
+- The first laptop log has ACPI table errors, missing `regulatory.db` and an HDMI HDA codec
+  probe failure. They did not prevent this diagnostic boot; Wi-Fi/audio and power-management
+  behavior are not validated by this test.
 
 ## Actions
-- [ ] Boot the diagnostic USB on the laptop — done when `/boot/logs/hardware.txt` from the real
-  laptop is reviewed. The USB is flashed; the user needs to boot it.
+_None agreed._
 
 ## Handoff log
-- 2026-10-31 (this commit) — Flashed the explicitly approved USB; read-back, GPT and FAT checks
+- 2026-10-31 (this commit) — Owner confirmed first laptop boot/shutdown; reviewed and preserved
+  both USB logs. Instruction tests pass, ELAN multitouch registers and internal NVMe is absent
+  from the block-device report. Touchpad motion and Android remain untested.
+- 2026-10-31 `8626359` — Flashed the explicitly approved USB; read-back, GPT and FAT checks
   passed. [Flash log](../../out/usb-validation-4360357/flash.log) retained; one-time flashing
   script/task removed. Laptop boot remains untested.
 - 2026-10-31 `0e6bd03` — Rebuilt the current prebuilt-based image; verified payload hashes,

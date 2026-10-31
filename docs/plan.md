@@ -1,7 +1,7 @@
 # Project plan
 
-Updated: 2026-10-31. Current focus: understand and simplify the existing build; first boot of
-the diagnostic USB on the laptop.
+Updated: 2026-10-31. Current focus: understand and simplify the existing build; the first
+diagnostic USB boot on the laptop is complete.
 
 ## Priorities
 
@@ -31,9 +31,9 @@ removable once upstream covers it.
   config or `gki-kernel.sh` edit relinks in about 75 s; a new kernel or Mesa source tree rebuilds
   it fully (kernel about an hour, Mesa about a minute).
 - Setup completion, usable Internet access and Android on the physical laptop remain unverified.
-- The diagnostic USB (`make usb`) is ready for its first laptop boot: GRUB and BusyBox are
-  official prebuilts, the kernel has the touchpad drivers, and `hardware.txt` shows which driver
-  took each device. See [USB diagnostics](specs/usb-diagnostic.md).
+- The owner confirmed the diagnostic USB (`make usb`) booted and shut down on the laptop.
+  Its saved logs show passing instruction tests and ELAN touchpad registration; pointer
+  motion/gestures remain untested. See [USB diagnostics](specs/usb-diagnostic.md).
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
 Detailed status, evidence and handoffs live in the [component specs](specs/README.md).

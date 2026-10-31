@@ -1,7 +1,9 @@
 # Laptop hardware
 
 **Status:** planned — Android has not been booted on the MSI laptop yet.
-**Last verified:** — (only the separate diagnostic USB has a source-built kernel for this laptop)
+**Last verified:** 2026-10-31 — diagnostic USB only: owner confirmed boot/shutdown;
+[hardware report](../../out/laptop-boot-2026-10-31/hardware.txt) and
+[kernel log](../../out/laptop-boot-2026-10-31/kernel.log) reviewed.
 
 ## Goal
 Run the same Googlebook OS on the **MSI Modern 15 B7M** (Ryzen 5 7530U, Radeon Vega graphics,
@@ -10,6 +12,8 @@ updating the USB incrementally instead of reflashing.
 
 ## Current state
 Not started for Android. The QEMU work shares the kernel, boot chain and OS image with this.
+The first diagnostic boot passed both instruction-emulation tests and registered the internal
+keyboard and ELAN0307 touchpad with `hid-multitouch`. Pointer motion/gestures were not tested.
 The devices below were read from this laptop running a desktop Linux (`lspci -nnk`, `lsusb`,
 `/proc/bus/input/devices`).
 
@@ -42,7 +46,8 @@ To be defined with the first action.
 - Googlebook userspace uses instructions this CPU lacks; the kernel's emulator patch is required (see [kernel.md](kernel.md)).
 - The touchpad needs `X86_AMD_PLATFORM_DEVICE` (built-in only: it sets the AMD I2C clock),
   `PINCTRL_AMD`, `I2C_DESIGNWARE_PLATFORM` and `I2C_HID_ACPI`; Google's GKI config has none of them.
-  The diagnostic USB enables all of them, so it shows whether the touchpad works with them.
+  The diagnostic USB enables all of them and registers the touchpad; motion/gestures and the
+  comparison without `X86_AMD_PLATFORM_DEVICE` are still untested.
   The reference port never got this touchpad working.
 
 ## Actions
@@ -53,6 +58,9 @@ To be defined with the first action.
   [msi-diagnostic.config](../../kernel/msi-diagnostic.config)) and the touchpad result is recorded here.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Device IDs and drivers recorded from the laptop's desktop Linux;
+- 2026-10-31 (this commit) — First diagnostic boot/shutdown confirmed by the owner; logs show
+  ELAN0307 I2C HID/multitouch registration and passing instruction tests. No Android boot or
+  touchpad motion test yet; no driver/config changes made.
+- 2026-10-31 `81c4536` — Device IDs and drivers recorded from the laptop's desktop Linux;
   touchpad drivers added to the diagnostic kernel. Not yet booted on the laptop.
 - 2026-10-31 — Spec created; no laptop Android work yet.

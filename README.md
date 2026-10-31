@@ -273,9 +273,9 @@ are copied into the existing disk. An unchanged build writes no disk partitions.
 | Ryzen 5 7530U | Source-based VEX GFNI/AVX-VNNI emulation + small boot self-test | Broader emulator correctness/performance testing |
 | USB xHCI/storage/HID | Built into kernel | More device coverage |
 | UEFI display | Firmware framebuffer console | `amdgpu`, Mesa RADV/GBM, minigbm |
-| ELAN0307 touchpad (AMD I2C, GPIO, I2C HID, multitouch) | Compiled in; physical test still needed | Same drivers in the Android kernel |
+| ELAN0307 touchpad (AMD I2C, GPIO, I2C HID, multitouch) | Registered on the laptop; motion/gestures untested | Same drivers in the Android kernel |
 | MT7922 Wi-Fi / Bluetooth | Not enabled yet | `mt7921e`, `btusb`/`btmtk`, firmware |
-| Audio | Not enabled yet | HDA + AMD ACP |
+| Audio | HDA probes; audio not validated | HDA + AMD ACP |
 | Internal NVMe | Deliberately disabled | Explicit dev partition support later |
 
 The hardware table describes the older diagnostic USB, not the QEMU GKI. Real-laptop Android
@@ -290,7 +290,10 @@ Validated locally: nine deployment/safety tests; UEFI QEMU boot through GRUB and
 source-built kernel; both supported instruction tests trapping into the emulator; saved USB logs;
 clean poweroff; unchanged output timestamps on a no-op build; and no kernel/loader rebuild
 for an initramfs-only change. Physical USB flashing, read-back comparison and filesystem checks
-are verified; laptop boot remains untested.
+are verified. The owner confirmed the first laptop diagnostic boot and shutdown; saved logs
+show passing instruction tests, keyboard/touchpad registration and no internal NVMe block
+device. Touchpad motion/gestures and Android on the laptop remain untested. See
+[USB diagnostics](docs/specs/usb-diagnostic.md) for the evidence and remaining warnings.
 
 ## Source attribution
 
