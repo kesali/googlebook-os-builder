@@ -1,7 +1,8 @@
 # USB diagnostics
 
 **Status:** parked — works in QEMU; not tested on the laptop; not being developed now.
-**Last verified:** 2026-10-31 — `make smoke` (UEFI boot in QEMU, instruction-emulation self-test) and `make test`.
+**Last verified:** 2026-10-31 — rebuilt from `4360357`, then `make test smoke JOBS=12`.
+[Build, image checksum, payload checks, boot logs and console screenshots](../../out/usb-validation-4360357/).
 
 ## Goal
 A small Linux USB (not Android) to check this laptop's hardware with our own kernel build,
@@ -11,6 +12,8 @@ with file-level incremental updates instead of reflashing.
 Verified in QEMU: GRUB, the source-built kernel and BusyBox boot through UEFI; logs saved to the USB;
 both supported instruction encodings trap into the emulator; clean poweroff; `make deploy`
 writes only changed files and nothing on a no-op.
+The default interactive menu also boots without a serial port: the visible console, keyboard
+command execution, saved report and clean shutdown were verified on a disposable image copy.
 Not verified: flashing a real USB, booting the laptop.
 
 ## Decisions
@@ -41,7 +44,10 @@ Not verified: flashing a real USB, booting the laptop.
   laptop is reviewed. Needs the user to flash a USB.
 
 ## Handoff log
-- 2026-10-31 (this commit) — `hardware.txt` lists PCI/USB devices with their drivers, input
+- 2026-10-31 (this commit) — Rebuilt the current prebuilt-based image; verified payload hashes,
+  22 tests, UEFI smoke and no-serial console/input. A no-op build took 4 s and preserved all
+  published contents and timestamps. Evidence above; physical laptop boot remains untested.
+- 2026-10-31 `b3f7488` — `hardware.txt` lists PCI/USB devices with their drivers, input
   and I2C devices; `make smoke` checks the USB controller's driver appears.
 - 2026-10-31 `bb5a38f` — BusyBox and GRUB are official/Debian prebuilts instead of source
   builds; `scripts/busybox.sh` and `scripts/grub.sh` removed. Checked by `make smoke`, `make test`
