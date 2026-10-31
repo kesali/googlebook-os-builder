@@ -1,0 +1,7 @@
+# Files removed from Google's system partition. Paths are relative to the partition root;
+# each must exist. See scripts/android-overlay.sh.
+
+# This developer image is updated only by our build, never by Google's OTA.
+system/etc/init/update_engine.rc
+# Chrome OS EC log collection; the VM has no EC.
+system/etc/init/timberslide.rc

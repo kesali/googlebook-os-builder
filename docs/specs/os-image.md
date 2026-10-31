@@ -1,7 +1,7 @@
 # OS image and disk
 
-**Status:** working — explicit file-level changes, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-10-31 — full rebuild compared every file's bytes and metadata; no-op build wrote nothing; running VM blocked updates.
+**Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
+**Last verified:** 2026-10-31 — patch-file rebuild compared file by file with the previous build (only the 3 patched text files differ in bytes; all metadata identical); no-op build wrote nothing; `make qemu-check` passed.
 
 ## Goal
 Turn Google's read-only recovery image into a private QEMU disk with a short list of explicit
@@ -15,8 +15,15 @@ with read-back hashes; unchanged builds write nothing; updates refuse to run whi
 Not verified: writing any of this to a real disk or USB (deliberately not done).
 
 ## Decisions
-- Change Google's files only through [tools/android_overlay.py](../../tools/android_overlay.py):
-  whole files added, removed or replaced, settings edited in place. **No byte-offset edits.**
+- Change Google's files only through the change directory of each partition,
+  `android/<partition>/`, applied by [scripts/android-overlay.sh](../../scripts/android-overlay.sh):
+  `remove.list` (each path must exist), `install.list` (path, mode, owner, SELinux type, source),
+  then `*.patch` (unified diffs of Google's text files, header says why). A replaced file is removed,
+  then installed. **No byte-offset edits and no change logic in Python.**
+- Patches are applied to copies and written back in place, so patched files keep their owner,
+  mode and SELinux label. Every file in a change directory must be used.
+- Vendor programs may link only to vendor `lib64` or the platform LLNDK; the overlay checks every
+  installed ELF.
 - Rebuild without root: `fsck.erofs` extraction and `mkfs.erofs` under fakeroot; original UUID
   kept; output must not exceed the original partition size.
 - AVB is disabled through a new vbmeta (`--algorithm NONE --flags 3`); SELinux stays enforcing.
@@ -24,18 +31,20 @@ Not verified: writing any of this to a real disk or USB (deliberately not done).
   slot A marked bootable/successful. It holds Android's data, so it is **never recreated automatically**.
 - The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vbmeta_a` — never
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
-- Dependencies are per partition: Mesa/security/property changes rebuild vendor only; the VM
-  init script rebuilds system_ext only.
+- Dependencies are per partition: `android/vendor/`, Mesa, emulator and crossystem rebuild vendor
+  only; `android/system_ext/` rebuilds system_ext only.
 
 ## Files
-- [tools/android_overlay.py](../../tools/android_overlay.py) — every change to Google's partitions.
+- [android/system/](../../android/system/), [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/) — every change to Google's partitions.
+- [scripts/android-overlay.sh](../../scripts/android-overlay.sh) — applies one change directory; format in its header.
 - [scripts/android-partition.sh](../../scripts/android-partition.sh), [tools/fs_metadata.py](../../tools/fs_metadata.py) — rebuild and full comparison.
 - [scripts/android-disk.sh](../../scripts/android-disk.sh) — create the private disk once.
 - [tools/android_sync.py](../../tools/android_sync.py), [tools/lp.py](../../tools/lp.py) — partition updates.
 - [scripts/unpack.sh](../../scripts/unpack.sh) — Google image inventory (`out/google/inventory.txt`).
 
 ## Verify
-`make test` (sync, overlay and lock tests), then `make android-image JOBS=12`. A second run
+`make test` (sync, lock and overlay tests in [tests/test_overlay.py](../../tests/test_overlay.py)),
+then `make android-image JOBS=12`. A second run
 must print no partition writes and leave output timestamps unchanged.
 
 ## Pitfalls
@@ -43,6 +52,9 @@ must print no partition writes and leave output timestamps unchanged.
   never weaken [tools/fs_metadata.py](../../tools/fs_metadata.py) to make a build pass.
 - Logical partitions can span several extents; the updater handles multi-extent copies (tested).
 - An interrupted update is fixed by rerunning `make android-image`, not by deleting the disk.
+- Generate patches against Google's pristine file, not a previous build:
+  `fsck.erofs --extract=DIR --xattrs out/google/super/<p>_a.img`, edit a copy, then
+  `diff -u --label a/PATH --label b/PATH original edited`. Patches apply with `--fuzz=0`.
 
 ## Actions
 _None agreed._

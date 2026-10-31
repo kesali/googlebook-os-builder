@@ -23,7 +23,8 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 ## Files
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
 - [android/bootconfig.txt](../../android/bootconfig.txt), [tools/bootconfig.py](../../tools/bootconfig.py) — settings and packing.
-- [scripts/android-modules.sh](../../scripts/android-modules.sh), [tools/qemu_modules.py](../../tools/qemu_modules.py) — first-stage modules.
+- [android/module_ramdisk/](../../android/module_ramdisk/) — first-stage modules (`install.list`) and their load lines (`modules.patch`).
+- [scripts/android-modules.sh](../../scripts/android-modules.sh) — applies them; checks `modules.patch` dependencies against our kernel build.
 - [scripts/android-initrd.sh](../../scripts/android-initrd.sh) — initrd assembly.
 
 ## Verify
@@ -31,7 +32,8 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 
 ## Pitfalls
 - `modules.dep` lines without dependencies must be `name:` with **no trailing space**; Android
-  reads `"name: "` as an empty dependency and hangs (`malformed module name`). Regression test exists.
+  reads `"name: "` as an empty dependency and hangs (`malformed module name`). Regression test in
+  [tests/test_overlay.py](../../tests/test_overlay.py).
 - Anything appended after Google's lz4-legacy ramdisks must also be lz4-legacy (`lz4 -l`).
 - Bootconfig must end the initrd (data, NUL padding to 4 bytes, size, checksum, `#BOOTCONFIG\n`)
   and the command line must contain `bootconfig`.

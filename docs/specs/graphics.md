@@ -17,16 +17,18 @@ Not verified / not done: acceptable performance, Vulkan, hardware acceleration, 
   no LLVM/Vulkan/GLX. libdrm, Expat and the C++ runtime are linked statically to avoid
   vendor linker-namespace problems. Pins: [sources.mk](../../sources.mk).
 - Software rendering is selected with `LIBGL_ALWAYS_SOFTWARE`/`GALLIUM_DRIVER` in
-  [android/dali-qemu.rc](../../android/dali-qemu.rc), not Android properties (name-length limits).
+  [android/system_ext/dali-qemu.rc](../../android/system_ext/dali-qemu.rc), not Android properties (name-length limits).
 - [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch): Mesa drops DRM master after
   opening the primary node, so the composer can drive the display. A source patch, no added privileges.
-- Only virtio-gpu is loaded (no vgem). Graphics properties: [android/vendor.props](../../android/vendor.props).
+- Only virtio-gpu is loaded (no vgem). Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
+  DRM node labels: [android/vendor/file-contexts.patch](../../android/vendor/file-contexts.patch).
 - No host-GPU passthrough.
 
 ## Files
 - [scripts/mesa.sh](../../scripts/mesa.sh) — Mesa/libdrm/Expat build; build cache keyed by inputs.
 - [scripts/ndk.sh](../../scripts/ndk.sh), [scripts/source.sh](../../scripts/source.sh) — NDK and patched source trees.
-- [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch), [android/vendor.props](../../android/vendor.props).
+- [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch) — Mesa source patch.
+- [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch) — Mesa libraries and settings in vendor.
 
 ## Verify
 `make mesa JOBS=12`, then `make qemu-check JOBS=12`. Open `out/qemu/screen.png` and look at it:

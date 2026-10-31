@@ -9,7 +9,8 @@ applyTo: ["Makefile", "*.mk", "docker/**"]
 - A new input is URL + version + SHA-256 in [sources.mk](../../sources.mk). Paths include the hash
   (e.g. `$(OUT)/src/mesa-$(MESA_SHA)-$(MESA_PATCH_SHA)`), so a pin or patch change gets a fresh tree.
 - Keep dependencies per component: an input should rebuild only what uses it (vendor-only inputs
-  hang off `$(ANDROID)/vendor_a.img`, the VM init script off `$(ANDROID)/system_ext_a.img`).
+  hang off `$(ANDROID)/vendor_a.img`; each `android/<partition>/` directory and its files are
+  prerequisites of that partition only).
 - Steps with their own incremental logic (Kbuild, Meson) depend on `FORCE`; their scripts must not
   touch outputs whose bytes did not change.
 - No blanket clean target: `out/src/` may hold source edits and `out/android/disk.img` holds Android's data.

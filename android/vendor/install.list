@@ -1,0 +1,36 @@
+# Files added to Google's vendor partition. See scripts/android-overlay.sh.
+# Sources: ./ is this directory; emulator/ is the pinned Android emulator image
+# (scripts/emulator.sh), mesa/ is our Mesa build and build/ is out/android.
+#
+# path                                                                   mode owner  selinux type                source
+
+# Software KeyMint, unmodified from Google's emulator image. Not hardware-backed.
+bin/hw/android.hardware.security.keymint-service                         0755 0:2000 hal_keymint_default_exec    emulator/vendor/bin/hw/android.hardware.security.keymint-service
+etc/init/android.hardware.security.keymint-service.rc                    0644 0:0    vendor_configs_file         emulator/vendor/etc/init/android.hardware.security.keymint-service.rc
+etc/vintf/manifest/android.hardware.security.keymint-service.xml         0644 0:0    vendor_configs_file         emulator/vendor/etc/vintf/manifest/android.hardware.security.keymint-service.xml
+etc/vintf/manifest/android.hardware.security.secureclock-service.xml     0644 0:0    vendor_configs_file         emulator/vendor/etc/vintf/manifest/android.hardware.security.secureclock-service.xml
+etc/vintf/manifest/android.hardware.security.sharedsecret-service.xml    0644 0:0    vendor_configs_file         emulator/vendor/etc/vintf/manifest/android.hardware.security.sharedsecret-service.xml
+
+# Software Gatekeeper, from the emulator's nonsecure Gatekeeper APEX.
+bin/hw/android.hardware.gatekeeper-service                               0755 0:2000 hal_gatekeeper_default_exec emulator/gatekeeper/bin/hw/android.hardware.gatekeeper-service.nonsecure
+etc/init/android.hardware.gatekeeper-service.rc                          0644 0:0    vendor_configs_file         ./gatekeeper.rc
+etc/vintf/manifest/android.hardware.gatekeeper-service.nonsecure.xml     0644 0:0    vendor_configs_file         emulator/gatekeeper/etc/vintf/android.hardware.gatekeeper-service.nonsecure.xml
+etc/vintf/manifest/android.hardware.security.sharedsecret-gatekeeper.xml 0644 0:0    vendor_configs_file         emulator/gatekeeper/etc/vintf/android.hardware.security.sharedsecret-gatekeeper.xml
+
+# Libraries the two services need that Google's vendor partition lacks.
+lib64/libcppbor.so                                                       0644 0:0    vendor_file                 emulator/vendor/lib64/libcppbor.so
+lib64/libcppcose_rkp.so                                                  0644 0:0    vendor_file                 emulator/vendor/lib64/libcppcose_rkp.so
+lib64/libkeymaster_portable.so                                           0644 0:0    vendor_file                 emulator/vendor/lib64/libkeymaster_portable.so
+lib64/libkeymint.so                                                      0644 0:0    vendor_file                 emulator/vendor/lib64/libkeymint.so
+lib64/libpuresoftkeymasterdevice.so                                      0644 0:0    vendor_file                 emulator/vendor/lib64/libpuresoftkeymasterdevice.so
+lib64/libsoft_attestation_cert.so                                        0644 0:0    vendor_file                 emulator/vendor/lib64/libsoft_attestation_cert.so
+
+# Source-built Mesa softpipe: CPU-rendered EGL/GLES for QEMU's virtio-gpu display.
+lib64/egl/                                                               0755 0:0    vendor_file                 -
+lib64/egl/libEGL_mesa.so                                                 0644 0:0    same_process_hal_file       mesa/lib64/libEGL_mesa.so
+lib64/egl/libGLESv1_CM_mesa.so                                           0644 0:0    same_process_hal_file       mesa/lib64/libGLESv1_CM_mesa.so
+lib64/egl/libGLESv2_mesa.so                                              0644 0:0    same_process_hal_file       mesa/lib64/libGLESv2_mesa.so
+lib64/libgallium_dri.so                                                  0644 0:0    same_process_hal_file       mesa/lib64/libgallium_dri.so
+
+# Source-built crossystem stub from android/crossystem-qemu.c; keeps Google's metadata.
+bin/crossystem                                                           0755 0:2000 firmware_tool_exec          build/crossystem

@@ -1,0 +1,10 @@
+Label QEMU's virtio-gpu DRM nodes so the graphics HALs can open them.
+
+--- a/etc/selinux/vendor_file_contexts
++++ b/etc/selinux/vendor_file_contexts
+@@ -389,3 +389,5 @@
+ /vendor/bin/hw/android\.hardware\.boot@1\.2-service\.android-desktop u:object_r:hal_bootctl_default_exec:s0
+ /vendor/bin/hw/vendor\.dolby\.media\.c2-default-service-dax-desktop            u:object_r:mediacodec_exec:s0
+ /vendor/bin/hw/android\.hardware\.graphics\.allocator-service\.minigbm   u:object_r:hal_graphics_allocator_default_exec:s0
++/dev/dri/card[0-9]+ u:object_r:gpu_device:s0
++/dev/dri/renderD[0-9]+ u:object_r:gpu_device:s0

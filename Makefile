@@ -157,8 +157,8 @@ $(EXPAT_SRC)/.ready: $(EXPAT_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
 $(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
 	$(BUILDER) bash scripts/ndk.sh "$<" "$(@D)"
-$(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) scripts/emulator.sh
-	$(BUILDER) bash scripts/emulator.sh "$<" "$(@D)"
+$(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh
+	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super/vendor_a.img" "$(@D)"
 
 mesa: $(MESA)/manifest ## Incrementally build Android Mesa softpipe from source
 $(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready scripts/mesa.sh
@@ -169,21 +169,27 @@ $(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
 	$(BUILDER) "$(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android35-clang" \
 		-O2 -Wall -Wextra -Werror -o "$@" "$<"
 
+# Each partition = Google's pristine image + the declared changes in android/<partition>/
+# (remove.list, install.list, *.patch; see scripts/android-overlay.sh).
+ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID)
 $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img: \
-		$(GOOGLE)/inventory.txt scripts/android-partition.sh tools/android_overlay.py tools/fs_metadata.py
-	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(patsubst %_a.img,%,$(@F))" \
-		"$(GOOGLE)" "$(ANDROID_EMU)" "$(MESA)" "$(ANDROID)/crossystem" "$@"
+		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh tools/fs_metadata.py
+	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $(@F:_a.img=) android/$(@F:_a.img=) \
+		"$@" $(ANDROID_INPUTS)
 
-$(ANDROID)/vendor_a.img: $(ANDROID_EMU)/.ready $(MESA)/manifest $(ANDROID)/crossystem \
-		android/vendor.props android/gatekeeper.rc
-$(ANDROID)/system_ext_a.img: android/dali-qemu.rc
+# The directories catch removed files; the wildcards catch edited ones.
+$(ANDROID)/system_a.img: android/system $(wildcard android/system/*)
+$(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*)
+$(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) \
+		$(ANDROID_EMU)/.ready $(MESA)/manifest $(ANDROID)/crossystem
 
 $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
 	@mkdir -p $(@D)
 	$(BUILDER) avbtool make_vbmeta_image --algorithm NONE --flags 3 --padding_size 4096 --output "$@"
 
-$(ANDROID)/modules.lz4: FORCE $(GKI)/bzImage scripts/android-modules.sh tools/qemu_modules.py
-	$(BUILDER) bash scripts/android-modules.sh "$(GOOGLE)" "$(GKI)/modules" "$@"
+$(ANDROID)/modules.lz4: FORCE $(GKI)/bzImage scripts/android-modules.sh scripts/android-overlay.sh \
+		android/module_ramdisk $(wildcard android/module_ramdisk/*)
+	$(BUILDER) fakeroot bash scripts/android-modules.sh "$(GOOGLE)" android/module_ramdisk "$(GKI)/modules" "$@"
 android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks, our QEMU drivers and boot settings
 $(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
 	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$(ANDROID)/modules.lz4" "$@"

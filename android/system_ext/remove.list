@@ -1,0 +1,5 @@
+# Files removed from Google's system_ext partition. Paths are relative to the partition root;
+# each must exist. See scripts/android-overlay.sh.
+
+# QEMU cannot run the Trusty security VM; software KeyMint and Gatekeeper replace it.
+etc/init/desktop-trusty_security_vm_launcher.rc

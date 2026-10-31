@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Read: verified Google emulator zip. Write: vendor files + the software Gatekeeper APEX.
+# Read: verified Google emulator zip + Google's vendor image.
+# Write: vendor files + the software Gatekeeper APEX.
 # No loop devices/mounts: sfdisk finds the vendor filesystem and debugfs reads ext4.
 set -euo pipefail
-archive=$1 out=$2
+archive=$1 google_vendor=$2 out=$3
 mkdir -p "$(dirname "$out")"
 work=$(mktemp -d "$out.partial.XXXXXX")
 trap 'rm -rf "$work"' EXIT
@@ -28,6 +29,14 @@ test -s "$work/gatekeeper/bin/hw/android.hardware.gatekeeper-service.nonsecure" 
     cat "$work/extract.log" >&2; exit 1;
 }
 rm "$work/vendor-disk.img" "$work/vendor.ext4" "$work/gatekeeper.ext4"
-test ! -e "$out"
+# Software KeyMint and Gatekeeper must come from the vendor API level of Google's image.
+api() { sed -n 's/^ro\.vendor\.build\.version\.sdk=//p'; }
+donor=$(api < "$work/vendor/build.prop")
+target=$(dump.erofs --path=/build.prop --cat "$google_vendor" | api)
+if [ "$donor" != 37 ] || [ "$donor" != "$target" ]; then
+    echo "Security donor vendor API $donor does not match Google's $target (expected 37)" >&2
+    exit 1
+fi
+rm -rf "$out"
 touch "$work/.ready"
 mv "$work" "$out"

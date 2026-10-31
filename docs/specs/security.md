@@ -17,7 +17,7 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
 ## Decisions
 - Emulator binaries are pinned by SHA-256 and copied **unmodified** with their missing library
   dependencies; Gatekeeper's executable is renamed to the standard service name, bytes unchanged.
-- Donor and target are both API 37; extraction refuses a mismatch.
+- Donor and target are both API 37; [scripts/emulator.sh](../../scripts/emulator.sh) refuses a mismatch.
 - Trusty security VM, remote key provisioning, Google security-chip daemon (gscd) and StrongBox
   are disabled; their HAL declarations are removed. Unrelated declarations stay.
 - Firmware updaters and OTA are removed. The only firmware command left is a source-built
@@ -25,9 +25,10 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
 - No SELinux permissive domains or broad policy changes.
 
 ## Files
-- [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts.
-- [tools/android_overlay.py](../../tools/android_overlay.py) — `vendor()`/`system_ext()` install, remove and declare services.
-- [android/gatekeeper.rc](../../android/gatekeeper.rc), [android/dali-qemu.rc](../../android/dali-qemu.rc) — service definitions and VM properties.
+- [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts; API check.
+- [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/remove.list](../../android/vendor/remove.list) — services installed and removed.
+- [android/system_ext/vintf-manifest.patch](../../android/system_ext/vintf-manifest.patch) — Trusty-only HAL declarations removed.
+- [android/vendor/gatekeeper.rc](../../android/vendor/gatekeeper.rc), [android/system_ext/dali-qemu.rc](../../android/system_ext/dali-qemu.rc) — service definitions and VM properties.
 - [android/crossystem-qemu.c](../../android/crossystem-qemu.c) — firmware-command stand-in.
 - [android/bootconfig.txt](../../android/bootconfig.txt) — StrongBox disabled.
 
@@ -38,7 +39,8 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
 ## Pitfalls
 - Stock KeyMint waits for Trusty; vold then stalls and boot never completes.
 - SELinux hides `init.svc.vendor.keymint-default` from the serial shell; check process PIDs instead.
-- Unresolved library dependencies (other than LLNDK) fail the build; don't silence that.
+- An installed program needing a library not in vendor `lib64` or the LLNDK fails the build;
+  add the library to [android/vendor/install.list](../../android/vendor/install.list), don't silence the check.
 
 ## Actions
 - [ ] Confirm SetupWizard and lock-screen PIN creation work with software Gatekeeper —

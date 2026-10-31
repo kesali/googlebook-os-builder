@@ -1,0 +1,60 @@
+Fixed QEMU software graphics profile: Mesa softpipe EGL/GLES, no Vulkan,
+no wide-color/HDR, GL RenderEngine and HWUI, and plain display color handling.
+No host-GPU passthrough.
+
+--- a/build.prop
++++ b/build.prop
+@@ -42,7 +42,8 @@
+ ro.vendor.build.security_patch=2026-10-01
+ ro.product.board=
+ ro.board.platform=
+-ro.hwui.use_vulkan=true
++ro.hwui.use_vulkan=false
++debug.hwui.renderer=skiagl
+ ro.build.ab_update=true
+ ro.vendor.build.ab_ota_partitions=boot,init_boot,product,pvmfw,system,system_dlkm,system_ext,vbmeta,vendor,vendor_boot,vendor_dlkm
+ ro.product.build.16k_page.enabled=false
+@@ -106,7 +107,7 @@
+ debug.sf.layer_caching_new_layer_exclusion_duration_ms=500
+ debug.sf.layer_caching_new_layer_exclude_system_bars=true
+ ro.surface_flinger.max_frame_buffer_acquired_buffers=3
+-ro.hardware.egl=angle
++ro.hardware.egl=mesa
+ ro.gfx.angle.supported=true
+ ro.opengles.version=196610
+ graphics.gpu.profiler.support.gpu_frequency=true
+@@ -123,7 +124,7 @@
+ ro.vendor.boot_security_patch=2026-10-01
+ ro.media.xml_variant.codecs=_c2_fatcat
+ media.c2.hal.selection=aidl
+-ro.hardware.vulkan=intel
++ro.hardware.vulkan=none
+ debug.sf.renderengine_gpu_stats=true
+ dalvik.vm.heapstartsize=16m
+ dalvik.vm.heapgrowthlimit=192m
+@@ -133,17 +134,18 @@
+ dalvik.vm.heapmaxfree=8m
+ ro.boot.hypervisor.vm.supported=1
+ ro.boot.hypervisor.protected_vm.supported=1
+-ro.surface_flinger.has_wide_color_display=true
+-ro.surface_flinger.has_HDR_display=true
++ro.surface_flinger.has_wide_color_display=false
++ro.surface_flinger.has_HDR_display=false
+ vendor.sys_tuner.disable_cpuset_config=true
+ ro.vendor.widevine.key_handle_cache.enabled=false
+-debug.renderengine.backend=
+-debug.renderengine.vulkan=true
++debug.renderengine.backend=skiaglthreaded
++debug.renderengine.vulkan=false
+ debug.renderengine.graphite_desktop_optin=true
+-vendor.hwc.drm.enable_color_pipeline=true
+-vendor.hwc.drm.force_color_mode=13
+-vendor.hwc.drm.persistent_hdr=true
++vendor.hwc.drm.enable_color_pipeline=false
++vendor.hwc.drm.force_color_mode=7
++vendor.hwc.drm.persistent_hdr=false
+ vendor.hwc.use_log_gamma_lut=true
++vendor.hwc.drm.use_log_gamma_lut=false
+ vendor.hwc.drm.skip_plane_damage_clips=true
+ ro.soc.manufacturer=Intel
+ ro.sf.lcd_density=240

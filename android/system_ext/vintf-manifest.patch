@@ -1,0 +1,47 @@
+QEMU has no Trusty security VM. Drop the framework HALs that only it can serve,
+so VINTF does not wait for them; software KeyMint and Gatekeeper replace them in vendor.
+Keep the HIDL service and token managers.
+
+--- a/etc/vintf/manifest.xml
++++ b/etc/vintf/manifest.xml
+@@ -6,30 +6,6 @@
+         system/hwservicemanager/hwservicemanager.xml
+ -->
+ <manifest version="9.0" type="framework">
+-    <hal format="aidl" exclusive-to="virtual-machine">
+-        <name>android.desktop.security.finger_guard</name>
+-        <accessor>android.os.IAccessor/IFingerGuard/security_vm_fingerguard</accessor>
+-        <fqname>IFingerGuard/default</fqname>
+-    </hal>
+-    <hal format="aidl" updatable-via-system="true">
+-        <name>android.hardware.security.keymint</name>
+-        <version>5</version>
+-        <fqname>IKeyMintDevice/default</fqname>
+-    </hal>
+-    <hal format="aidl" updatable-via-system="true">
+-        <name>android.hardware.security.keymint</name>
+-        <version>3</version>
+-        <fqname>IRemotelyProvisionedComponent/default</fqname>
+-    </hal>
+-    <hal format="aidl" updatable-via-system="true">
+-        <name>android.hardware.security.secureclock</name>
+-        <fqname>ISecureClock/default</fqname>
+-    </hal>
+-    <hal format="aidl" exclusive-to="virtual-machine">
+-        <name>android.hardware.security.sharedsecret</name>
+-        <accessor>android.os.IAccessor/sharedsecret/security_vm_shared_secret</accessor>
+-        <fqname>ISharedSecret/security_vm</fqname>
+-    </hal>
+     <hal format="hidl" max-level="8">
+         <name>android.hidl.manager</name>
+         <transport>hwbinder</transport>
+@@ -40,9 +16,4 @@
+         <transport>hwbinder</transport>
+         <fqname>@1.0::ITokenManager/default</fqname>
+     </hal>
+-    <hal format="aidl" exclusive-to="virtual-machine">
+-        <name>com.android.trusty.rust.KeyMintProvisioningService</name>
+-        <accessor>android.os.IAccessor/IKeyMintProvisioningService/security_vm_keymint</accessor>
+-        <fqname>IKeyMintProvisioningService/default</fqname>
+-    </hal>
+ </manifest>

@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
-# Read: one pristine EROFS partition + explicit overlay inputs. Write: a new verified EROFS.
+# Read: one pristine Google EROFS partition + its change directory. Write: a new verified EROFS.
 # fakeroot keeps Android's uid/gid, modes and xattrs without a privileged container or mount.
+# Usage: android-partition.sh GOOGLE PARTITION CHANGES OUTPUT [NAME=DIR ...]
+# The NAME=DIR inputs are passed to android-overlay.sh for install.list sources.
 set -euo pipefail
-partition=$1 google=$(realpath "$2") emulator=$(realpath -m "$3") mesa=$(realpath -m "$4")
-crossystem=$(realpath -m "$5") output=$(realpath -m "$6")
-tools=$(cd "$(dirname "$0")/../tools" && pwd)
+google=$(realpath "$1") partition=$2 changes=$3 output=$(realpath -m "$4")
+shift 4
+scripts=$(cd "$(dirname "$0")" && pwd)
+tools=$(cd "$scripts/../tools" && pwd)
 test -n "${FAKEROOTKEY:-}" || { echo "android-partition.sh requires fakeroot" >&2; exit 1; }
 mkdir -p "$(dirname "$output")"
 work=$(mktemp -d "$output.partial.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 source=$google/super/${partition}_a.img
 fsck.erofs --extract="$work/root" --xattrs --preserve "$source"
-python3 "$tools/android_overlay.py" "$partition" "$work/root" "$emulator" "$mesa" "$google" "$crossystem"
+checks=()
+if [ "$partition" = vendor ]; then
+    # Vendor programs may link only to vendor libraries and the platform's LLNDK.
+    dump.erofs --path=/system/etc/llndk.libraries.txt --cat "$google/super/system_a.img" > "$work/llndk.txt"
+    checks=(--llndk "$work/llndk.txt")
+fi
+bash "$scripts/android-overlay.sh" "${checks[@]}" "$changes" "$work/root" "$@"
 python3 "$tools/fs_metadata.py" record "$work/root" "$work/metadata.json"
 uuid=$(dump.erofs "$source" | awk '/UUID/ {print $NF}')
 test -n "$uuid"

@@ -1,0 +1,39 @@
+# Files removed from Google's vendor partition. Paths are relative to the partition root;
+# each must exist. See scripts/android-overlay.sh.
+
+# Trusty-backed security services. QEMU has no Trusty VM, GSC or Weaver chip;
+# install.list adds software KeyMint and Gatekeeper instead.
+etc/init/android.hardware.gatekeeper-service.trusty.rc
+etc/vintf/manifest/android.hardware.gatekeeper-service.trusty.xml
+etc/init/android.hardware.security.secretkeeper.trusty.desktop.rc
+etc/vintf/manifest/android.hardware.security.secretkeeper.trusty.xml
+etc/init/android.hardware.weaver-service.android-desktop.rc
+etc/vintf/manifest/android.hardware.weaver-service.android-desktop.xml
+etc/init/vendor.google.desktop.oemlock-service.rc
+etc/vintf/manifest/vendor.google.desktop.oemlock-service.xml
+
+# Laptop-only hardware: battery charge control and face unlock.
+etc/init/hal_desktop_charge_control_default.rc
+etc/vintf/manifest/com.android.desktop.power.charge_control.xml
+apex/com.google.android.hardware.biometrics.face.apex
+
+# The VM cannot flash firmware. Updaters are removed too, so this developer image
+# cannot replace itself with Google's OTA; only our build updates it.
+bin/flashrom
+bin/futility
+bin/vpd
+bin/fwtool
+bin/elogtool
+bin/fwupd-binder
+bin/fwupd_blocking_update
+bin/fwupdmgr
+bin/hw/vendor.google.desktop.futility-executor
+etc/init/futility-executor.rc
+etc/vintf/manifest/vendor.google.desktop.futility-executor.xml
+etc/init/desktop_kernel_max_rollforward_boot.rc
+etc/init/fwupd.rc
+etc/fwupd
+usr/share/fwupd
+
+# Replaced by our source-built QEMU stub; see install.list.
+bin/crossystem

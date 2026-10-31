@@ -12,4 +12,6 @@ applyTo: ["tools/**/*.py", "tests/**/*.py"]
 - Tests use `unittest` in `tests/test_*.py`, temporary directories and fake inputs — never real
   disks, devices or network. Run with `make test`.
 - Every bug fixed in a tool gets a regression test (e.g. the `modules.dep` trailing-space test in
-  [tests/test_android.py](../../tests/test_android.py)).
+  [tests/test_overlay.py](../../tests/test_overlay.py)).
+- Python never writes changes into Google's image: those are lists and `.patch` files under
+  `android/<target>/` (see [scripts/android-overlay.sh](../../scripts/android-overlay.sh)).

@@ -1,0 +1,5 @@
+# Files added to Google's system_ext partition. See scripts/android-overlay.sh.
+# Sources: ./ is this directory.
+#
+# path                   mode owner selinux type source
+etc/init/zz-dali-qemu.rc 0644 0:0   system_file  ./dali-qemu.rc

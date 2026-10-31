@@ -110,7 +110,8 @@ use `make deploy`, **not** another whole-stick flash.
 | [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's module-extended initrd and private persistent data disk |
 | [scripts/qemu.sh](scripts/qemu.sh) | The QEMU virtual machine Android runs in |
 | [scripts/mesa.sh](scripts/mesa.sh) | Android Mesa, libdrm and Expat from source with the NDK |
-| [tools/android_overlay.py](tools/android_overlay.py), [android/](android/) | Explicit VM filesystem changes and readable runtime settings |
+| [android/system/](android/system/), [android/system_ext/](android/system_ext/), [android/vendor/](android/vendor/), [android/module_ramdisk/](android/module_ramdisk/) | Every change to Google's files: `remove.list`, `install.list` and `*.patch` per target |
+| [scripts/android-overlay.sh](scripts/android-overlay.sh) | Applies one change directory: removes, installs with owner/mode/label, patches in place |
 | [scripts/android-partition.sh](scripts/android-partition.sh), [tools/fs_metadata.py](tools/fs_metadata.py) | Rootless EROFS rebuilding and complete content/metadata comparison |
 | [tools/android_sync.py](tools/android_sync.py) | Named OS partition updates, preserving Android's data |
 | [tools/android_smoke.py](tools/android_smoke.py), [tools/android_console.py](tools/android_console.py) | Full-boot checks and framed serial-shell commands |
@@ -200,6 +201,21 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
 
 ### Explicit VM changes
 
+Every change to Google's files is declared in one directory per target, applied by
+[scripts/android-overlay.sh](scripts/android-overlay.sh) in this order:
+
+| File | Meaning |
+|---|---|
+| `remove.list` | Paths to delete; each must exist |
+| `install.list` | New files: path, mode, owner, SELinux type, source (this directory or a named build input) |
+| `*.patch` | Unified diffs of Google's text files, with a header saying why |
+
+The targets are [android/system/](android/system/), [android/system_ext/](android/system_ext/),
+[android/vendor/](android/vendor/) and the first-stage module ramdisk
+[android/module_ramdisk/](android/module_ramdisk/). Patched files keep their owner, mode and
+SELinux label. To change something, edit a list or a patch; regenerate a patch with
+`diff -u --label a/PATH --label b/PATH google-file edited-file` against Google's original.
+
 - Google's Trusty security VM cannot supply KeyMint here. Its service/VINTF declarations are
   removed; software KeyMint/Gatekeeper and their missing library dependencies come **unmodified**
   from the SHA-256-pinned Android 17 emulator. Software keys are **not hardware protected**.
@@ -209,7 +225,8 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   [android/mesa-drm-master.patch](android/mesa-drm-master.patch) fixes Mesa's Android software
   renderer retaining DRM master after opening a primary node, which otherwise prevents the
   composer from displaying anything. This is a small **source patch**, not a binary edit or
-  added service privilege. [android/vendor.props](android/vendor.props) contains the graphics settings.
+  added service privilege. [android/vendor/build-prop.patch](android/vendor/build-prop.patch)
+  contains the graphics settings.
 - Google firmware updaters, OTA and the absent EC logger are removed. The only replacement
   firmware command is [android/crossystem-qemu.c](android/crossystem-qemu.c), compiled from source:
   it accepts the boot HAL's success assignments for this VM, rejects everything else, and never
@@ -228,7 +245,7 @@ alone is not a passing result. The captured screen also needs visual inspection.
 
 Verified locally: the actual Googlebook welcome/setup screen at 1280x720, with Mesa softpipe,
 software keys and SELinux enforcing, VNC connection, mouse navigation into the language picker,
-and clean guest shutdown. Seventeen focused tests pass; unchanged builds preserve output
+and clean guest shutdown. Nineteen focused tests pass; unchanged builds preserve output
 timestamps and write no OS partitions, and a running VM rejects disk updates. Allow several minutes
 for CPU-rendered startup. Setup completion, Google account sign-in, hardware-backed attestation
 and laptop performance are **not** claimed as tested. Bluetooth, Wi-Fi and audio hardware are

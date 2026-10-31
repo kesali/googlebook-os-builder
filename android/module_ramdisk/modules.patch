@@ -1,0 +1,27 @@
+Load QEMU's virtio GPU, input and network drivers in first stage, after Google's
+laptop modules. modules.dep lists each module's dependencies; modules.load is the load order.
+
+--- a/lib/modules/modules.dep
++++ b/lib/modules/modules.dep
+@@ -57,3 +57,9 @@
+ /lib/modules/mii.ko:
+ /lib/modules/drm_display_helper.ko:
+ /lib/modules/igc.ko: /lib/modules/ptp.ko /lib/modules/pps_core.ko
++/lib/modules/virtio_dma_buf.ko:
++/lib/modules/virtio-gpu.ko: /lib/modules/virtio_dma_buf.ko
++/lib/modules/virtio_input.ko:
++/lib/modules/failover.ko:
++/lib/modules/net_failover.ko: /lib/modules/failover.ko
++/lib/modules/virtio_net.ko: /lib/modules/net_failover.ko /lib/modules/failover.ko
+--- a/lib/modules/modules.load
++++ b/lib/modules/modules.load
+@@ -5,3 +5,9 @@
+ mfd-core.ko
+ pinctrl-intel-platform.ko
+ pinctrl-intel.ko
++virtio_dma_buf.ko
++virtio-gpu.ko
++virtio_input.ko
++failover.ko
++net_failover.ko
++virtio_net.ko

@@ -5,39 +5,13 @@ import sys
 import struct
 import tempfile
 import unittest
-from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from android_overlay import properties, remove_hals
 from android_sync import copy_component, disk_hash, sync
 from android_smoke import check_scanout
-from qemu_modules import main as add_qemu_modules
 
 
 class AndroidTests(unittest.TestCase):
-    def test_first_stage_module_lists_have_no_empty_dependencies(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            modules = root / "modules"
-            version = modules / "lib/modules/test-kernel"
-            version.mkdir(parents=True)
-            (version / "virtio_dma_buf.ko").touch()
-            (version / "virtio-gpu.ko").touch()
-            (version / "modules.dep").write_text("virtio_dma_buf.ko:\nvirtio-gpu.ko: virtio_dma_buf.ko\n")
-            destination = root / "ramdisk"
-            destination.mkdir()
-            (destination / "modules.dep").write_text("/lib/modules/original.ko:\n")
-            (destination / "modules.load").write_text("original.ko\n")
-            outputs = [f"insmod {version}/virtio_dma_buf.ko\ninsmod {version}/virtio-gpu.ko\n", "", ""]
-            with patch("sys.argv", ["qemu_modules.py", str(modules), str(destination)]), \
-                    patch("qemu_modules.subprocess.check_output", side_effect=outputs):
-                add_qemu_modules()
-            self.assertEqual((destination / "modules.dep").read_text(),
-                             "/lib/modules/original.ko:\n/lib/modules/virtio_dma_buf.ko:\n"
-                             "/lib/modules/virtio-gpu.ko: /lib/modules/virtio_dma_buf.ko\n")
-            self.assertEqual((destination / "modules.load").read_text(),
-                             "original.ko\nvirtio_dma_buf.ko\nvirtio-gpu.ko\n")
-
     def test_scanout_rejects_qemu_inactive_placeholder_size(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "screen.png"
@@ -93,27 +67,6 @@ class AndroidTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Stop QEMU"):
                     sync(image, root)
             self.assertEqual(image.read_bytes(), b"preserve Android data")
-
-    def test_properties_replace_in_place_and_keep_unrelated_values(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            path = root / "build.prop"
-            path.write_text("ro.hardware.egl=angle\nkeep=value\nro.hardware.egl=duplicate\n")
-            inode = path.stat().st_ino
-            changes = root / "changes"
-            changes.write_text("# software graphics\nro.hardware.egl=mesa\n")
-            properties(path, changes)
-            self.assertEqual(path.read_text(), "keep=value\nro.hardware.egl=mesa\n")
-            self.assertEqual(path.stat().st_ino, inode)
-
-    def test_vintf_removes_only_selected_hals(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "manifest.xml"
-            path.write_text('<manifest version="9.0"><hal><name>vm</name></hal>'
-                            '<hal><name>keep</name></hal></manifest>')
-            remove_hals(path, {"vm"})
-            self.assertNotIn("<name>vm</name>", path.read_text())
-            self.assertIn("<name>keep</name>", path.read_text())
 
 
 if __name__ == "__main__":
