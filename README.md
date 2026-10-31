@@ -2,12 +2,14 @@
 
 A small, readable build for developing a Googlebook OS port on the **MSI Modern 15 B7M**.
 Google's recovery image is a read-only input, not something we patch with byte offsets.
+Upstream code is used unchanged where possible; each carried patch is small and explains its purpose.
 
 **QEMU first:** plain Googlebook OS with a source-built GKI kernel and Mesa softpipe,
 plus the approved software KeyMint/Gatekeeper from Google's emulator. No KernelSU, dual-boot
 installer, host-GPU passthrough or physical-disk writes. The separate USB diagnostic target is
 retained, but it does not run Android.
 
+The [project plan](docs/plan.md) tracks personal priorities and the proposed order of work.
 **Status and next steps** for each component (kernel, boot, image, security, graphics, QEMU,
 laptop, USB diagnostics) are in [docs/specs/](docs/specs/README.md). AI coding agents start from
 [AGENTS.md](AGENTS.md); `/pickup <component>` and `/handoff` prompts keep the specs current.
@@ -25,8 +27,8 @@ make qemu-check          # bounded graphical boot/stability check; shuts the VM 
 
 `QEMU_VNC_PORT=5901` changes the localhost-only published port. Android has 4 virtual CPUs,
 6 GB RAM and a 1280x720 software-rendered display by default. Softpipe is a correctness baseline,
-**not accelerated graphics**; CPU instruction emulation is another performance cost. The next
-performance step is accelerated Mesa, not KernelSU or an installer.
+**not accelerated graphics**; CPU instruction emulation is another performance cost. Measure build
+iteration and guest responsiveness separately; the graphics path is a runtime-performance question.
 
 ## Optional USB diagnostics (not Android)
 

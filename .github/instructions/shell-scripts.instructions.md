@@ -4,6 +4,10 @@ applyTo: "scripts/**/*.sh"
 ---
 # Build scripts
 
+- Use four-space indentation, descriptive variable names and quoted path arguments. Prefer a
+  readable loop or `if` block over dense command chains.
+- Use command substitution to obtain values, not to hide state changes or error handling in a
+  subshell. Call validation functions directly so failures are easy to follow.
 - Start every script with what it reads and writes, then its usage, then strict mode:
   ```bash
   #!/usr/bin/env bash
@@ -26,4 +30,6 @@ applyTo: "scripts/**/*.sh"
 - Downloads only through [scripts/fetch.sh](../../scripts/fetch.sh) or
   [scripts/git-fetch.sh](../../scripts/git-fetch.sh), with the pin in [sources.mk](../../sources.mk).
 - Fail with a clear message when an assumption breaks (`test … || { echo "why" >&2; exit 1; }`).
+- Keep the producing command's failure status when recording or filtering output (`tee`, `tail`);
+  use `pipefail`, including in verification commands outside these scripts.
 - Comment *why* (upstream quirk, what Android expects), not what the command does.

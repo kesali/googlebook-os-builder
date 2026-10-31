@@ -5,6 +5,8 @@ applyTo: ["tools/**/*.py", "tests/**/*.py"]
 # Python tools and tests
 
 - Python 3 standard library only; tools run in the builder container.
+- Use four-space indentation and descriptive `snake_case` names. Prefer ordinary loops and small,
+  focused functions over nested comprehensions or clever abstractions.
 - Start with a module docstring: what the tool does and what it guarantees not to touch.
 - Fail loudly with `raise SystemExit("what went wrong")`; no silent fallbacks or guessed defaults.
 - Safety checks are features: refusing devices/symlinks, checking sizes and extents, reading back

@@ -1,17 +1,12 @@
 ---
-description: "Write a handoff: update the affected component specs (status, verified state, actions, log) from this session's work."
+description: "Record a completed change in its affected component spec, with concise verified status and next action."
 agent: "agent"
 ---
-Record a handoff for the work done in this session, following
-[docs/specs/README.md](../../docs/specs/README.md).
+Record the completed change in its affected component spec, following
+[AGENTS.md](../../AGENTS.md) and [docs/specs/README.md](../../docs/specs/README.md). Keep it short.
 
-1. Find what changed: `git status --short`, `git --no-pager diff --stat`, and commits since the newest
-   handoff-log entry of each affected spec. Map changed files to specs using each spec's **Files** list.
-2. For each affected spec:
-   - change **Status**, **Last verified** and **Current state** only with evidence from this
-     session (command and result, or evidence file); otherwise list it under "Not verified";
-   - add new **Pitfalls** that cost time, and new or changed **Decisions** the user agreed to;
-   - remove finished **Actions** and add agreed next steps with a "done when";
-   - add one handoff-log entry at the top: date, commit or `uncommitted`, what changed, what is left.
-3. Update the index table in `docs/specs/README.md` if a status or next action changed.
-4. Show the spec changes (`git --no-pager diff docs/specs`). Do not commit unless the user asks.
+1. Check `git status --short` and `git diff --stat`. Update only the spec for the component changed.
+2. Record what changed, what was actually verified, and the next agreed action. Keep unverified
+   behavior clearly marked; do not infer test results from a summary or commit message.
+3. Add a brief handoff entry. Update the spec index only if its status or next action changed.
+4. Do not start another implementation as part of the handoff.

@@ -4,6 +4,9 @@ One short document per component: what it must do, what works today, the decisio
 and the next actions. These are the project's handoff notes: whoever picks up a component —
 a person or an AI agent — starts from its spec and leaves it updated.
 
+Read the [project plan](../plan.md) for overall priorities and the proposed order of work.
+The component specs track the details; the plan keeps the overall direction in one place.
+
 | Spec | Status | Next action |
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | working | Decide whether to keep the unused vgem module |
