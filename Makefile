@@ -171,11 +171,12 @@ $(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
 
 # Each partition = Google's pristine image + the declared changes in android/<partition>/
 # (remove.list, install.list, *.patch; see scripts/android-overlay.sh).
+# install.list sources start with one of these names, e.g. emulator/vendor/bin/...
 ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID)
-$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img: \
+# $* is the partition name: system, vendor or system_ext.
+$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img: $(ANDROID)/%_a.img: \
 		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh tools/fs_metadata.py
-	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $(@F:_a.img=) android/$(@F:_a.img=) \
-		"$@" $(ANDROID_INPUTS)
+	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $* android/$* "$@" $(ANDROID_INPUTS)
 
 # The directories catch removed files; the wildcards catch edited ones.
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*)
