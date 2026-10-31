@@ -1,9 +1,9 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-10-31 — `make test` (22 tests); rebuilt all three partitions and the module
-ramdisk byte-identically to a fresh build of `23b8773`; no-op build preserved output timestamps
-and wrote no partitions. QEMU was not rerun for this review; the boot artifacts are unchanged.
+**Last verified:** 2026-10-31 — `make test` (22 tests); all three partitions rebuilt with LZ4HC
+level 9 and fit; repeat rebuilds byte-identical; a no-op build (about 10 s) preserved output
+timestamps and wrote no partitions; `make qemu-check` reached the setup screen.
 
 ## Goal
 Turn Google's read-only recovery image into a private QEMU disk with a short list of explicit
@@ -30,7 +30,8 @@ Not verified: writing any of this to a real disk or USB (deliberately not done).
   link only to vendor `lib64` or the platform LLNDK
   ([scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh), run by the vendor build).
 - Rebuild without root: `fsck.erofs` extraction and `mkfs.erofs` under fakeroot; original UUID
-  kept; output must not exceed the original partition size.
+  kept; output must not exceed the original partition size. LZ4HC level 9 with 256 KiB clusters:
+  2–3x faster to build than level 12 and about 0.2% larger (system 1053 MB of 1134 MB).
 - AVB is disabled through a new vbmeta (`--algorithm NONE --flags 3`); SELinux stays enforcing.
 - The disk is a reflink copy of the recovery image with userdata moved to the end and grown;
   slot A marked bootable/successful. It holds Android's data, so it is **never recreated automatically**.
@@ -69,7 +70,9 @@ _None agreed._
 - Writing the same partitions to a USB or internal disk for the laptop — see [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
-- 2026-10-31 (this commit) — Restored symlink guards lost in the overlay simplification; new tests
+- 2026-10-31 (this commit) — Partitions use LZ4HC level 9 instead of 12: system rebuild 25 s → 17 s,
+  vendor 17 s → 8 s, about 0.2% larger; QEMU boot check passed.
+- 2026-10-31 `c84f989` — Restored symlink guards lost in the overlay simplification; new tests
   reproduced four unsafe cases before the fix. All 22 tests now pass; fresh baseline/current
   builds are byte-identical and a second build writes nothing.
 - 2026-10-31 `67098bc` — Explained partition packing and system paths; named the Makefile's
