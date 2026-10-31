@@ -1,6 +1,7 @@
 # Project plan
 
-Updated: 2026-10-31. Current focus: understand and simplify the existing build.
+Updated: 2026-10-31. Current focus: understand and simplify the existing build; first boot of
+the diagnostic USB on the laptop.
 
 ## Priorities
 
@@ -23,13 +24,16 @@ removable once upstream covers it.
 
 - The source-built kernel, Mesa softpipe and software security services reach the QEMU setup
   screen with working input. Softpipe is a slow correctness baseline, not the performance goal.
-- Image changes are readable lists and patches. Incremental updates preserve Android data; the
-  current image and module ramdisk match the previous build byte-for-byte.
+- Image changes are readable lists and patches. Incremental updates preserve Android data.
+  QEMU kernel drivers are Google's prebuilt modules; we compile only the kernel image.
 - Repeat builds of `make android-image`: about 10 s when nothing changed (Kbuild's own check 5 s,
   Mesa 1.5 s, disk check 3 s); about 17 s to rebuild `system` and 8 s for `vendor`. A kernel
-  config or `gki-kernel.sh` edit relinks in about 50 s; a new kernel or Mesa source tree rebuilds
+  config or `gki-kernel.sh` edit relinks in about 75 s; a new kernel or Mesa source tree rebuilds
   it fully (kernel about an hour, Mesa about a minute).
 - Setup completion, usable Internet access and Android on the physical laptop remain unverified.
+- The diagnostic USB (`make usb`) is ready for its first laptop boot: GRUB and BusyBox are
+  official prebuilts, the kernel has the touchpad drivers, and `hardware.txt` shows which driver
+  took each device. See [USB diagnostics](specs/usb-diagnostic.md).
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
 Detailed status, evidence and handoffs live in the [component specs](specs/README.md).
