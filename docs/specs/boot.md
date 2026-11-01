@@ -1,7 +1,9 @@
 # Boot chain
 
 **Status:** working — QEMU boots Google's ramdisks with our modules and settings.
-**Last verified:** 2026-10-31 — `make qemu-check`: Android reaches `sys.boot_completed=1` and the setup screen.
+**Last verified:** 2026-11-01 — `make android-uefi-check JOBS=12`: OVMF/GRUB load the disk's
+kernel/initrd, first-stage init mounts USB partitions; separate console and setup screenshots
+inspected (evidence in [laptop-hardware.md](laptop-hardware.md)).
 
 ## Goal
 Assemble what a Googlebook's firmware would hand the kernel — command line, initrd, bootconfig —
@@ -10,7 +12,8 @@ from Google's boot images plus a short, readable list of our changes.
 ## Current state
 Verified: initrd = Google platform ramdisk + Google module ramdisk extended with our virtio
 modules + Google generic ramdisk + bootconfig; slot A boots normally; first-stage mounts succeed.
-Not verified: booting through real firmware (QEMU loads kernel and initrd directly).
+Also verified through OVMF/GRUB on a disposable USB disk. Not verified: physical firmware or
+the transition from simpledrm to Android graphics; the UEFI test checks log and UI separately.
 
 ## Decisions
 - Command line is Google's, minus Intel-only arguments, minus SPI-flash write enables,
@@ -23,7 +26,8 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 
 ## Files
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
-- [boot/android-menu.cfg](../../boot/android-menu.cfg) — the laptop's GRUB menu: this command line plus laptop-only arguments (see [laptop-hardware.md](laptop-hardware.md)). QEMU does not use it.
+- [boot/android-menu.cfg](../../boot/android-menu.cfg) — laptop GRUB menu, also used by the UEFI check; the direct-kernel VM does not use it.
+- [tools/android_uefi_test.py](../../tools/android_uefi_test.py) — OVMF/GRUB and USB-partition checks with an NVMe decoy.
 - [android/bootconfig.txt](../../android/bootconfig.txt), [tools/bootconfig.py](../../tools/bootconfig.py) — settings and packing.
 - [android/module_ramdisk/](../../android/module_ramdisk/) — first-stage modules (`install.list`) and their load lines (`modules.patch`).
 - [scripts/android-modules.sh](../../scripts/android-modules.sh) — applies them; checks the kernel release and `modules.patch` dependencies against Google's QEMU driver build.
@@ -39,14 +43,19 @@ Not verified: booting through real firmware (QEMU loads kernel and initrd direct
 - Anything appended after Google's lz4-legacy ramdisks must also be lz4-legacy (`lz4 -l`).
 - Bootconfig must end the initrd (data, NUL padding to 4 bytes, size, checksum, `#BOOTCONFIG\n`)
   and the command line must contain `bootconfig`.
-- The disk must appear as NVMe 0; Android treats other NVMe disks as removable storage.
+- The direct-kernel VM uses NVMe 0; USB boot finds its disk through EFI-SYSTEM's PARTUUID.
+- Google's built-in command line selects `console=ttynull`; the laptop menu must explicitly
+  add `console=drm_log` or the screen log will not register.
 - Ramdisk packing normalises timestamps so unchanged inputs give identical bytes.
 
 ## Actions
-_None agreed._ The laptop's GRUB entry and command line are tracked in [laptop-hardware.md](laptop-hardware.md).
+_None agreed._ Physical boot and graphics handoff are tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
-- 2026-11-01 (this commit) — Added `boot/android-menu.cfg`, the laptop's GRUB entry: this command
+- 2026-11-01 (this commit) — Verified OVMF/GRUB loading GKI and first-stage USB mounts; added
+  `console=drm_log` to override the built-in null-console selection. No kernel/ramdisk changes.
+  The UEFI test keeps log and graphical checks separate; laptop boot remains untested.
+- 2026-11-01 `deee56b` — Added `boot/android-menu.cfg`, the laptop's GRUB entry: this command
   line (flattened by deploy.py, which rejects words needing GRUB quoting) plus laptop-only
   arguments. Written into the ESP by `make android-boot`; not booted through firmware yet.
 - 2026-10-31 `9dfd0cf` — QEMU modules are Google's prebuilt ones (`GKI_VIRT`), not compiled

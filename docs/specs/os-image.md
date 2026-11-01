@@ -19,8 +19,9 @@ mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbt
 `out/android/disk.img` with a 32 GiB sparse userdata and a 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`,
 Google's PARTUUID) holding the laptop's boot files; updates copy only changed partitions
 with read-back hashes; unchanged builds write nothing; updates refuse to run while the VM holds the disk lock.
-Not verified: writing any of this to a real disk or USB (deliberately not done), and whether UEFI
-firmware accepts the FAT32 partition (the UEFI boot test in [laptop-hardware.md](laptop-hardware.md)).
+OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make android-uefi-check`,
+2026-11-01; [laptop-hardware.md](laptop-hardware.md)). Its disposable boots left the source disk
+byte-identical. Not verified: writing this Android image to physical USB or booting laptop firmware.
 
 ## Decisions
 - Change Google's files only through the change directory of each partition,
@@ -88,7 +89,10 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
-- 2026-11-01 (this commit) — `make android-image` also writes the boot files into the ESP
+- 2026-11-01 (this commit) — OVMF/GRUB read the ESP and Android mounts USB partitions in the
+  disposable UEFI test. Corrected the menu's screen-console selection; bytes outside the ESP
+  matched the earlier disk, and the boot tests left their source image unchanged.
+- 2026-11-01 `deee56b` — `make android-image` also writes the boot files into the ESP
   (`android-boot.sh`, mtools, whole-tree replace, no-op when equal); real-disk run checked, neighbours
   unchanged, `make qemu-check` passes. UEFI/laptop use is tracked in laptop-hardware.md.
 - 2026-11-01 `4811074` — EFI-SYSTEM now absorbs the blank `KERN-A` as a 576 MiB FAT32, guarded

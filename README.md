@@ -119,6 +119,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [scripts/android-partition.sh](scripts/android-partition.sh), [tools/fs_metadata.py](tools/fs_metadata.py) | Rootless EROFS rebuilding and complete content/metadata comparison |
 | [tools/android_sync.py](tools/android_sync.py) | Named OS partition updates, preserving Android's data |
 | [tools/android_smoke.py](tools/android_smoke.py), [tools/android_console.py](tools/android_console.py) | Full-boot checks and framed serial-shell commands |
+| [tools/android_uefi_test.py](tools/android_uefi_test.py) | Laptop boot-chain checks on disposable USB images, with an NVMe decoy |
 
 `make sources` creates editable trees under `out/src/`. `make kernel` always runs Kbuild so
 edits there are detected, not hidden by a top-level "done" stamp. Published outputs retain their
@@ -218,6 +219,19 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   `metadata` and the partition layout remain unchanged. Stop the VM first: a shared lock
   prevents updates while it runs. An interrupted update is repaired by rerunning the command,
   not by deleting Android's data.
+
+### Checking the laptop boot chain
+
+`make android-uefi-check JOBS=12` boots disposable copies through OVMF and GRUB, as USB storage
+beside a writable NVMe decoy. It checks that Android finds the USB partitions, never enumerates
+the decoy and leaves its bytes unchanged. No physical drives are accessed.
+
+There are two display configurations: `virtio-vga` for the firmware framebuffer and DRM log,
+then `virtio-gpu-pci` for Android's setup UI without a firmware framebuffer. This does **not**
+prove a simpledrm-to-GPU handoff or a laptop boot. Both use the installed laptop menu with only
+a serial-console argument added to the copy. Logs and screenshots go in fresh
+`out/android-uefi-*` directories; inspect the screenshots, not just the printed PASS.
+See [laptop hardware](docs/specs/laptop-hardware.md) for verified results and limitations.
 
 ### Explicit VM changes
 

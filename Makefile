@@ -41,7 +41,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
 .PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki \
-	android-initrd android-disk android-image android-sync android-boot mesa qemu qemu-check console FORCE
+	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa qemu qemu-check console FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -222,6 +222,9 @@ qemu: android-image ## Run Googlebook OS; connect a VNC viewer to localhost:5900
 
 qemu-check: android-image ## Verify full graphical Android startup in a bounded QEMU run
 	$(BUILDER) python3 tools/android_smoke.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY)
+
+android-uefi-check: android-image ## Test the laptop boot chain on a temporary USB image with a decoy NVMe
+	$(BUILDER) python3 tools/android_uefi_test.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY)
 
 console: ## Run a serial-shell command in the running VM: make console COMMAND='getprop'
 	python3 tools/android_console.py "$(OUT)/qemu/console.sock" "$(COMMAND)"

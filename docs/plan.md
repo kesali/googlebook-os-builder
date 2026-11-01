@@ -35,9 +35,10 @@ removable once upstream covers it.
   motion/gestures remain untested. See [USB diagnostics](specs/usb-diagnostic.md).
 - The owner agreed the first laptop boot plan (M1, below). QEMU already boots to the setup screen,
   which is enough for now. So far: the kernel built-ins, the disk's FAT32 boot partition and the
-  boot files in it (`make android-boot`). Next: the same disk booted through UEFI in QEMU. The BUP
-  Slim USB linked at USB 2.0 (about 39 MB/s); it needs a USB 3 port before Android's speed means
-  anything.
+  boot files in it (`make android-boot`). UEFI/GRUB USB checks now pass with an unchanged NVMe
+  decoy: the firmware log and graphical UI are tested separately, not a graphics handoff.
+  Next: prepare USB deployment. The BUP Slim linked at USB 2.0 (about 39 MB/s); it needs a USB 3
+  port before Android's speed means anything.
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
 Detailed status, evidence and handoffs live in the [component specs](specs/README.md).
