@@ -37,7 +37,8 @@ Vulkan at runtime or acceptable laptop performance. QEMU is still CPU-rendered.
   Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
   DRM node labels: [android/vendor/file-contexts.patch](../../android/vendor/file-contexts.patch).
 - Live uevents are serialized to prevent a delayed simpledrm remove event deleting amdgpu's reused
-  card0. Only the MSI GPU's identification path gets an existing SELinux type; no allow rules change.
+  card0. Only the MSI GPU's identification files get an existing SELinux type (`sysfs_gpu`, the
+  same file set Google labels for its own GPU); no allow rules change.
 - No host-GPU passthrough.
 
 ## Files
@@ -56,6 +57,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 ## Pitfalls
 - Symptom of the DRM-master problem: composer logs `Failed to set drm master` / `No pipelines
   available. Creating null-display`, and QEMU shows "Display output is not active".
+- libdrm reads the GPU's `uevent`, `vendor`, `device` and `subsystem_*` sysfs files and skips the
+  GPU if any read is denied. Then Mesa logs `Failed to open any DRM device`, SurfaceFlinger aborts
+  (`Failed to create a valid texture`) and init restarts it in a loop. Label all of them.
 - Mesa uses `meson.options`, not `meson_options.txt`.
 - `--wrap-mode=nofallback` stops Meson silently using Mesa's bundled older Expat.
 - Editing the patch changes the source directory name (patch hash), so a fresh tree is extracted; edits made directly in the old tree are not carried over.
@@ -76,7 +80,10 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
-- 2026-11-01 (this commit) — Built RADV/Zink and an ABI-checked AMD allocator, kept softpipe.
+- 2026-11-01 (this commit) — The laptop GPU's sysfs labels covered only `uevent`, so SurfaceFlinger
+  crash-looped on the laptop; now all identification files are labelled. Verified in QEMU at the
+  laptop's PCI path (softpipe). AMD rendering is still untested.
+- 2026-11-01 `54771be` — Built RADV/Zink and an ABI-checked AMD allocator, kept softpipe.
   UEFI setup still renders under enforcing SELinux; wrapper and timestamp regressions pass.
   AMD display/performance require the owner's laptop test.
 - 2026-10-31 (this commit) — Meson and CMake configure only when their settings change; no-op Mesa

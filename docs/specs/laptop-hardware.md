@@ -1,7 +1,14 @@
 # Laptop hardware
 
-**Status:** partial — AMD test image written to the USB; Android has not been booted on the MSI laptop.
-**Last verified:** 2026-11-01 — the image was written to the BUP Slim; a full read-back matched
+**Status:** partial — two laptop boots reached Android userspace, then SurfaceFlinger crash-looped
+on missing GPU sysfs labels. Fixed and verified in QEMU; the fix is on the USB, awaiting the owner's retest.
+**Last verified:** 2026-11-01 — the stick's `/metadata`, read-only after the laptop boots
+([evidence](../../out/laptop-boot-2026-11-01/metadata-evidence.txt)), shows Android's init, apexd
+and aconfigd ran. A QEMU VM with its GPU at the laptop's PCI path reproduced the loop and reaches
+setup with the fix ([before/after](../../out/laptop-boot-2026-11-01/qemu-repro/)). `make test` and
+`make qemu-check JOBS=12` pass ([screen](../../out/qemu/screen.png) inspected). Only `vendor_a`
+was rewritten on the stick; layout checks and read-back pass ([log](../../out/usb-flash-android/update-os.log)).
+Earlier that day: the image was written to the BUP Slim; a full read-back matched
 and the partition table, GPT entries and ESP were re-checked after moving the backup GPT
 ([flash log](../../out/usb-flash-android/flash.log)).
 Before that: `make test minigbm-check` (59 Python tests plus GBM checks),
@@ -32,6 +39,12 @@ BUP Slim by a one-time checked sudo script ([flash.sh](../../out/usb-flash-andro
 35 MB/s write, then a full read-back that matched. Then `sfdisk --relocate gpt-bak-std` moved the
 backup GPT to the disk end; the partition table (same PARTUUIDs), GPT entries and ESP bytes still
 match and `fsck.fat` is clean. The stick also carries the disk's QEMU userdata (6.2 GiB in use).
+The owner booted it twice: the screen slowly repeated the same init lines. Google labels the GPU's
+sysfs identification files (`vendor`, `device`, …) only at Intel's `00:02.0`; our patch labelled
+only `uevent` at the laptop's `00:08.1/03:00.0`. libdrm skipped the GPU, Mesa found no DRM device
+and SurfaceFlinger aborted; in QEMU at the same path init restarted it, and killed zygote, 118
+times in 10 minutes. [file-contexts.patch](../../android/vendor/file-contexts.patch) now labels
+Google's full set; [update-os.sh](../../out/usb-flash-android/update-os.sh) put it on the stick.
 The first diagnostic boot passed both instruction-emulation tests and registered the internal
 keyboard and ELAN0307 touchpad with `hid-multitouch`. Pointer motion/gestures were not tested.
 The same boot drew the screen through simpledrm at 0.50 s (`simple-framebuffer.0`, 128x48 text).
@@ -53,7 +66,7 @@ The test uses `virtio-vga` to verify simpledrm/drm_log, and `virtio-gpu-pci` wit
 framebuffer to verify the setup UI. With both simpledrm and virtio active, the visible virtio
 screen had only the status bar, not a usable setup UI; the two-pass check does not fix that.
 Not verified: AMD device binding/rendering, a framebuffer-to-GPU handoff, UAS boot, physical input
-or any Android boot on the laptop. Wi-Fi, Bluetooth, audio and suspend have not been brought up.
+or a usable Android screen on the laptop. Wi-Fi, Bluetooth, audio and suspend have not been brought up.
 The devices below were read from this laptop running a desktop Linux (`lspci -nnk`, `lsusb`,
 `/proc/bus/input/devices`).
 
@@ -156,7 +169,13 @@ M1, in this order:
   USB bulk-only transport. This does not establish how the BUP Slim behaves under laptop firmware.
 - Keep QEMU's GPU at PCI `00:02.0`: Google's `sysfs_gpu` label covers that path. At `00:03.0`,
   SurfaceFlinger cannot read its `uevent` and Mesa reports no DRM device. Fix the QEMU address,
-  not SELinux policy; the decoy is explicitly at `00:03.0`.
+  not SELinux policy; the decoy is explicitly at `00:03.0`. The laptop's own path must label every
+  file libdrm reads (`uevent`, `vendor`, `device`, `subsystem_*`), not just `uevent`.
+- The same init lines repeating on the drm_log screen mean a crash loop: drm_log draws only while
+  no process holds DRM master, wraps instead of scrolling and replays when amdgpu registers.
+  Without root, `udisksctl mount -b /dev/sdX17 -o ro,noload` shows what reached `/metadata`.
+  QEMU root ports at `07.0`, `08.0` and `08.1` put the GPU at the laptop's path
+  ([script](../../out/laptop-boot-2026-11-01/qemu-repro/qemu-laptop-gpu.sh)).
 - SetupWizard's Next button shows a low-battery dialog in the USB VM (no battery is emulated).
   Setup completion is not part of this test. An extra input probe then lost serial responses
   after a 180-second pause ([log](../../out/m1-validation/b3-input-probe.log)); the passing
@@ -173,6 +192,7 @@ Next, with this spec updated after the physical test:
 - [ ] First laptop Android boot — done when an inspected photo shows usable setup and the
   keyboard/touchpad work. If it stops, capture the last log screen rather than claiming success.
   Keep the internal NVMe hidden and Secure Boot disabled; use a SuperSpeed USB port/cable.
+  The first two boots crash-looped (fixed above); the stick now has the fix.
 - [ ] Find out if the touchpad needs `X86_AMD_PLATFORM_DEVICE` — done when the diagnostic USB
   has been booted with and without it (`make deploy` after removing it from
   [msi-diagnostic.config](../../kernel/msi-diagnostic.config)) and the touchpad result is recorded here.
@@ -181,9 +201,14 @@ Next, with this spec updated after the physical test:
 - M4: Wi-Fi (`mt7921e`), Bluetooth (`btusb`), audio (HDA/ACP), battery and suspend.
 - A boot logger (an `rdinit` hook writing to the ESP) if photos of the screen are not enough.
 - A udev rule for passwordless OS-partition writes to this one USB.
+- A make target from [update-os.sh](../../out/usb-flash-android/update-os.sh): writes only the
+  OS ranges that differ, after checking the stick's GPT and super metadata match the image.
 
 ## Handoff log
-- 2026-11-01 (this commit) — With the owner's approval, wrote the AMD candidate to the BUP Slim
+- 2026-11-01 (this commit) — Laptop boots crash-looped SurfaceFlinger (GPU sysfs files unlabelled);
+  reproduced and fixed in QEMU at the laptop's PCI path. With the owner's sudo, only `vendor_a`
+  was rewritten on the stick (read-back matches). Next: the owner's retest, photo of the result.
+- 2026-11-01 `21277da` — With the owner's approval, wrote the AMD candidate to the BUP Slim
   (by-id, USB, unmounted and locked); full read-back, GPT re-check and `fsck.fat` pass; ejected.
   Next: the owner's first laptop boot (photo of setup or of the last log screen).
 - 2026-11-01 `54771be` — Prepared the owner's overnight AMD candidate: signed modules,
