@@ -1,0 +1,10 @@
+{
+  // out/ holds ~170k fetched third-party sources and build outputs, and reference/ holds
+  // other ports. Indexing them gave the C/C++ extension an 11 GB database and kept VS Code busy.
+  "C_Cpp.files.exclude": {
+    "**/.vscode": true,
+    "**/.vs": true,
+    "**/out": true,
+    "**/reference": true
+  }
+}
