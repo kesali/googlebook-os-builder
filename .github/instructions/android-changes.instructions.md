@@ -6,6 +6,7 @@ applyTo: "android/**"
 
 - Each target has one change directory: [android/system/](../../android/system/),
   [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/),
+  [android/vendor_dlkm/](../../android/vendor_dlkm/),
   [android/module_ramdisk/](../../android/module_ramdisk/). The format is in the header of
   [scripts/android-overlay.sh](../../scripts/android-overlay.sh).
 - Change Google's image only when QEMU or the laptop requires it. First try a setting, such as

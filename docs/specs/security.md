@@ -28,7 +28,7 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
 - [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts; API check.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/remove.list](../../android/vendor/remove.list) — services installed and removed.
 - [android/system_ext/vintf-manifest.patch](../../android/system_ext/vintf-manifest.patch) — Trusty-only HAL declarations removed.
-- [android/vendor/gatekeeper.rc](../../android/vendor/gatekeeper.rc), [android/system_ext/dali-qemu.rc](../../android/system_ext/dali-qemu.rc) — service definitions and VM properties.
+- [android/vendor/gatekeeper.rc](../../android/vendor/gatekeeper.rc), [android/system_ext/dali.rc](../../android/system_ext/dali.rc) — software-security services shared by QEMU and the laptop.
 - [android/crossystem-qemu.c](../../android/crossystem-qemu.c) — firmware-command stand-in.
 - [android/bootconfig.txt](../../android/bootconfig.txt) — StrongBox disabled.
 
@@ -47,5 +47,8 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-01 (this commit) — Common security settings moved to `dali.rc`; graphics profiles are
+  separate. The AMD-candidate image still has stable KeyMint/Gatekeeper PIDs and enforcing
+  SELinux in the UEFI graphical check; no new policy permissions.
 - 2026-10-31 `357470d` — Security changes moved to android/vendor/ lists and the system_ext VINTF patch; donor API check moved to emulator.sh.
 - 2026-10-31 `56719c0` — Software KeyMint/Gatekeeper from the emulator; Trusty/RKP/gscd disabled; boot completes.

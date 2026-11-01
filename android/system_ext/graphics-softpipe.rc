@@ -1,0 +1,8 @@
+# Working QEMU fallback. No GPU acceleration or Vulkan.
+on early-init
+    setprop ro.hardware.egl mesa
+    setprop ro.hardware.vulkan none
+    setprop debug.renderengine.vulkan false
+    setprop debug.renderengine.backend skiaglthreaded
+    export LIBGL_ALWAYS_SOFTWARE true
+    export GALLIUM_DRIVER softpipe

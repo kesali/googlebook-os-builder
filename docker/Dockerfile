@@ -35,5 +35,5 @@ RUN curl -fsSL --retry 5 --retry-delay 10 \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         meson ninja-build python3-mako python3-yaml python3-ply python3-packaging \
-        unzip e2fsprogs fakeroot attr \
+        unzip e2fsprogs fakeroot attr glslang-tools \
     && rm -rf /var/lib/apt/lists/*

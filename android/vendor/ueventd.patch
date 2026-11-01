@@ -1,0 +1,14 @@
+Serialize live uevents: removing simpledrm's card0 must not delete amdgpu's replacement card0.
+Drop when ueventd orders same-node remove/add events correctly with its parallel loop enabled.
+
+--- a/etc/ueventd.rc
++++ b/etc/ueventd.rc
+@@ -59,7 +59,7 @@
+ parallel_restorecon_dir /sys/devices/virtual/net
+ 
+ parallel_restorecon enabled
+-parallel_ueventd_main_loop enabled
++parallel_ueventd_main_loop disabled
+ 
+ /sys/bus/usb/devices/* power/wakeup	0660 root system
+ /sys/bus/usb/devices/* authorized	0660 root system

@@ -32,6 +32,23 @@ NDK_ZIP := $(DL)/android-ndk-$(NDK_SHA).zip
 NDK := $(TOOLCHAIN)/ndk-$(NDK_SHA)
 ANDROID_EMU_ZIP := $(DL)/emulator-$(ANDROID_EMU_SHA).zip
 ANDROID_EMU := $(OUT)/emulator-$(ANDROID_EMU_SHA)
+FIRMWARE_TAR := $(DL)/linux-firmware-$(FIRMWARE_SHA).tar.xz
+FIRMWARE := $(OUT)/firmware-$(FIRMWARE_SHA)
+MINIGBM := $(OUT)/minigbm
+MINIGBM_TAR := $(DL)/minigbm-$(MINIGBM_SHA).tar.gz
+MINIGBM_PATCH := android/minigbm-amd.patch
+MINIGBM_PATCH_SHA := $(shell sha256sum $(MINIGBM_PATCH) | cut -d' ' -f1)
+MINIGBM_SRC := $(OUT)/src/minigbm-$(MINIGBM_SHA)-$(MINIGBM_PATCH_SHA)
+HEADERS := $(OUT)/android-headers/$(ANDROID_HEADERS_TAG)
+CORE_HEADERS := $(OUT)/src/android-core-$(ANDROID_CORE_REV)
+LOG_HEADERS := $(OUT)/src/android-logging-$(ANDROID_LOGGING_REV)
+HARDWARE_HEADERS := $(OUT)/src/android-hardware-$(ANDROID_HARDWARE_REV)
+NATIVE_HEADERS := $(OUT)/src/android-native-$(ANDROID_NATIVE_REV)
+DMABUF_HEADERS := $(OUT)/src/android-dmabuf-$(ANDROID_DMABUF_REV)
+BASE_HEADERS := $(OUT)/src/android-base-$(ANDROID_BASE_REV)
+INTERFACE_HEADERS := $(OUT)/src/android-interfaces-$(ANDROID_INTERFACES_REV)
+BUILDTOOLS_ZIP := $(DL)/build-tools-$(ANDROID_BUILDTOOLS_SHA).zip
+AIDL := $(TOOLCHAIN)/build-tools-$(ANDROID_BUILDTOOLS_SHA)/aidl
 BUILDER := scripts/builder.sh
 BUILD_READY := $(OUT)/stamps/builder
 export BUILDER_IMAGE JOBS QEMU_VNC_PORT
@@ -41,7 +58,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
 .PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki \
-	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa qemu qemu-check console FORCE
+	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -77,7 +94,7 @@ $(OUT)/kernel/bzImage: FORCE $(KERNEL_SRC)/.ready kernel/msi-diagnostic.config s
 $(OUT)/grub/BOOTX64.EFI: boot/loader.cfg $(BUILD_READY)
 	@mkdir -p $(@D)
 	$(BUILDER) grub-mkstandalone -O x86_64-efi --locales= --fonts= \
-		--modules="part_gpt fat normal linux configfile regexp probe serial test" \
+		--modules="part_gpt fat normal linux configfile regexp probe serial test setpci" \
 		--output="$@" "boot/grub/grub.cfg=boot/loader.cfg"
 
 $(OUT)/isa-smoke: tools/isa-smoke.c $(BUILD_READY)
@@ -141,6 +158,10 @@ $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/invento
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
 		"$(GKI_SYMVERS)" "$(GKI_ABI_LIST)" kernel/gki.config
 
+$(GKI)/modules/manifest: FORCE $(GKI)/bzImage scripts/laptop-modules.sh kernel/laptop-modules.list
+	$(BUILDER) bash scripts/laptop-modules.sh "$(GKI)/build" "$(TOOLCHAIN)" \
+		kernel/laptop-modules.list "$(GKI)/modules"
+
 # Android's QEMU userspace: pinned source graphics + unmodified software security HALs.
 $(MESA_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(MESA_URL)" "$(MESA_SHA)" "$@"
@@ -163,9 +184,78 @@ $(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
 $(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh
 	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super/vendor_a.img" "$(@D)"
 
-mesa: $(MESA)/manifest ## Incrementally build Android Mesa softpipe from source
+mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Zink and AMD Vulkan from source
 $(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready scripts/mesa.sh
 	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)"
+
+$(FIRMWARE_TAR): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(FIRMWARE_URL)" "$(FIRMWARE_SHA)" "$@"
+$(FIRMWARE)/manifest: $(FIRMWARE_TAR) kernel/msi-firmware.list scripts/firmware.sh
+	$(BUILDER) bash scripts/firmware.sh "$<" "$(FIRMWARE_VERSION)" kernel/msi-firmware.list "$(FIRMWARE)"
+$(MINIGBM_TAR): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(MINIGBM_URL)" "$(MINIGBM_SHA)" "$@"
+$(MINIGBM_SRC)/.ready: $(MINIGBM_TAR) $(MINIGBM_PATCH) scripts/source.sh
+	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" "$(MINIGBM_PATCH)"
+$(BUILDTOOLS_ZIP): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(ANDROID_BUILDTOOLS_URL)" "$(ANDROID_BUILDTOOLS_SHA)" "$@"
+$(dir $(AIDL))lib64/libc++.so: $(BUILDTOOLS_ZIP)
+	@mkdir -p $(@D)
+	$(BUILDER) unzip -p "$<" android-37.0/lib64/libc++.so > "$@.partial"
+	mv "$@.partial" "$@"
+$(AIDL): $(BUILDTOOLS_ZIP) $(dir $(AIDL))lib64/libc++.so
+	@mkdir -p $(@D)
+	$(BUILDER) unzip -p "$<" android-37.0/aidl > "$@.partial"
+	chmod 755 "$@.partial"
+	mv "$@.partial" "$@"
+
+# Only headers, at the exact Android release the Google image uses.
+$(CORE_HEADERS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/system/core \
+		"$(ANDROID_CORE_REV)" "$(@D)" libcutils/include libsystem/include libsync/include
+$(LOG_HEADERS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/system/logging \
+		"$(ANDROID_LOGGING_REV)" "$(@D)" liblog/include
+$(HARDWARE_HEADERS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/hardware/libhardware \
+		"$(ANDROID_HARDWARE_REV)" "$(@D)" include_all
+$(NATIVE_HEADERS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/frameworks/native \
+		"$(ANDROID_NATIVE_REV)" "$(@D)" libs/nativewindow/include libs/nativebase/include \
+		libs/arect/include libs/binder/ndk/include_cpp libs/binder/ndk/include_ndk
+$(DMABUF_HEADERS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/system/memory/libdmabufheap \
+		"$(ANDROID_DMABUF_REV)" "$(@D)" include
+$(BASE_HEADERS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/system/libbase \
+		"$(ANDROID_BASE_REV)" "$(@D)" include
+$(INTERFACE_HEADERS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/hardware/interfaces \
+		"$(ANDROID_INTERFACES_REV)" "$(@D)" graphics/common/aidl/aidl_api/android.hardware.graphics.common/7 \
+		common/aidl/aidl_api/android.hardware.common/2
+$(HEADERS)/.ready: $(CORE_HEADERS)/.ready $(LOG_HEADERS)/.ready $(HARDWARE_HEADERS)/.ready \
+		$(NATIVE_HEADERS)/.ready $(DMABUF_HEADERS)/.ready $(BASE_HEADERS)/.ready $(INTERFACE_HEADERS)/.ready
+	@mkdir -p $(@D)
+	ln -sfn "$(abspath $(CORE_HEADERS))" "$(HEADERS)/core"
+	ln -sfn "$(abspath $(LOG_HEADERS))" "$(HEADERS)/logging"
+	ln -sfn "$(abspath $(HARDWARE_HEADERS))" "$(HEADERS)/hardware"
+	ln -sfn "$(abspath $(NATIVE_HEADERS))" "$(HEADERS)/native"
+	ln -sfn "$(abspath $(DMABUF_HEADERS))" "$(HEADERS)/dmabuf"
+	ln -sfn "$(abspath $(BASE_HEADERS))" "$(HEADERS)/base"
+	ln -sfn "$(abspath $(INTERFACE_HEADERS))" "$(HEADERS)/interfaces"
+	printf '%s\n' $(ANDROID_CORE_REV) $(ANDROID_LOGGING_REV) $(ANDROID_HARDWARE_REV) \
+		$(ANDROID_NATIVE_REV) $(ANDROID_DMABUF_REV) $(ANDROID_BASE_REV) $(ANDROID_INTERFACES_REV) > "$@"
+
+minigbm: $(MINIGBM)/manifest ## Build the Android allocator with AMD Mesa support and ABI checks
+minigbm-check: $(MINIGBM_SRC)/.ready $(LIBDRM_SRC)/.ready ## Test allocator buffer handling without a GPU
+	$(BUILDER) gcc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter \
+		-Itests/gbm -I"$(MINIGBM_SRC)" -I"$(LIBDRM_SRC)/include/drm" \
+		tests/gbm-wrapper.c -ldl -o "$(OUT)/gbm-wrapper-test"
+	$(BUILDER) "$(OUT)/gbm-wrapper-test"
+$(MINIGBM)/manifest: FORCE $(MINIGBM_SRC)/.ready $(HEADERS)/.ready $(NDK)/.ready \
+		$(MESA)/manifest $(GOOGLE)/inventory.txt $(AIDL) scripts/minigbm.sh \
+		android/minigbm-platform-cxx.h tools/minigbm_abi.py
+	$(BUILDER) bash scripts/minigbm.sh "$(MINIGBM_SRC)" "$(HEADERS)" "$(NDK)" "$(MESA)" \
+		"$(GOOGLE)" "$(AIDL)" "$(MINIGBM)"
 
 $(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
 	@mkdir -p $(@D)
@@ -175,9 +265,10 @@ $(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
 # Each partition = Google's pristine image + the declared changes in android/<partition>/
 # (remove.list, install.list, *.patch; see scripts/android-overlay.sh).
 # install.list sources start with one of these names, e.g. emulator/vendor/bin/...
-ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID)
-# $* is the partition name: system, vendor or system_ext.
-$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img: $(ANDROID)/%_a.img: \
+ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID) \
+	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules
+# $* is the partition name: system, vendor, system_ext or vendor_dlkm.
+$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vendor_dlkm_a.img: $(ANDROID)/%_a.img: \
 		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh tools/fs_metadata.py
 	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $* android/$* "$@" $(ANDROID_INPUTS)
 
@@ -185,7 +276,9 @@ $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img: $(A
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*)
 $(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*)
 $(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
-		$(ANDROID_EMU)/.ready $(MESA)/manifest $(ANDROID)/crossystem
+		$(ANDROID_EMU)/.ready $(MESA)/manifest $(MINIGBM)/manifest $(FIRMWARE)/manifest $(ANDROID)/crossystem
+$(ANDROID)/vendor_dlkm_a.img: android/vendor_dlkm $(wildcard android/vendor_dlkm/*) \
+		$(GKI)/modules/manifest tools/laptop_module_check.py
 
 $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
 	@mkdir -p $(@D)
@@ -203,7 +296,8 @@ android-disk: $(ANDROID)/disk.img ## Google's disk: bigger data partition, FAT32
 $(ANDROID)/disk.img: | $(GOOGLE)/inventory.txt
 	$(BUILDER) bash scripts/android-disk.sh "$(RECOVERY_IMAGE)" $(ANDROID_DATA_GIB) "$@"
 
-android-sync: $(ANDROID)/disk.img $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vbmeta_a.img
+android-sync: $(ANDROID)/disk.img $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img \
+		$(ANDROID)/vendor_dlkm_a.img $(ANDROID)/vbmeta_a.img
 	$(BUILDER) python3 tools/android_sync.py "$(ANDROID)/disk.img" "$(ANDROID)"
 
 # The laptop's boot files: the same kernel and initrd QEMU boots, plus GRUB and its menu.

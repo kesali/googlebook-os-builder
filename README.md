@@ -4,8 +4,9 @@ A small, readable build for developing a Googlebook OS port on the **MSI Modern 
 Google's recovery image is a read-only input, not something we patch with byte offsets.
 Upstream code is used unchanged where possible; each carried patch is small and explains its purpose.
 
-**QEMU first:** plain Googlebook OS with a source-built GKI kernel and Mesa softpipe,
-plus the approved software KeyMint/Gatekeeper from Google's emulator. No KernelSU, dual-boot
+**QEMU verified, laptop candidate ready:** plain Googlebook OS with a source-built GKI kernel,
+Mesa softpipe fallback and an AMD graphics stack awaiting the physical test,
+plus software KeyMint/Gatekeeper from Google's emulator. No KernelSU, dual-boot
 installer, host-GPU passthrough or physical-disk writes. The separate USB diagnostic target is
 retained, but it does not run Android.
 
@@ -29,6 +30,26 @@ make qemu-check          # bounded graphical boot/stability check; shuts the VM 
 6 GB RAM and a 1280x720 software-rendered display by default. Softpipe is a correctness baseline,
 **not accelerated graphics**; CPU instruction emulation is another performance cost. Measure build
 iteration and guest responsiveness separately; the graphics path is a runtime-performance question.
+
+### Laptop test image
+
+```sh
+make android-image JOBS=12       # updates out/android/disk.img, preserving Android data
+make android-uefi-check JOBS=12  # disposable USB/UEFI boots in QEMU; no physical writes
+```
+
+The Android image is **49.8 GiB (53,430,190,080 bytes)**, not the small diagnostic image below.
+Use a **64 GB or larger USB**, preferably USB 3. Flash [out/android/disk.img](out/android/disk.img)
+with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
+No Android image has been written to a physical drive by this work.
+
+Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
+`1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
+Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm
+are included, but **AMD display/input have not been tested on the laptop**. QEMU reaches usable
+setup; that does not prove a physical graphics handoff. Wi-Fi, Bluetooth, audio and suspend remain
+unverified. Photograph the setup screen and test the keyboard/touchpad; if it stops, photograph
+the last visible log. Details and evidence: [laptop hardware](docs/specs/laptop-hardware.md).
 
 ## Optional USB diagnostics (not Android)
 
@@ -107,12 +128,14 @@ use `make deploy`, **not** another whole-stick flash.
 | [tools/deploy.py](tools/deploy.py) | Bundle verification (diagnostic or Android kind) and file-level USB updates |
 | [tools/boot_test.py](tools/boot_test.py), [tests/test_deploy.py](tests/test_deploy.py) | Boot and incremental-update checks |
 | [scripts/git-fetch.sh](scripts/git-fetch.sh), [scripts/pahole.sh](scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
-| [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel config + our one change, with config/ABI checks |
+| [scripts/gki-kernel.sh](scripts/gki-kernel.sh), [kernel/gki.config](kernel/gki.config) | Google's kernel plus explicitly listed configuration changes, with config/ABI checks |
+| [scripts/laptop-modules.sh](scripts/laptop-modules.sh), [scripts/firmware.sh](scripts/firmware.sh) | Missing signed AMD modules and unchanged official firmware |
 | [android/cmdline.txt](android/cmdline.txt), [android/bootconfig.txt](android/bootconfig.txt) | Settings Android boots with: Google's + our listed changes |
 | [scripts/android-initrd.sh](scripts/android-initrd.sh), [scripts/android-disk.sh](scripts/android-disk.sh) | Android's module-extended initrd and private disk: persistent data, FAT32 boot partition |
 | [boot/android-menu.cfg](boot/android-menu.cfg), [scripts/android-boot.sh](scripts/android-boot.sh) | The laptop's GRUB menu for Android, and writing its boot files into the disk's FAT32 partition |
 | [scripts/qemu.sh](scripts/qemu.sh) | The QEMU virtual machine Android runs in |
 | [scripts/mesa.sh](scripts/mesa.sh) | Android Mesa, libdrm and Expat from source with the NDK |
+| [scripts/minigbm.sh](scripts/minigbm.sh), [tools/minigbm_abi.py](tools/minigbm_abi.py) | AMD-capable allocator build, checked against Google's existing clients |
 | [android/system/](android/system/), [android/system_ext/](android/system_ext/), [android/vendor/](android/vendor/), [android/module_ramdisk/](android/module_ramdisk/) | Every change to Google's files: `remove.list`, `install.list` and `*.patch` per target |
 | [scripts/android-overlay.sh](scripts/android-overlay.sh) | Applies one change directory: removes, installs with owner/mode/label, patches in place |
 | [scripts/check-vendor-libs.sh](scripts/check-vendor-libs.sh) | Refuses vendor programs we install that link to libraries Android would not find |
@@ -245,7 +268,7 @@ Every change to Google's files is declared in one directory per target, applied 
 | `*.patch` | Unified diffs of Google's text files, with a header saying why |
 
 The targets are [android/system/](android/system/), [android/system_ext/](android/system_ext/),
-[android/vendor/](android/vendor/) and the first-stage module ramdisk
+[android/vendor/](android/vendor/), [android/vendor_dlkm/](android/vendor_dlkm/) and the first-stage module ramdisk
 [android/module_ramdisk/](android/module_ramdisk/). Patched files keep their owner, mode and
 SELinux label. To change something, edit a list or a patch; regenerate a patch with
 `diff -u --label a/PATH --label b/PATH google-file edited-file` against Google's original.
@@ -254,13 +277,14 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   removed; software KeyMint/Gatekeeper and their missing library dependencies come **unmodified**
   from the SHA-256-pinned Android 17 emulator. Software keys are **not hardware protected**.
   Remote attestation provisioning is disabled; this is not a certified or Play-Integrity device.
-- Mesa EGL/GLES and softpipe are built from source, with libdrm/Expat linked statically.
-  Google's DRM composer/minigbm remain; virtio-gpu supplies buffers and display scanout.
+- Mesa EGL/GLES, softpipe, Zink and RADV are built from source, with libdrm/Expat linked statically.
+  Google's DRM composer, mapper and allocator service remain; minigbm's libraries are rebuilt
+  with AMD support and an ABI check against those clients. Virtio-gpu supplies QEMU scanout.
   [android/mesa-drm-master.patch](android/mesa-drm-master.patch) fixes Mesa's Android software
   renderer retaining DRM master after opening a primary node, which otherwise prevents the
   composer from displaying anything. This is a small **source patch**, not a binary edit or
   added service privilege. [android/vendor/build-prop.patch](android/vendor/build-prop.patch)
-  contains the graphics settings.
+  contains common graphics settings; [graphics profiles](android/system_ext/) select the renderer.
 - Google firmware updaters, OTA and the absent EC logger are removed. The only replacement
   firmware command is [android/crossystem-qemu.c](android/crossystem-qemu.c), compiled from source:
   it accepts the boot HAL's success assignments for this VM, rejects everything else, and never
@@ -279,7 +303,7 @@ alone is not a passing result. The captured screen also needs visual inspection.
 
 Verified locally: the actual Googlebook welcome/setup screen at 1280x720, with Mesa softpipe,
 software keys and SELinux enforcing, VNC connection, mouse navigation into the language picker,
-and clean guest shutdown. Twenty-two focused tests pass; unchanged builds preserve output
+and clean guest shutdown. Fifty-nine Python tests plus the GBM wrapper checks pass; unchanged builds preserve output
 timestamps and write no OS partitions, and a running VM rejects disk updates. Allow several minutes
 for CPU-rendered startup. Setup completion, Google account sign-in, hardware-backed attestation
 and laptop performance are **not** claimed as tested. Bluetooth, Wi-Fi and audio hardware are
@@ -297,14 +321,14 @@ are copied into the existing disk. An unchanged build writes no disk partitions.
 |---|---|---|
 | Ryzen 5 7530U | Source-based VEX GFNI/AVX-VNNI emulation + small boot self-test | Broader emulator correctness/performance testing |
 | USB xHCI/storage/HID | Built into kernel | More device coverage |
-| UEFI display | Firmware framebuffer console | `amdgpu`, Mesa RADV/GBM, minigbm |
+| UEFI display | Firmware framebuffer console | AMD candidate built; physical rendering unverified |
 | ELAN0307 touchpad (AMD I2C, GPIO, I2C HID, multitouch) | Registered on the laptop; motion/gestures untested | Same drivers in the Android kernel |
 | MT7922 Wi-Fi / Bluetooth | Not enabled yet | `mt7921e`, `btusb`/`btmtk`, firmware |
 | Audio | HDA probes; audio not validated | HDA + AMD ACP |
 | Internal NVMe | Deliberately disabled | Explicit dev partition support later |
 
-The hardware table describes the older diagnostic USB, not the QEMU GKI. Real-laptop Android
-graphics, Wi-Fi, audio and USB deployment of Android remain separate work; no installer is added.
+The diagnostic column describes the older diagnostic USB. The Android image now includes the AMD
+graphics candidate, but physical rendering, input, Wi-Fi and audio remain unverified; no installer is added.
 
 **Known emulator limitation:** the imported patch handles VEX GFNI, not legacy SSE-encoded
 GFNI (the initial boot test confirmed that the latter raises SIGILL). The positive self-test
@@ -329,6 +353,9 @@ device. Touchpad motion/gestures and Android on the laptop remain untested. See
   `grub-efi-amd64-bin` package.
 - Graphics: [Mesa](https://mesa3d.org/), [libdrm](https://dri.freedesktop.org/libdrm/) and
   [Expat](https://libexpat.github.io/), built from the pinned upstream sources and their licences.
+- Allocator: [LineageOS minigbm](https://github.com/LineageOS/android_external_minigbm-upstream),
+  with the documented source patch; AMD runtime blobs from official
+  [linux-firmware](https://gitlab.com/kernel-firmware/linux-firmware), unchanged.
 - Development security HALs: unmodified binaries from Google's pinned Android 17 emulator
   image. Googlebook userspace remains proprietary recovery-image content, not a source rebuild
   or a claim of redistribution permission.

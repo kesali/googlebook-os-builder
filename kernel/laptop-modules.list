@@ -1,0 +1,6 @@
+# Only modules absent from Google's vendor_dlkm. Dependencies already shipped by Google
+# are kept unchanged. Static ABI evidence and runtime limits are in docs/specs/kernel.md.
+drivers/gpu/drm/amd/amdgpu/amdgpu.ko
+drivers/gpu/drm/amd/amdxcp/amdxcp.ko
+drivers/gpu/drm/drm_panel_backlight_quirks.ko
+drivers/hwmon/hwmon.ko

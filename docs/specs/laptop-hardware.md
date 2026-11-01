@@ -1,13 +1,15 @@
 # Laptop hardware
 
-**Status:** partial — M1's kernel, boot files and UEFI USB checks are in; Android has not been booted on the MSI laptop.
-**Last verified:** 2026-11-01 — `make test` (50 tests), `make android-uefi-check JOBS=12`:
-the [DRM log](../../out/android-uefi-console-k8udsvkn/early-screen.png) and, in a separate display
-configuration, [Android setup](../../out/android-uefi-graphics-egq0xng6/screen.png) were inspected.
+**Status:** partial — AMD test image ready; Android has not been booted on the MSI laptop.
+**Last verified:** 2026-11-01 — `make test minigbm-check` (59 Python tests plus GBM checks),
+`make android-uefi-check JOBS=12`: the
+[DRM log](../../out/android-uefi-console-p_3gmgei/early-screen.png) and, in a separate display
+configuration, [Android setup](../../out/android-uefi-graphics-pgfv692u/screen.png) were inspected.
 Both guests found the USB disk; neither enumerated or changed the NVMe decoy. The source disk's
-bytes and mtime stayed unchanged. A virtual-mouse click reached the
-[low-battery dialog](../../out/android-uefi-graphics-k0qvu4bj/mouse-click-screen.png); keyboard
-navigation was not confirmed. Earlier M1 kernel/ESP checks are in `out/m1-validation/`.
+bytes and mtime stayed unchanged. A separate disposable direct-kernel run selected softpipe
+without a graphics boot property; its virtual mouse reached the
+[low-battery dialog](../../out/overnight/direct/mouse-click.png). Keyboard navigation remains
+unconfirmed: Tab/Enter did not dismiss it. Earlier M1 kernel/ESP checks are in `out/m1-validation/`.
 2026-10-31 — diagnostic USB only: owner
 confirmed boot/shutdown; [hardware report](../../out/laptop-boot-2026-10-31/hardware.txt) and
 [kernel log](../../out/laptop-boot-2026-10-31/kernel.log) reviewed. The BUP Slim was measured
@@ -19,14 +21,16 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), adding drivers one at a t
 updating the USB incrementally instead of reflashing.
 
 ## Current state
-Not started for Android on the laptop. The QEMU work shares the kernel, boot chain and OS image with this.
+The laptop candidate is [out/android/disk.img](../../out/android/disk.img), 53,430,190,080 B
+(49.8 GiB; use a 64 GB or larger USB). It is not the 514 MiB diagnostic image.
+It contains the shared kernel/OS, UEFI boot files, signed AMD modules, 23 official runtime firmware
+blobs and the RADV/Zink/minigbm graphics stack. It has not been written to a physical USB.
 The first diagnostic boot passed both instruction-emulation tests and registered the internal
 keyboard and ELAN0307 touchpad with `hid-multitouch`. Pointer motion/gestures were not tested.
 The same boot drew the screen through simpledrm at 0.50 s (`simple-framebuffer.0`, 128x48 text).
-The Android kernel (`make gki`) now has the M1 built-ins: the touchpad drivers and simpledrm with
-drm_log ([gki.config](../../kernel/gki.config)). Google's ABI is unchanged and QEMU still boots to
-the setup screen; they have not run on the laptop, and QEMU's direct-kernel boot has no firmware
-framebuffer for simpledrm to use.
+The Android kernel has the touchpad/simpledrm/drm_log built-ins and modular amdgpu
+([gki.config](../../kernel/gki.config)). All 4501 Google exports keep their CRCs, and Google's ABI
+whitelist and helper modules remain unchanged. No physical-laptop driver is verified.
 The USB for Android is the BUP Slim (232.9 GiB). It linked at USB 2.0 (480 Mb/s, 39 MB/s
 sequential, 0.34 ms random reads); Linux calls it rotational, but the media type is unknown.
 `out/android/disk.img` has the USB's layout: Google's all-zero EFI-SYSTEM (64 MiB) and `KERN-A`
@@ -41,14 +45,14 @@ partitions (`sda`, EFI-SYSTEM at `sda12`) with SELinux enforcing; `nvme_init` hi
 The test uses `virtio-vga` to verify simpledrm/drm_log, and `virtio-gpu-pci` without a firmware
 framebuffer to verify the setup UI. With both simpledrm and virtio active, the visible virtio
 screen had only the status bar, not a usable setup UI; the two-pass check does not fix that.
-Not verified: a working framebuffer-to-GPU handoff, UAS boot, boot without the test's serial
-console, physical input or any Android boot on the laptop.
+Not verified: AMD device binding/rendering, a framebuffer-to-GPU handoff, UAS boot, physical input
+or any Android boot on the laptop. Wi-Fi, Bluetooth, audio and suspend have not been brought up.
 The devices below were read from this laptop running a desktop Linux (`lspci -nnk`, `lsusb`,
 `/proc/bus/input/devices`).
 
 | Part | Device [ID] | Linux driver | Needed for Android |
 |---|---|---|---|
-| Display / GPU | Radeon "Barcelo" [1002:15e7] | `amdgpu` | `amdgpu` module, Mesa radeonsi/RADV, minigbm/composer for AMD |
+| Display / GPU | Radeon "Barcelo" [1002:15e7] | `amdgpu` | Candidate includes amdgpu, RADV/Zink, ANGLE and Mesa-backed minigbm |
 | Keyboard | i8042 "AT Translated Set 2" | `atkbd` | Built into GKI already |
 | Touchpad | ELAN0307:00 [04F3:3282] on I2C controller AMDI0010:03 | `i2c_hid_acpi` + `hid-multitouch` | AMD I2C, GPIO and I2C HID drivers (see Pitfalls) |
 | Wi-Fi | MediaTek MT7922 [14c3:0616] | `mt7921e` | Module + firmware |
@@ -62,8 +66,12 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
 - QEMU boots to the setup screen, which is enough: the laptop is the focus and QEMU polish is
   parked. No installer and no dual boot for now.
 - Milestone M1 (agreed by the owner, 2026-10-31): the kernel log, keyboard and touchpad on the
-  laptop. No Android UI yet: Google's graphics allocator probably rejects simpledrm, so the UI
-  needs `amdgpu` and Mesa (M2/M3, planned later).
+  laptop. The owner's subsequent overnight request (2026-11-01) extends this to an Android UI
+  test candidate (M2/M3); simpledrm alone is not the Android rendering path.
+- Build only the missing AMD modules, sign with the rebuilt kernel's trusted key, and retain
+  Google's helpers. Use official linux-firmware unchanged. No symbol-whitelist relaxation.
+- The menu selects AMD for `1002:15e7`, softpipe otherwise. AMD uses Google's ANGLE, RADV
+  RenderEngine, GL HWUI and Mesa GBM/Zink; keep QEMU's proven software path. See [graphics.md](graphics.md).
 - USB layout: Google's whole GPT, as in `out/android/disk.img`. Android finds its disk by the
   PARTUUID of EFI-SYSTEM (`androidboot.boot_part_uuid`) and its partitions by name. EFI-SYSTEM
   grows from 64 to 576 MiB by absorbing the blank `KERN-A` beside it and keeps its PARTUUID.
@@ -94,6 +102,8 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
 
 ## Files
 - [kernel/gki.config](../../kernel/gki.config) — where the M1 built-ins and later driver modules are listed.
+- [kernel/laptop-modules.list](../../kernel/laptop-modules.list), [kernel/msi-firmware.list](../../kernel/msi-firmware.list) — exact modules and firmware shipped.
+- [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [scripts/firmware.sh](../../scripts/firmware.sh) — signed-module and official-firmware publication.
 - [scripts/android-disk.sh](../../scripts/android-disk.sh) — Google's disk layout, which the USB copies.
 - [boot/android-menu.cfg](../../boot/android-menu.cfg), [scripts/android-boot.sh](../../scripts/android-boot.sh) — the laptop's GRUB menu; writes the boot files into the disk's ESP.
 - [tools/deploy.py](../../tools/deploy.py) (diagnostic and android bundle kinds), [tools/android_sync.py](../../tools/android_sync.py) — boot-file and OS-partition updaters.
@@ -143,34 +153,34 @@ M1, in this order:
   Setup completion is not part of this test. An extra input probe then lost serial responses
   after a 180-second pause ([log](../../out/m1-validation/b3-input-probe.log)); the passing
   bounded boot checks do not establish longer-running stability.
+- The serial shell is UID 2000, not root: modprobe and raw input-event reads are inaccessible.
+  The AMD module tree's 1,585 import CRCs were checked statically against actual Google helpers
+  ([evidence](../../out/overnight/module-crcs.log)); runtime AMD loading remains unverified.
 
 ## Actions
-M1, in order; each step is its own commit with this spec updated.
+Next, with this spec updated after the physical test:
 - [ ] Write the USB — a tool with strict target checks (by-id path, USB transport, not NVMe,
   nothing mounted) run through a sudo task — done when read-back matches the image and the
   drive is unmounted again. Needs the owner's explicit approval for the exact device.
 - [ ] Boot-file updates on the mounted stick — `make android-deploy USB=…` using
   [deploy.py](../../tools/deploy.py)'s `android` kind — done when a changed kernel reaches the
   stick without sudo, the previous build stays selectable in the menu, and a no-op writes nothing.
-- [ ] First laptop boot — done when a photo of the laptop screen shows the kernel log with the
-  keyboard and ELAN touchpad registered and Android's first-stage init mounting the USB's
-  partitions (or where it stops); record what was not seen.
+- [ ] First laptop Android boot — done when an inspected photo shows usable setup and the
+  keyboard/touchpad work. If it stops, capture the last log screen rather than claiming success.
+  Keep the internal NVMe hidden and Secure Boot disabled; use a SuperSpeed USB port/cable.
 - [ ] Find out if the touchpad needs `X86_AMD_PLATFORM_DEVICE` — done when the diagnostic USB
   has been booted with and without it (`make deploy` after removing it from
   [msi-diagnostic.config](../../kernel/msi-diagnostic.config)) and the touchpad result is recorded here.
 
 ### Ideas (not approved)
-- M2: the `amdgpu` module with firmware from an official, pinned linux-firmware tag. Needs the
-  kernel's exported-symbol list extended with what amdgpu uses, and
-  [kabi_check.py](../../tools/kabi_check.py) relaxed from "identical exports" to "Google's exports
-  kept, same CRCs".
-- M3: Android's UI on the AMD GPU: an allocator that accepts it, Mesa RADV and ANGLE. Project
-  Churro's AMD path is proven on this laptop (see `reference/`), but it is large.
 - M4: Wi-Fi (`mt7921e`), Bluetooth (`btusb`), audio (HDA/ACP), battery and suspend.
 - A boot logger (an `rdinit` hook writing to the ESP) if photos of the screen are not enough.
 - A udev rule for passwordless OS-partition writes to this one USB.
 
 ## Handoff log
+- 2026-11-01 (this commit) — Prepared the owner's overnight AMD candidate: signed modules,
+  official firmware, RADV/Zink/ANGLE and ABI-checked minigbm. UEFI log/UI checks pass, data is
+  preserved and no-op takes 16 s. No physical writes; AMD display/input await the owner.
 - 2026-11-01 (this commit) — UEFI USB checks pass in separate log/UI configurations; screenshots
   inspected, NVMe decoys hidden and unchanged. Added `console=drm_log`; GPU fixed at PCI 00:02.0.
   Graphics handoff and laptop remain unverified. Next: prepare USB deployment.

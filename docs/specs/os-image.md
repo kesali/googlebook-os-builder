@@ -1,7 +1,11 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-01 — `make test` (40 tests); a recreated `out/android/disk.img` differs from
+**Last verified:** 2026-11-01 — AMD image rebuilt with full metadata checks; all 52,168,658,944
+bytes outside vendor, system_ext, vendor_dlkm and ESP match the baseline, including userdata,
+metadata and GPT/liblp tables. No-op build: 16 s, no writes, all 25 checked output timestamps
+unchanged ([evidence](../../out/overnight/preservation.log), [no-op](../../out/overnight/noop-final.log)).
+Earlier: `make test` (40 tests); a recreated `out/android/disk.img` differs from
 the previous disk's table only by the missing `KERN-A` and the larger EFI-SYSTEM; 25 partitions are
 byte-identical to Google's; with the boot files written, `fsck.vfat` is clean on the ESP, a second
 `make android-image` wrote nothing, the bytes outside the ESP were unchanged and `make qemu-check`
@@ -14,7 +18,7 @@ Turn Google's read-only recovery image into a private QEMU disk with a short lis
 changes, and update only the changed OS partitions without touching Android's data.
 
 ## Current state
-Verified: `system_a`, `vendor_a`, `system_ext_a` rebuilt as EROFS with every file's bytes,
+Verified: `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a` rebuilt as EROFS with every file's bytes,
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
 `out/android/disk.img` with a 32 GiB sparse userdata and a 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`,
 Google's PARTUUID) holding the laptop's boot files; updates copy only changed partitions
@@ -39,6 +43,8 @@ byte-identical. Not verified: writing this Android image to physical USB or boot
 - Rebuild without root: `fsck.erofs` extraction and `mkfs.erofs` under fakeroot; original UUID
   kept; output must not exceed the original partition size. LZ4HC level 9 with 256 KiB clusters:
   2–3x faster to build than level 12 and about 0.2% larger (system 1053 MB of 1134 MB).
+  Exception: vendor_dlkm uses Zstd level 9, 17,190,912 B within its 18,096,128 B partition.
+  LZ4 required 25.6 MB with AMD; Zstd retains every Google module and the fixed layout.
 - AVB is disabled through a new vbmeta (`--algorithm NONE --flags 3`); SELinux stays enforcing.
 - The disk is a reflink copy of the recovery image with userdata moved to the end and grown;
   slot A marked bootable/successful. It holds Android's data, so it is **never recreated automatically**.
@@ -50,13 +56,14 @@ byte-identical. Not verified: writing this Android image to physical USB or boot
   ([scripts/android-boot.sh](../../scripts/android-boot.sh)), and only when the partition is
   the FAT32 labelled `DALI-BOOT`. `EFI/` and `dali/` are replaced as a whole and read back; if
   they already match, nothing is written. Only these two trees are touched.
-- The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vbmeta_a` — never
+- The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a`, `vbmeta_a` — never
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
-- Dependencies are per partition: `android/vendor/`, Mesa, emulator and crossystem rebuild vendor
-  only; `android/system_ext/` rebuilds system_ext only.
+- Dependencies are per partition: Mesa, minigbm, firmware, emulator and crossystem rebuild vendor
+  only; system_ext changes rebuild system_ext; the signed module manifest rebuilds vendor_dlkm.
 
 ## Files
 - [android/system/](../../android/system/), [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/) — every change to Google's partitions.
+- [android/vendor_dlkm/](../../android/vendor_dlkm/), [tools/laptop_module_check.py](../../tools/laptop_module_check.py) — new signed modules, dependencies and laptop alias checks.
 - [scripts/android-overlay.sh](../../scripts/android-overlay.sh) — applies one change directory; format in its header.
 - [scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh) — library check for vendor programs we install.
 - [scripts/android-partition.sh](../../scripts/android-partition.sh), [tools/fs_metadata.py](../../tools/fs_metadata.py) — rebuild and full comparison.
@@ -89,6 +96,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-01 (this commit) — AMD userspace/firmware and signed vendor_dlkm modules added through
+  declarative overlays. Zstd fits without removing Google drivers. Full filesystem metadata,
+  unaffected disk bytes and unchanged-build publication verified; 59 unit tests pass.
 - 2026-11-01 (this commit) — OVMF/GRUB read the ESP and Android mounts USB partitions in the
   disposable UEFI test. Corrected the menu's screen-console selection; bytes outside the ESP
   matched the earlier disk, and the boot tests left their source image unchanged.

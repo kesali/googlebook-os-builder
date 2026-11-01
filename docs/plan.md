@@ -24,9 +24,11 @@ removable once upstream covers it.
 - The source-built kernel, Mesa softpipe and software security services reach the QEMU setup
   screen with working input. Softpipe is a slow correctness baseline, not the performance goal.
 - Image changes are readable lists and patches. Incremental updates preserve Android data.
-  QEMU kernel drivers are Google's prebuilt modules; we compile only the kernel image.
-- Repeat builds of `make android-image`: about 10 s when nothing changed (Kbuild's own check 5 s,
-  Mesa 1.5 s, disk check 3 s); about 17 s to rebuild `system` and 8 s for `vendor`. A kernel
+  QEMU kernel drivers and existing laptop helpers are Google's prebuilts; we build the kernel
+  and only the four missing AMD-related modules.
+- Repeat builds of `make android-image`: about 16 s when nothing changed; no published output
+  timestamps or partitions change. Before the AMD additions, about 17 s rebuilt `system`
+  and 8 s rebuilt `vendor`. A kernel
   config or `gki-kernel.sh` edit relinks in about 75 s; a new kernel or Mesa source tree rebuilds
   it fully (kernel about an hour, Mesa about a minute).
 - Setup completion, usable Internet access and Android on the physical laptop remain unverified.
@@ -37,8 +39,10 @@ removable once upstream covers it.
   which is enough for now. So far: the kernel built-ins, the disk's FAT32 boot partition and the
   boot files in it (`make android-boot`). UEFI/GRUB USB checks now pass with an unchanged NVMe
   decoy: the firmware log and graphical UI are tested separately, not a graphics handoff.
-  Next: prepare USB deployment. The BUP Slim linked at USB 2.0 (about 39 MB/s); it needs a USB 3
-  port before Android's speed means anything.
+  The owner then requested an overnight Android UI candidate: the image now includes signed
+  AMD modules, official firmware and RADV/Zink/minigbm, with QEMU softpipe still verified.
+  No Android image has been written to a physical USB, and AMD display/input are unverified.
+  The BUP Slim linked at USB 2.0 (about 39 MB/s); use USB 3 before judging Android's speed.
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
 Detailed status, evidence and handoffs live in the [component specs](specs/README.md).
@@ -51,15 +55,16 @@ This is a flexible order, not a commitment to do every item.
 1. **First Android boot on the laptop — current.**
    Milestone M1 (agreed): the QEMU disk's partition layout on the USB, our GKI kernel and Android
    initrd loaded by GRUB, and the keyboard, touchpad and kernel log on the laptop's screen. The
-   Android UI is not expected yet. Kernel and initrd updates reach the USB through its mounted
+   original M1 did not expect Android UI; the overnight candidate now includes the AMD stack.
+   Kernel and initrd updates can reach the USB through its mounted
    boot partition, without sudo; OS partitions are rewritten with sudo and the owner's approval.
    The same USB image is booted in QEMU through UEFI first. See
    [laptop hardware](specs/laptop-hardware.md). The existing diagnostic USB is a separate system:
    see [USB diagnostics](specs/usb-diagnostic.md).
 
-2. **Laptop graphics and drivers — next.**
-   The `amdgpu` module and firmware (M2), then Android's UI on the AMD GPU (M3), then Wi-Fi,
-   Bluetooth, audio and power (M4), one device at a time. Each step is planned with the owner first.
+2. **Laptop graphics and drivers — candidate built, physical test next.**
+   AMD modules/firmware (M2) and the UI stack (M3) are packaged, not hardware-verified.
+   Wi-Fi, Bluetooth, audio and power (M4) remain later work, one device at a time.
 
 3. **Improve performance — once the desktop runs on the laptop.**
    Measure build time, startup time and UI responsiveness separately. Identify the main bottleneck

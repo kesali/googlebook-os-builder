@@ -18,14 +18,21 @@ bash "$scripts/android-overlay.sh" "$changes" "$work/root" "$@"
 if [ "$partition" = vendor ]; then
     dump.erofs --path=/system/etc/llndk.libraries.txt --cat "$google/super/system_a.img" > "$work/llndk.txt"
     bash "$scripts/check-vendor-libs.sh" "$changes/install.list" "$work/root" "$work/llndk.txt"
+elif [ "$partition" = vendor_dlkm ]; then
+    python3 "$tools/laptop_module_check.py" "$work/root" "$changes/install.list"
 fi
 python3 "$tools/fs_metadata.py" record "$work/root" "$work/metadata.json"
 uuid=$(dump.erofs "$source" | awk '/UUID/ {print $NF}')
 test -n "$uuid"
 # LZ4 like Google's image, with 256 KiB clusters so it fits the partition. HC level 9 (LZ4HC's
 # default) builds 2-3x faster than the strongest level 12 for about 0.2% more space, and reads
-# just as fast. Timestamps 0 and Google's UUID make the same input give the same bytes.
-mkfs.erofs -zlz4hc,9 -C262144 -T0 -U "$uuid" "$work/new.img" "$work/root"
+# just as fast. The additional AMD modules need Zstd to fit vendor_dlkm without removing
+# Google's modules. Timestamps 0 and Google's UUID make the same input give the same bytes.
+compression=lz4hc,9
+if [ "$partition" = vendor_dlkm ]; then
+    compression=zstd,9
+fi
+mkfs.erofs -z"$compression" -C262144 -T0 -U "$uuid" "$work/new.img" "$work/root"
 # Read the new image back: every file, owner, mode and SELinux label must be what we built.
 fsck.erofs --extract="$work/check" --xattrs --preserve "$work/new.img"
 python3 "$tools/fs_metadata.py" check "$work/check" "$work/metadata.json"

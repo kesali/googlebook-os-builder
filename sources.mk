@@ -55,7 +55,7 @@ BINDGEN_REV := 4155cb466dcd9b53c6f873829c53aa6f905449dd
 DWARVES_URL := https://android.googlesource.com/platform/external/dwarves
 DWARVES_REV := d884153887ce06fec729061016f7a0b412f08fc6
 
-# QEMU's software renderer. No LLVM, Vulkan or hardware-specific Mesa drivers yet. Built from
+# QEMU's softpipe fallback and the laptop's RADV/Zink renderer (ACO, no LLVM). Built from
 # source: Mesa publishes no Android binaries, and we patch it (android/mesa-drm-master.patch).
 MESA_VERSION := 26.3.0-rc3
 MESA_URL := https://archive.mesa3d.org/mesa-$(MESA_VERSION).tar.xz
@@ -66,6 +66,36 @@ LIBDRM_SHA := fc68f9d0ba2ea63c9432a299e14fea09fad7a8a66e8039fcd7802ca59f77b4f5
 EXPAT_VERSION := 2.7.3
 EXPAT_URL := https://github.com/libexpat/libexpat/releases/download/R_2_7_3/expat-$(EXPAT_VERSION).tar.xz
 EXPAT_SHA := 71df8f40706a7bb0a80a5367079ea75d91da4f8c65c58ec59bcdfbf7decdab9f
+
+# AMD's runtime firmware, unchanged from linux-firmware's official release.
+# SHA-256: https://cdn.kernel.org/pub/linux/kernel/firmware/sha256sums.asc
+FIRMWARE_VERSION := 20260916
+FIRMWARE_URL := https://cdn.kernel.org/pub/linux/kernel/firmware/linux-firmware-$(FIRMWARE_VERSION).tar.xz
+FIRMWARE_SHA := f80dcb757a623deda62200c08e0e1a88c76fb6b54964f31b35fa74da1c90ccc5
+
+# LineageOS's upstream minigbm includes its Mesa GBM backend. There is no matching Android
+# prebuilt, and Google's allocator lacks AMD support. lineage-23.2's current commit; the
+# archive SHA was calculated from this upstream HTTPS URL (the project has no release tags).
+MINIGBM_REV := 51b97430ef97474b386bc958d67e5171a86d0d76
+MINIGBM_URL := https://codeload.github.com/LineageOS/android_external_minigbm-upstream/tar.gz/$(MINIGBM_REV)
+MINIGBM_SHA := e73e16a4d9ae15a49faf299ad14be928bed96004dfb26decd6135d33b75db7f0
+
+# Platform headers for minigbm, not a platform build. These are the peeled commits of
+# android-17.0.0_r1 in the named AOSP repositories; git-fetch.sh verifies every file.
+ANDROID_HEADERS_TAG := android-17.0.0_r1
+ANDROID_CORE_REV := 545d2487e38192a2ce25040897ced877cf6b4f53
+ANDROID_LOGGING_REV := d35ba620451b28512f46ebb5421f783fd77968d5
+ANDROID_HARDWARE_REV := 97ee3e33ec5ba48c0eca8341ed377ac4497a0678
+ANDROID_NATIVE_REV := ae266dcb706d083868578cfedce381ef44488a07
+ANDROID_DMABUF_REV := 09fe72b6ce0feead1b97c2859979b125f815d9b0
+ANDROID_BASE_REV := fef4173e19d97cd4b4fc09a06bccbf800d0d3937
+ANDROID_INTERFACES_REV := 0162af698935100a590b7359581ac8b1b80693e5
+
+# Only the official AIDL compiler is used. SHA-256 calculated after checking Google's
+# published SHA-1 (repository2-3.xml): 70954e99f4c3d9d46ee70fa32624672fe7cd6ebe.
+ANDROID_BUILDTOOLS_VERSION := 37
+ANDROID_BUILDTOOLS_URL := https://dl.google.com/android/repository/build-tools_r$(ANDROID_BUILDTOOLS_VERSION)_linux.zip
+ANDROID_BUILDTOOLS_SHA := 01af179347cbcd9c208b7f8171f7b21f6dd1d2f85bcd15e88caa51d5d7b86060
 
 # NDK r30's SHA-256 was calculated after checking Google's published SHA-1:
 # 5107f898313790e449e87eee2183d9a20602dee9 (developer.android.com/ndk/downloads).

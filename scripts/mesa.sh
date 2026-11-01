@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read: Mesa, libdrm and Expat source + NDK. Write: Android EGL/GLES software drivers.
+# Read: Mesa, libdrm and Expat source + NDK. Write: Android EGL/GLES and AMD Vulkan drivers.
 # The upstream build systems run every time; only changed installed libraries change the manifest.
 set -euo pipefail
 mesa=$(realpath "$1") drm=$(realpath "$2") expat=$(realpath "$3")
@@ -9,6 +9,9 @@ tc=$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin
 key=$(printf '%s\n' "$mesa" "$drm" "$expat" "$ndk" | sha256sum | cut -c1-16)
 build=$out/build-$key
 sysroot=$build/sysroot
+if [ ! -L "$out/sysroot" ] || [ "$(readlink "$out/sysroot")" != "$sysroot" ]; then
+    ln -sfn "$sysroot" "$out/sysroot"
+fi
 cat > "$out/cross.ini.partial" <<EOF
 [binaries]
 c = '$tc/x86_64-linux-android35-clang'
@@ -42,7 +45,7 @@ setup() {
 if $configure; then
     setup "$build/drm" "$drm" --cross-file "$out/cross.ini" \
         --prefix=/ --libdir=lib64 --buildtype=release -Ddefault_library=static \
-        -Dintel=disabled -Damdgpu=disabled -Dradeon=disabled -Dnouveau=disabled \
+        -Dintel=disabled -Damdgpu=enabled -Dradeon=disabled -Dnouveau=disabled \
         -Dvmwgfx=disabled -Dfreedreno=disabled -Dvc4=disabled -Detnaviv=disabled \
         -Dcairo-tests=disabled -Dman-pages=disabled -Dvalgrind=disabled \
         -Dtests=false -Dudev=false
@@ -66,16 +69,25 @@ if $configure; then
     setup "$build/mesa" "$mesa" --cross-file "$out/cross.ini" \
         --prefix=/ --libdir=lib64 --buildtype=release -Db_ndebug=true --wrap-mode=nofallback \
         -Dplatforms=android -Dplatform-sdk-version=35 -Dandroid-stub=true \
-        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe -Dvulkan-drivers= \
-        -Dllvm=disabled -Dgbm=enabled -Dglx=disabled -Degl=enabled \
+        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe,zink -Dvulkan-drivers=amd \
+        -Dllvm=disabled -Damd-use-llvm=false -Dgbm=enabled -Dgbm-backends-path=/vendor/lib64/gbm \
+        -Dglx=disabled -Degl=enabled \
         -Dgles1=enabled -Dgles2=enabled -Degl-lib-suffix=_mesa -Dgles-lib-suffix=_mesa \
         -Dvalgrind=disabled -Dlibunwind=disabled -Dzstd=disabled
 fi
 meson compile -C "$build/mesa" -j "${JOBS:-4}"
-DESTDIR="$out/install" meson install -C "$build/mesa" --no-rebuild --only-changed --strip
+# Meson strips even skipped install targets, changing their timestamps. Stage that work
+# in the build cache and publish only changed bytes.
+DESTDIR="$build/install" meson install -C "$build/mesa" --no-rebuild --only-changed --strip
 printf '%s\n' "$settings" > "$build/settings"
-for file in libEGL_mesa.so libGLESv1_CM_mesa.so libGLESv2_mesa.so libgallium_dri.so; do
-    test -s "$out/install/lib64/$file"
+for file in libEGL_mesa.so libGLESv1_CM_mesa.so libGLESv2_mesa.so libgallium_dri.so \
+        libvulkan_radeon.so libgbm_mesa.so gbm/dri_gbm.so; do
+    test -s "$build/install/lib64/$file"
+    if ! cmp -s "$build/install/lib64/$file" "$out/install/lib64/$file"; then
+        mkdir -p "$(dirname "$out/install/lib64/$file")"
+        cp "$build/install/lib64/$file" "$out/install/lib64/$file.partial"
+        mv "$out/install/lib64/$file.partial" "$out/install/lib64/$file"
+    fi
 done
 (cd "$out/install" && find . -type f -name '*.so*' -print0 | sort -z | xargs -0 sha256sum) > "$out/manifest.partial"
 if ! cmp -s "$out/manifest.partial" "$out/manifest"; then

@@ -2,4 +2,7 @@
 # Sources: ./ is this directory.
 #
 # path                   mode owner selinux type source
-etc/init/zz-dali-qemu.rc 0644 0:0   system_file  ./dali-qemu.rc
+etc/init/zz-dali.rc     0644 0:0   system_file  ./dali.rc
+etc/dali/              0755 0:0   system_file  -
+etc/dali/graphics-softpipe.rc 0644 0:0 system_file ./graphics-softpipe.rc
+etc/dali/graphics-amd.rc 0644 0:0 system_file ./graphics-amd.rc

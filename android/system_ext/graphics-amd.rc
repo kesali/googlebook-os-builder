@@ -1,0 +1,7 @@
+# Google's ANGLE GLES and Vulkan RenderEngine use RADV; minigbm uses Mesa GBM/Zink.
+on early-init
+    setprop ro.hardware.egl angle
+    setprop ro.hardware.vulkan radeon
+    setprop debug.renderengine.vulkan true
+    setprop debug.renderengine.backend skiavkthreaded
+    export MESA_LOADER_DRIVER_OVERRIDE zink

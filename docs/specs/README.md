@@ -9,13 +9,13 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | working | — (the first laptop built-ins are in; more drivers are tracked in Laptop hardware) |
+| [Kernel (GKI)](kernel.md) | working | Validate signed AMD modules on hardware |
 | [Boot chain](boot.md) | working | Physical UEFI boot (tracked in Laptop hardware) |
 | [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | working (softpipe, slow) | Plan accelerated rendering |
+| [Graphics](graphics.md) | partial | Validate the built AMD stack; QEMU softpipe still works |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | M1: prepare USB deployment; UEFI log/UI checks pass separately |
+| [Laptop hardware](laptop-hardware.md) | partial | Owner to flash and boot the AMD candidate; physical graphics/input unverified |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·

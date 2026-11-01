@@ -1,7 +1,9 @@
 # Kernel (GKI)
 
 **Status:** working — Google's exact kernel rebuilt from source; Google's modules load.
-**Last verified:** 2026-11-01 — `make gki` with the laptop built-ins: config check passes, exports identical to Google's (4501, same CRCs); `make test` and `make qemu-check` pass (logs in `out/m1-validation/`).
+**Last verified:** 2026-11-01 — AMD build and config checks pass; all 4501 Google exports retain
+their CRCs. The rebuilt kernel boots the UEFI console and graphical checks
+([build log](../../out/overnight/image-build-zstd.log), [boot log](../../out/overnight/uefi.log)).
 
 ## Goal
 Build Google's Googlebook kernel from source with the instruction emulator compiled in, identical
@@ -10,13 +12,16 @@ enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEM
 ## Current state
 Verified: release `6.18.21-android17-5-g3938c8d97142-ab16302624` from tag
 `android17-6.18-2026-06_r52` (commit `3938c8d97142`);
-config identical to Google's except the trusted key and the first-laptop-boot built-ins (touchpad
-drivers; simpledrm and drm_log for the on-screen kernel log) in [kernel/gki.config](../../kernel/gki.config);
-exported symbols and CRCs identical to Google's `vmlinux.symvers`; Google's certificate trusted;
+config changes are listed in [kernel/gki.config](../../kernel/gki.config): trusted key, touchpad,
+simpledrm/drm_log, modular amdgpu and its display helpers, and EROFS Zstd support.
+Every Google export and CRC is preserved; Google's certificate remains trusted;
 Google's prebuilt virtio GPU/input/net modules load in QEMU, which still reaches the setup screen.
-The built-ins add 106 KB to the bzImage (26,162,176 → 26,268,672 B).
-Not verified: any physical-laptop driver. QEMU's direct-kernel boot has no firmware framebuffer, so
-simpledrm and drm_log have not run yet; the laptop (or a UEFI boot in QEMU) is their first test.
+The four missing modules (`amdgpu`, `amdxcp`, `hwmon`, `drm_panel_backlight_quirks`) are stripped
+and signed with this build's trusted key. Google's existing helper modules remain unchanged.
+All 1,585 import CRCs across the 13-module AMD dependency tree match the rebuilt kernel and
+actual Google helper exports ([check](../../out/overnight/module-crcs.log)). This is static
+link verification, not runtime loading: the unprivileged Android console cannot run modprobe.
+Simpledrm/drm_log work in the separate UEFI console check. No physical-laptop driver is verified.
 
 ## Decisions
 - Google's exact toolchain (clang r584948c, Rust 1.91.1.p3, bindgen 0.72.1, pahole 1.31 from
@@ -29,7 +34,12 @@ simpledrm and drm_log have not run yet; the laptop (or a UEFI boot in QEMU) is t
   Google's exports and CRCs.
 - Churro's `vex-emulate.patch` (downloaded, SHA-pinned) emulates VEX GFNI/AVX-VNNI — Googlebook
   userspace is built for Intel Panther Lake; this Zen 3 CPU lacks those instructions.
-- Builds fail rather than publish a kernel whose config, release string or ABI differs from Google's.
+- Builds fail on unlisted config changes, a release-string mismatch, or any missing/changed
+  Google export or CRC.
+- New modules use the build's signing key to access protected GKI exports. Do not remove
+  `TRIM_UNUSED_KSYMS`, change Google's ABI whitelist or publish the private key.
+- Vendor_dlkm uses Zstd to fit the additional modules without removing Google's drivers or
+  resizing partitions; its decompressor must be built in before that filesystem is mounted.
 
 ## Files
 - [scripts/gki-kernel.sh](../../scripts/gki-kernel.sh) — configure, build, check, publish `out/gki/`.
@@ -38,6 +48,7 @@ simpledrm and drm_log have not run yet; the laptop (or a UEFI boot in QEMU) is t
   [tools/kernel_certs.py](../../tools/kernel_certs.py) — config, ABI and certificate checks.
 - [scripts/git-fetch.sh](../../scripts/git-fetch.sh), [scripts/pahole.sh](../../scripts/pahole.sh) — toolchain.
 - [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + emulator patch.
+- [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [kernel/laptop-modules.list](../../kernel/laptop-modules.list) — explicit signed-module publication.
 
 ## Verify
 `make gki JOBS=12` (about an hour first time, incremental afterwards). It fails on any config,
@@ -60,11 +71,14 @@ _None agreed._
 
 ### Ideas (not approved)
 - Extend instruction emulation to SSE GFNI if a userspace binary needs it (see gbos-x86 `isa_emu`).
-- Laptop drivers as modules — see [laptop-hardware.md](laptop-hardware.md).
+- Further laptop drivers as modules — see [laptop-hardware.md](laptop-hardware.md).
 - Fill `protected_module_names_list` like Google's build (its system_dlkm module names), so
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-01 (this commit) — Added modular AMD display support and EROFS Zstd; Google's 4501
+  exports/CRCs and ABI whitelist are preserved. Four signed modules built; UEFI checks pass.
+  Physical device binding and display remain unverified.
 - 2026-11-01 (this commit) — Added the M1 built-ins to `gki.config` (18 settings: 6 touchpad, 12
   screen log incl. selected ones). First `make gki` passed config and ABI checks (69 s); QEMU still boots.
 - 2026-10-31 `9c78a5d` — Decision relaxed (owner-agreed laptop plan): built-ins are allowed for the

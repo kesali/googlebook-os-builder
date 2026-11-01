@@ -69,7 +69,7 @@ def sync(image, artifacts):
         with image.open("r+b") as disk:
             logical = {p.name: p for p in read_partitions(disk, super_start)}
             updates = []
-            for name in ("system_a", "vendor_a", "system_ext_a", "vbmeta_a"):
+            for name in ("system_a", "vendor_a", "system_ext_a", "vendor_dlkm_a", "vbmeta_a"):
                 source = artifacts / f"{name}.img"
                 if name == "vbmeta_a":
                     p = physical[name]

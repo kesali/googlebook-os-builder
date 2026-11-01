@@ -1,13 +1,12 @@
-# VM-only development profile. Software keys have no hardware-backed security.
+# Development image: software keys have no hardware-backed security.
+import /system_ext/etc/dali/graphics-${ro.boot.dali.graphics:-softpipe}.rc
+
 on early-init
     setprop trusty.security_vm.enabled 0
     setprop remote_provisioning.tee.rkp_only 0
     setprop remote_provisioning.strongbox.rkp_only 0
     setprop remote_provisioning.hostname ""
-    export LIBGL_ALWAYS_SOFTWARE true
-    export GALLIUM_DRIVER softpipe
-
-# No Google security chip is presented to the VM.
+# Neither the VM nor the MSI has Google's security chip.
 service android.system.desktop.security.gscd /system/bin/gscd
     override
     class early_hal

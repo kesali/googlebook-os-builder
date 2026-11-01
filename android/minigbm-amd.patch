@@ -1,0 +1,251 @@
+Use the upstream Mesa GBM backend only for AMD, preserve Google's platform-facing C++ layout,
+and forward cursor/linear usage and FD ownership correctly. Google's allocator/mapper services
+stay unchanged. Based on the same-source fixes in the reference Churro port.
+Drop individual hunks when LineageOS minigbm contains them; the layout field is needed while
+Google's prebuilt clients use the Android 17 cros_gralloc_driver layout.
+
+--- a/drv.c
++++ b/drv.c
+@@ -31,7 +31,7 @@
+ #ifdef DRV_AMDGPU
+ extern const struct backend backend_amdgpu;
+ #endif
+-#ifdef DRV_GBM_MESA
++#if defined(DRV_GBM_MESA) || defined(DRV_MESA_AMDGPU)
+ extern const struct backend backend_gbm_mesa;
+ #endif
+ #ifdef DRV_I915
+@@ -138,6 +138,13 @@
+ 		if (!drm_version)
+ 			return NULL;
+ 
++#ifdef DRV_MESA_AMDGPU
++		if (!strcmp(drm_version->name, "amdgpu")) {
++			drmFreeVersion(drm_version);
++			return &backend_gbm_mesa;
++		}
++#endif
++
+ 		for (i = 0; i < ARRAY_SIZE(drv_backend_list); i++) {
+ 			const struct backend *b = drv_backend_list[i];
+ 			if (!strcmp(drm_version->name, b->name) &&
+--- a/cros_gralloc/cros_gralloc_driver.h
++++ b/cros_gralloc/cros_gralloc_driver.h
+@@ -81,6 +81,9 @@
+ 	std::mutex mutex_;
+ 	std::unordered_map<uint32_t, std::unique_ptr<cros_gralloc_buffer>> buffers_;
+ 	std::unordered_map<cros_gralloc_handle_t, cros_gralloc_imported_handle_info> handles_;
++
++	/* Preserve the object layout used by Google's prebuilt clients. */
++	[[maybe_unused]] const bool is_running_with_software_rendering_ = false;
+ };
+ 
+ #endif
+--- a/gbm_mesa_driver/UniqueFd.h
++++ b/gbm_mesa_driver/UniqueFd.h
+@@ -20,6 +20,7 @@
+ #include <unistd.h>
+ 
+ #include <memory>
++#include <utility>
+ 
+ /*
+  * Using UniqueFd:
+--- a/gbm_mesa_driver/gbm_mesa_wrapper.h
++++ b/gbm_mesa_driver/gbm_mesa_wrapper.h
+@@ -31,6 +31,7 @@
+ 	uint32_t height;
+ 	uint32_t drm_format;
+ 	bool use_scanout;
++	bool use_cursor;
+ 	bool force_linear;
+ 	bool needs_map_stride;
+ 	int out_fd;
+--- a/gbm_mesa_driver/gbm_mesa_wrapper.c
++++ b/gbm_mesa_driver/gbm_mesa_wrapper.c
+@@ -25,6 +25,7 @@
+ #include <errno.h>
+ #include <log/log.h>
+ #include <sys/mman.h>
++#include <unistd.h>
+ 
+ #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
+ #define DRM_TO_GBM_FORMAT(A)                                                                       \
+@@ -104,6 +105,8 @@
+ 
+ 	if (args->use_scanout)
+ 		usage |= GBM_BO_USE_SCANOUT;
++	if (args->use_cursor)
++		usage |= GBM_BO_USE_CURSOR;
+ 
+ 	bo = gbm_priv_ops.gbm_bo_create(args->gbm, args->width, args->height, gbm_format, usage);
+ 
+@@ -116,6 +119,11 @@
+ 	/* gbm_mesa will create new fd, therefore it's our responsibility to close it once we don't
+ 	 * need the buffer */
+ 	args->out_fd = gbm_priv_ops.gbm_bo_get_fd(bo);
++	if (args->out_fd < 0) {
++		ALOGE("Unable to export Mesa buffer FD");
++		gbm_priv_ops.gbm_bo_destroy(bo);
++		return -EINVAL;
++	}
+ 
+ 	args->out_stride = gbm_priv_ops.gbm_bo_get_stride(bo);
+ 	args->out_modifier = gbm_priv_ops.gbm_bo_get_modifier(bo);
+@@ -141,6 +149,7 @@
+ 		bo = gbm_priv_ops.gbm_bo_import(args->gbm, GBM_BO_IMPORT_FD_MODIFIER, &data, 0);
+ 		if (!bo) {
+ 			ALOGE("Failed to import BO during map_stride query");
++			close(args->out_fd);
+ 			return -EINVAL;
+ 		}
+ 
+@@ -148,8 +157,11 @@
+ 
+ 		addr = gbm_priv_ops.gbm_bo_map(bo, 0, 0, args->width, args->height, flags,
+ 				  &args->out_map_stride, &map_data);
+-		if (addr == MAP_FAILED) {
++		if (!addr || addr == MAP_FAILED) {
+ 			ALOGE("Failed to map the buffer at %s:%d", __FILE__, __LINE__);
++			gbm_priv_ops.gbm_bo_destroy(bo);
++			close(args->out_fd);
++			return -EINVAL;
+ 		} else {
+ 			gbm_priv_ops.gbm_bo_unmap(bo, map_data);
+ 		}
+@@ -192,8 +204,9 @@
+ 
+ 	uint32_t stride = 0;
+ 	*addr = gbm_priv_ops.gbm_bo_map(bo, 0, 0, w, h, flags, &stride, map_data);
+-	if (addr == MAP_FAILED) {
++	if (!*addr || *addr == MAP_FAILED) {
+ 		ALOGE("Failed to map the buffer at %s:%d", __FILE__, __LINE__);
++		*addr = MAP_FAILED;
+ 	}
+ }
+ 
+--- a/gbm_mesa_driver/gbm_mesa_internals.cpp
++++ b/gbm_mesa_driver/gbm_mesa_internals.cpp
+@@ -247,7 +247,13 @@
+ 	if (!drv->priv) {
+ 		gbm_mesa_drv = std::make_unique<GbmMesaDriver>();
+ 
+-		bool look_for_kms = is_separate_dc_gpu(&gbm_mesa_drv->gpu_node_fd);
++		gbm_mesa_drv->gpu_node_fd = UniqueFd(dup(drv->fd));
++		if (!gbm_mesa_drv->gpu_node_fd) {
++			drv_loge("Unable to duplicate the AMD DRM node: %s", strerror(errno));
++			return nullptr;
++		}
++		/* AMD has its own display controller; do not pick another GPU's render node. */
++		bool look_for_kms = false;
+ 
+ 		if (look_for_kms && !mapper_sphal) {
+ 			drv_logi("GPU require KMSRO entry, searching for separate KMS driver...\n");
+@@ -340,7 +346,7 @@
+ {
+ 	/* For some ARM SOCs, if no more free CMA available, buffer can be allocated in VRAM but HWC
+ 	 * won't be able to display it directly, using GPU for compositing */
+-	bool scanout_strong = false;
++	bool scanout_strong = (use_flags & BO_USE_CURSOR) != 0;
+ 	bool bo_layout_ready = false;
+ 	uint32_t size_align = 1;
+ 	int err = 0;
+@@ -358,9 +364,10 @@
+ 		.width = width,
+ 		.height = height,
+ 		.drm_format = wr->get_gbm_format(format) ? format : 0,
+-		.force_linear = (use_flags & BO_USE_SW_MASK) != 0,
+-		.needs_map_stride = (use_flags & BO_USE_SW_MASK) != 0,
+ 		.use_scanout = (use_flags & (BO_USE_SCANOUT | BO_USE_CURSOR)) != 0,
++		.use_cursor = (use_flags & BO_USE_CURSOR) != 0,
++		.force_linear = (use_flags & (BO_USE_SW_MASK | BO_USE_LINEAR | BO_USE_CURSOR)) != 0,
++		.needs_map_stride = (use_flags & BO_USE_SW_MASK) != 0,
+ 	};
+ 
+ 	/* Alignment for camera and hardware video decoder/encoder.
+@@ -420,7 +427,13 @@
+ 	auto priv = new GbmMesaBoPriv();
+ 	bo->inode = drv_get_inode(alloc_args.out_fd);
+ 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
+-		priv->fds[plane] = UniqueFd(alloc_args.out_fd);
++		priv->fds[plane] = UniqueFd(plane ? dup(alloc_args.out_fd) : alloc_args.out_fd);
++		if (!priv->fds[plane]) {
++			err = -errno;
++			drv_loge("Unable to duplicate buffer FD: %s", strerror(errno));
++			delete priv;
++			return err;
++		}
+ 	}
+ 
+ 	priv->map_stride = alloc_args.out_map_stride;
+@@ -441,11 +454,22 @@
+ 	auto priv = new GbmMesaBoPriv();
+ 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
+ 		priv->fds[plane] = UniqueFd(dup(data->fds[plane]));
++		if (!priv->fds[plane]) {
++			int err = -errno;
++			drv_loge("Unable to duplicate imported FD: %s", strerror(errno));
++			delete priv;
++			return err;
++		}
+ 	}
+ 
+ 	if (data->use_flags & BO_USE_SW_MASK) {
+ 		// Mapping require importing by gbm_mesa
+ 		auto drv = gbm_mesa_get_or_init_driver(bo->drv, true);
++		if (!drv) {
++			drv_loge("Unable to initialize Mesa for buffer import");
++			delete priv;
++			return -ENODEV;
++		}
+ 		auto wr = drv->wrapper;
+ 
+ 		uint32_t s_format = data->format;
+@@ -460,6 +484,11 @@
+ 		priv->drv = drv;
+ 		priv->gbm_bo = wr->import(drv->gbm_dev, data->fds[0], s_width, s_height,
+ 					  data->strides[0], data->format_modifier, s_format);
++		if (!priv->gbm_bo) {
++			drv_loge("Unable to import buffer into Mesa");
++			delete priv;
++			return -EINVAL;
++		}
+ 	}
+ 
+ 	bo->priv = priv;
+@@ -484,13 +513,15 @@
+ void *gbm_mesa_bo_map(struct bo *bo, struct vma *vma, uint32_t map_flags)
+ {
+ 	auto drv = gbm_mesa_get_or_init_driver(bo->drv, true);
++	if (!drv) {
++		drv_loge("Unable to initialize Mesa for buffer mapping");
++		return MAP_FAILED;
++	}
+ 	auto wr = drv->wrapper;
+ 
+ 	vma->length = bo->meta.total_size;
+ 
+ 	auto priv = (GbmMesaBoPriv *)bo->priv;
+-	assert(priv->gbm_bo != nullptr);
+-
+ 	void *buf = MAP_FAILED;
+ 
+ 	uint32_t s_format = bo->meta.format;
+@@ -499,6 +530,17 @@
+ 	if (wr->get_gbm_format(s_format) == 0) {
+ 		s_width = bo->meta.total_size;
+ 		s_height = 1;
++		s_format = DRM_FORMAT_R8;
++	}
++
++	if (!priv->gbm_bo) {
++		priv->drv = drv;
++		priv->gbm_bo = wr->import(drv->gbm_dev, priv->fds[0].Get(), s_width, s_height,
++					  bo->meta.strides[0], bo->meta.format_modifier, s_format);
++		if (!priv->gbm_bo) {
++			drv_loge("Unable to import buffer for CPU mapping");
++			return MAP_FAILED;
++		}
+ 	}
+ 
+ 	wr->map(priv->gbm_bo, s_width, s_height, &buf, &vma->priv);
