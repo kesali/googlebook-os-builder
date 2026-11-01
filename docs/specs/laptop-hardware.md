@@ -1,7 +1,10 @@
 # Laptop hardware
 
-**Status:** partial — AMD test image ready; Android has not been booted on the MSI laptop.
-**Last verified:** 2026-11-01 — `make test minigbm-check` (59 Python tests plus GBM checks),
+**Status:** partial — AMD test image written to the USB; Android has not been booted on the MSI laptop.
+**Last verified:** 2026-11-01 — the image was written to the BUP Slim; a full read-back matched
+and the partition table, GPT entries and ESP were re-checked after moving the backup GPT
+([flash log](../../out/usb-flash-android/flash.log)).
+Before that: `make test minigbm-check` (59 Python tests plus GBM checks),
 `make android-uefi-check JOBS=12`: the
 [DRM log](../../out/android-uefi-console-p_3gmgei/early-screen.png) and, in a separate display
 configuration, [Android setup](../../out/android-uefi-graphics-pgfv692u/screen.png) were inspected.
@@ -24,7 +27,11 @@ updating the USB incrementally instead of reflashing.
 The laptop candidate is [out/android/disk.img](../../out/android/disk.img), 53,430,190,080 B
 (49.8 GiB; use a 64 GB or larger USB). It is not the 514 MiB diagnostic image.
 It contains the shared kernel/OS, UEFI boot files, signed AMD modules, 23 official runtime firmware
-blobs and the RADV/Zink/minigbm graphics stack. It has not been written to a physical USB.
+blobs and the RADV/Zink/minigbm graphics stack. On 2026-11-01 it was written unchanged to the
+BUP Slim by a one-time checked sudo script ([flash.sh](../../out/usb-flash-android/flash.sh)):
+35 MB/s write, then a full read-back that matched. Then `sfdisk --relocate gpt-bak-std` moved the
+backup GPT to the disk end; the partition table (same PARTUUIDs), GPT entries and ESP bytes still
+match and `fsck.fat` is clean. The stick also carries the disk's QEMU userdata (6.2 GiB in use).
 The first diagnostic boot passed both instruction-emulation tests and registered the internal
 keyboard and ELAN0307 touchpad with `hid-multitouch`. Pointer motion/gestures were not tested.
 The same boot drew the screen through simpledrm at 0.50 s (`simple-framebuffer.0`, 128x48 text).
@@ -125,7 +132,8 @@ M1, in this order:
    Android shell; the graphical run reuses the full Android smoke checks without a firmware
    framebuffer. Both require the USB partition path, no NVMe enumeration and unchanged decoy
    hashes. Run on 2026-11-01; inspect the screenshots linked above. Not a graphics-handoff test.
-3. Write the USB with the owner's approval; read it back and check the ESP files read-only. Not run yet.
+3. Write the USB with the owner's approval; read it back and check the ESP files read-only.
+   Run on 2026-11-01: passes ([flash log](../../out/usb-flash-android/flash.log)).
 4. Boot the laptop. Evidence: a photo of the screen showing the kernel log, saved in `out/`.
    M1 does not claim "boots": that needs a usable Android screen. Not run yet.
 
@@ -159,9 +167,6 @@ M1, in this order:
 
 ## Actions
 Next, with this spec updated after the physical test:
-- [ ] Write the USB — a tool with strict target checks (by-id path, USB transport, not NVMe,
-  nothing mounted) run through a sudo task — done when read-back matches the image and the
-  drive is unmounted again. Needs the owner's explicit approval for the exact device.
 - [ ] Boot-file updates on the mounted stick — `make android-deploy USB=…` using
   [deploy.py](../../tools/deploy.py)'s `android` kind — done when a changed kernel reaches the
   stick without sudo, the previous build stays selectable in the menu, and a no-op writes nothing.
@@ -178,10 +183,13 @@ Next, with this spec updated after the physical test:
 - A udev rule for passwordless OS-partition writes to this one USB.
 
 ## Handoff log
-- 2026-11-01 (this commit) — Prepared the owner's overnight AMD candidate: signed modules,
+- 2026-11-01 (this commit) — With the owner's approval, wrote the AMD candidate to the BUP Slim
+  (by-id, USB, unmounted and locked); full read-back, GPT re-check and `fsck.fat` pass; ejected.
+  Next: the owner's first laptop boot (photo of setup or of the last log screen).
+- 2026-11-01 `54771be` — Prepared the owner's overnight AMD candidate: signed modules,
   official firmware, RADV/Zink/ANGLE and ABI-checked minigbm. UEFI log/UI checks pass, data is
   preserved and no-op takes 16 s. No physical writes; AMD display/input await the owner.
-- 2026-11-01 (this commit) — UEFI USB checks pass in separate log/UI configurations; screenshots
+- 2026-11-01 `810ad08` — UEFI USB checks pass in separate log/UI configurations; screenshots
   inspected, NVMe decoys hidden and unchanged. Added `console=drm_log`; GPU fixed at PCI 00:02.0.
   Graphics handoff and laptop remain unverified. Next: prepare USB deployment.
 - 2026-11-01 `deee56b` — `make android-boot` puts GRUB, the GKI kernel, initrd and the laptop menu in
