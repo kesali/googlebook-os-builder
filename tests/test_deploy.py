@@ -167,10 +167,32 @@ class DeployTests(unittest.TestCase):
         deploy.bundle(inputs, bundle, "android", REPO / "android/cmdline.txt")
         menu = (bundle / "menu.cfg").read_text()
         self.assertNotIn("@CMDLINE@", menu)
-        kernel_arguments = next(line for line in menu.splitlines() if line.lstrip().startswith("linux ")).split()
+        linux_lines = [line for line in menu.splitlines() if line.lstrip().startswith("linux ")]
+        self.assertEqual(len(linux_lines), 1)
+        kernel_arguments = linux_lines[0].split()
         self.assertIn("root=/dev/ram0", kernel_arguments)
         # Android must never probe the internal NVMe, which holds another system.
         self.assertIn("initcall_blacklist=nvme_init", kernel_arguments)
+        self.assertEqual(
+            [argument for argument in kernel_arguments if argument.startswith("efi_pstore.pstore_disable=")],
+            ["efi_pstore.pstore_disable=1"],
+        )
+        self.assertEqual(kernel_arguments[-1], "$1")
+        self.assertNotIn("initcall_blacklist=sysfb_init", kernel_arguments)
+        normal_entry = 'menuentry "Googlebook OS" {\n    boot_android\n}'
+        test_entry = (
+            'menuentry "Googlebook OS (test: no firmware framebuffer)" {\n'
+            '    boot_android initcall_blacklist=sysfb_init\n}'
+        )
+        self.assertIn("set default=0\n", menu)
+        self.assertIn(normal_entry, menu)
+        self.assertIn(test_entry, menu)
+        self.assertLess(menu.index(normal_entry), menu.index(test_entry))
+        self.assertIn(
+            'menuentry "Previous build (may write UEFI crash records)" {\n'
+            '        configfile ($root)/dali/grub.previous.cfg\n    }',
+            menu,
+        )
 
     def test_symlink_is_rejected_before_writes(self):
         (self.usb / "dali/grub.previous.cfg").symlink_to(self.inputs / "kernel")

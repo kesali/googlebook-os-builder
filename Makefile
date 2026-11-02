@@ -11,7 +11,10 @@ GOOGLE := $(OUT)/google
 DL := $(OUT)/downloads
 EMU_PATCH := $(DL)/emulator-$(EMU_SHA).patch
 BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
-KERNEL_SRC := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
+KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
+KERNEL_PATCH := kernel/drm-firmware-handoff.patch
+KERNEL_PATCH_SHA := $(shell sha256sum $(KERNEL_PATCH) | cut -d' ' -f1)
+KERNEL_SRC := $(KERNEL_CACHE)-$(KERNEL_PATCH_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
 GKI_SYMVERS := $(DL)/vmlinux-$(GKI_BUILD)-$(GKI_SYMVERS_SHA).symvers
 GKI_ABI_LIST := $(DL)/abi_symbollist-$(GKI_BUILD)-$(GKI_ABI_SHA).raw
@@ -79,9 +82,9 @@ $(EMU_PATCH): | $(BUILD_READY)
 $(BUSYBOX): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
 
-$(KERNEL_SRC)/.ready: $(EMU_PATCH) | $(BUILD_READY)
+$(KERNEL_SRC)/.ready: $(EMU_PATCH) $(KERNEL_PATCH) | $(BUILD_READY)
 	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_TAG)" "$(KERNEL_REV)" \
-		"$(EMU_PATCH)" "$(KERNEL_SRC)"
+		"$(EMU_PATCH)" "$(KERNEL_PATCH)" "$(KERNEL_CACHE)" "$(KERNEL_SRC)"
 
 sources: $(KERNEL_SRC)/.ready ## Fetch the pinned kernel source tree (editable under out/src/)
 

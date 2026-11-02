@@ -1,0 +1,38 @@
+# Google's user image disables persistent logging. Use its native logcat, with a
+# dedicated enforcing domain; /metadata remains readable from Linux after a hang.
+on early-init
+    setprop ro.logd.kernel true
+
+on post-fs
+    mkdir /metadata/dali-bootlog 0700 logd log
+    restorecon_recursive /metadata/dali-bootlog
+    start dali_bootlog_prepare
+
+# Failed preparation never signals readiness; init reports collector failures to kmsg.
+on property:sys.dali.bootlog.ready=1
+    start dali_kernel_log
+    start dali_android_log
+
+service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare.sh /metadata/dali-bootlog /proc/sys/kernel/random/boot_id
+    user logd
+    group log
+    seclabel u:r:dali_bootlog:s0
+    disabled
+    oneshot
+    stdio_to_kmsg
+
+# Long format has one header per record, avoiding multiline message expansion.
+# Eight 256-KiB files per stream leave headroom below the agreed 16-MiB limit.
+service dali_kernel_log /system/bin/logcat -b kernel -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/kernel.log
+    user logd
+    group log
+    seclabel u:r:dali_bootlog:s0
+    disabled
+    stdio_to_kmsg
+
+service dali_android_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/android.log
+    user logd
+    group log
+    seclabel u:r:dali_bootlog:s0
+    disabled
+    stdio_to_kmsg

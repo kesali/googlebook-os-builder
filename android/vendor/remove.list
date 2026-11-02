@@ -41,3 +41,10 @@ bin/crossystem
 # Source-built allocator with the AMD Mesa backend; services and mapper remain Google's.
 lib64/libgbm.so
 lib64/libminigbm_gralloc.so
+
+# Compile the changed platform policy instead of using Google's unchanged binary.
+# Keep enforcing; remove this group when the dedicated boot logger is no longer needed.
+etc/selinux/precompiled_sepolicy
+etc/selinux/precompiled_sepolicy.plat_sepolicy_and_mapping.sha256
+etc/selinux/precompiled_sepolicy.product_sepolicy_and_mapping.sha256
+etc/selinux/precompiled_sepolicy.system_ext_sepolicy_and_mapping.sha256

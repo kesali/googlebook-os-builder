@@ -4,10 +4,10 @@ A small, readable build for developing a Googlebook OS port on the **MSI Modern 
 Google's recovery image is a read-only input, not something we patch with byte offsets.
 Upstream code is used unchanged where possible; each carried patch is small and explains its purpose.
 
-**QEMU verified, laptop candidate ready:** plain Googlebook OS with a source-built GKI kernel,
+**QEMU verified; laptop retest pending:** plain Googlebook OS with a source-built GKI kernel,
 Mesa softpipe fallback and an AMD graphics stack awaiting the physical test,
 plus software KeyMint/Gatekeeper from Google's emulator. No KernelSU, dual-boot
-installer, host-GPU passthrough or physical-disk writes. The separate USB diagnostic target is
+installer, host-GPU passthrough or raw physical-disk writes by the build. The separate USB diagnostic target is
 retained, but it does not run Android.
 
 The [project plan](docs/plan.md) tracks personal priorities and the proposed order of work.
@@ -41,15 +41,26 @@ make android-uefi-check JOBS=12  # disposable USB/UEFI boots in QEMU; no physica
 The Android image is **49.8 GiB (53,430,190,080 bytes)**, not the small diagnostic image below.
 Use a **64 GB or larger USB**, preferably USB 3. Flash [out/android/disk.img](out/android/disk.img)
 with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
-No Android image has been written to a physical drive by this work.
+The laptop spec records a checked USB transfer, but the owner reports Android still hangs
+after the GPU-label fix. A framebuffer-free test then ended in a kernel panic and wrote crash
+records to UEFI variable storage. The Churro-based framebuffer handoff and EFI crash-logging
+safeguard passed offline QEMU checks; the owner installed them on the USB and read-back matched.
+The saved previous GRUB menu may still write crash records. For the retest, use only the normal
+entry, not the previous build or framebuffer-free test. The existing disk image still has the
+prior boot files until rebuilt. A usable physical boot is not yet verified.
 
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
 `1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
 Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm
-are included, but **AMD display/input have not been tested on the laptop**. QEMU reaches usable
+are included, but **AMD display/input have not been verified on the laptop**. QEMU reaches usable
 setup; that does not prove a physical graphics handoff. Wi-Fi, Bluetooth, audio and suspend remain
 unverified. Photograph the setup screen and test the keyboard/touchpad; if it stops, photograph
 the last visible log. Details and evidence: [laptop hardware](docs/specs/laptop-hardware.md).
+Persistent kernel/Android diagnostics saved logs from the previous laptop boot, but not the
+framebuffer-free panic. They use native logcat and retain current/previous boot on metadata,
+with an explicitly approved scoped enforcing policy. See [boot](docs/specs/boot.md) for limits/coverage
+and [laptop hardware](docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
+for Linux retrieval. These are Android logs, separate from the optional diagnostic USB below.
 
 ## Optional USB diagnostics (not Android)
 
@@ -119,7 +130,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [sources.mk](sources.mk) | Source URLs, exact revisions and SHA-256 pins |
 | [docker/Dockerfile](docker/Dockerfile) | Debian build/test tools |
 | [scripts/fetch.sh](scripts/fetch.sh), [scripts/source.sh](scripts/source.sh) | Verified download and source extraction |
-| [scripts/kernel-source.sh](scripts/kernel-source.sh) | Release-tag checkout, checked against the pinned commit, + verified emulator source patch |
+| [scripts/kernel-source.sh](scripts/kernel-source.sh) | Checked kernel checkout with the emulator and [framebuffer handoff](kernel/drm-firmware-handoff.patch) source patches |
 | [scripts/kernel.sh](scripts/kernel.sh) | Kbuild plus the diagnostic hardware config |
 | [kernel/msi-diagnostic.config](kernel/msi-diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
 | [boot/init](boot/init) | The complete runtime startup sequence |
@@ -147,7 +158,8 @@ use `make deploy`, **not** another whole-stick flash.
 `make sources` creates editable trees under `out/src/`. `make kernel` always runs Kbuild so
 edits there are detected, not hidden by a top-level "done" stamp. Published outputs retain their
 timestamps if their bytes are unchanged. The source trees and outputs are ignored by Git:
-**save source edits before deleting `out/` or changing pins**. There is intentionally no blanket
+**save source edits before deleting `out/` or changing pins or patches**. A new kernel patch creates
+another checkout without copying edits from the old one. There is intentionally no blanket
 `make clean` deleting your source experiments.
 
 The compiler and other host tools come from Debian packages; they are not bit-for-bit pinned.
@@ -254,6 +266,10 @@ then `virtio-gpu-pci` for Android's setup UI without a firmware framebuffer. Thi
 prove a simpledrm-to-GPU handoff or a laptop boot. Both use the installed laptop menu with only
 a serial-console argument added to the copy. Logs and screenshots go in fresh
 `out/android-uefi-*` directories; inspect the screenshots, not just the printed PASS.
+An additional [offline handoff check](out/framebuffer-handoff-check.py) used both the firmware
+framebuffer and virtio GPU in one boot: the GPU took card0 and the
+[setup screen responded to a mouse click](out/fb2/android-uefi-console-g0b93ipe/after-input.png).
+That verifies QEMU, not the laptop's AMD GPU.
 See [laptop hardware](docs/specs/laptop-hardware.md) for verified results and limitations.
 
 ### Explicit VM changes

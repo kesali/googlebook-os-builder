@@ -1,6 +1,6 @@
 # Project plan
 
-Updated: 2026-11-01. Current focus: the first Android boot on the laptop; QEMU polish is parked.
+Updated: 2026-11-02. Current focus: the first Android boot on the laptop; QEMU polish is parked.
 
 ## Priorities
 
@@ -38,10 +38,13 @@ removable once upstream covers it.
 - The owner agreed the first laptop boot plan (M1, below). QEMU already boots to the setup screen,
   which is enough for now. So far: the kernel built-ins, the disk's FAT32 boot partition and the
   boot files in it (`make android-boot`). UEFI/GRUB USB checks now pass with an unchanged NVMe
-  decoy: the firmware log and graphical UI are tested separately, not a graphics handoff.
+  decoy: the standard check tests firmware log and UI separately.
   The owner then requested an overnight Android UI candidate: the image now includes signed
   AMD modules, official firmware and RADV/Zink/minigbm, with QEMU softpipe still verified.
-  No Android image has been written to a physical USB, and AMD display/input are unverified.
+  A checked Android USB transfer is recorded in the laptop spec. The owner still reports a
+  hang after the GPU-label fix; usable AMD display/input remain unverified. A later offline check
+  verified firmware-to-virtio handoff, setup and a mouse click in one boot. The owner installed
+  the guarded handoff kernel on the USB; read-back passed and the owner reports a no-op repeat.
   The BUP Slim linked at USB 2.0 (about 39 MB/s); use USB 3 before judging Android's speed.
 - Agent guidance now favors readable changes, quick iteration and focused verification.
 
@@ -53,6 +56,9 @@ This plan orders the work; it does not replace those records.
 This is a flexible order, not a commitment to do every item.
 
 1. **First Android boot on the laptop — current.**
+   Immediate repair: diagnostics recovered the owner's boot logs; the reference-based framebuffer
+   handoff now passes QEMU and needs a laptop retest. Keep the existing build
+   and reference ports as evidence rather than starting a wholesale rewrite.
    Milestone M1 (agreed): the QEMU disk's partition layout on the USB, our GKI kernel and Android
    initrd loaded by GRUB, and the keyboard, touchpad and kernel log on the laptop's screen. The
    original M1 did not expect Android UI; the overnight candidate now includes the AMD stack.

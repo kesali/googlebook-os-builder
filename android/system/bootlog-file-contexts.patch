@@ -1,0 +1,11 @@
+Label only our persistent boot-log directory, not Android's other metadata.
+This unencrypted partition lets the owner recover logs from Linux after a hang.
+Drop this entry with the dedicated boot logger.
+
+--- a/system/etc/selinux/plat_file_contexts
++++ b/system/etc/selinux/plat_file_contexts
+@@ -769,3 +769,4 @@
+ /mnt/vm u:object_r:vm_data_file:s0
+ /second_stage_resources/overlay_remounter u:object_r:overlay_remounter_exec:s0
+ /system/bin/casefolding_remover u:object_r:casefolding_remover_exec:s0
++/metadata/dali-bootlog(/.*)? u:object_r:dali_bootlog_file:s0

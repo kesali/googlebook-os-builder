@@ -1,0 +1,19 @@
+Only the boot-log preparation helper may signal that its rotation succeeded.
+Collectors must not start after preparation failed. This property is not persistent.
+Drop this entry with the dedicated boot logger.
+
+--- a/system/etc/selinux/plat_property_contexts
++++ b/system/etc/selinux/plat_property_contexts
+@@ -1,6 +1,7 @@
+ #line 50 "system/sepolicy/flagging/flagging_macros"
+ 
+ #line 1 "out/soong/.intermediates/system/sepolicy/contexts/plat_property_contexts/android_common/newline"
++sys.dali.bootlog.ready u:object_r:dali_bootlog_ready_prop:s0 exact bool
+ 
+ #line 1 "system/sepolicy/private/property_contexts"
+ ##########################
+@@ -1981,4 +1982,3 @@
+ android.transparency.roots_url u:object_r:binary_transparency_prop:s0 exact string
+ android.transparency.prevalence_url u:object_r:binary_transparency_prop:s0 exact string
+ #line 1 "out/soong/.intermediates/system/sepolicy/contexts/plat_property_contexts/android_common/newline"
+-

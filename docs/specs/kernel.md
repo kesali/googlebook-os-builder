@@ -1,9 +1,16 @@
 # Kernel (GKI)
 
-**Status:** working — Google's exact kernel rebuilt from source; Google's modules load.
-**Last verified:** 2026-11-01 — AMD build and config checks pass; all 4501 Google exports retain
-their CRCs. The rebuilt kernel boots the UEFI console and graphical checks
-([build log](../../out/overnight/image-build-zstd.log), [boot log](../../out/overnight/uefi.log)).
+**Status:** partial — firmware-to-PCI-GPU handoff works in QEMU; AMD needs a laptop retest.
+**Last verified:** 2026-11-02 — `make gki JOBS=12` passes config and ABI checks: all 4501 Google
+exports and all 5142 previous kernel/module symbol-version records are unchanged
+([build log](../../out/framebuffer-handoff-evidence/kernel-build.log),
+[previous symbols](../../out/framebuffer-handoff-evidence/previous-Module.symvers),
+[current symbols](../../out/gki/build/Module.symvers)). A repeat build preserved the kernel
+and signed-module bytes and timestamps. An offline disposable UEFI boot showed the
+[handoff to virtio card0](../../out/fb2/android-uefi-console-g0b93ipe/handoff.txt); the
+firmware-free QEMU graphics configuration also reached
+[setup](../../out/fb3/android-uefi-graphics-tlovd2in/screen.png).
+The owner installed the kernel on the USB and [read-back matched](../../out/framebuffer-handoff-evidence/usb-update-readback.txt).
 
 ## Goal
 Build Google's Googlebook kernel from source with the instruction emulator compiled in, identical
@@ -18,10 +25,15 @@ Every Google export and CRC is preserved; Google's certificate remains trusted;
 Google's prebuilt virtio GPU/input/net modules load in QEMU, which still reaches the setup screen.
 The four missing modules (`amdgpu`, `amdxcp`, `hwmon`, `drm_panel_backlight_quirks`) are stripped
 and signed with this build's trusted key. Google's existing helper modules remain unchanged.
-All 1,585 import CRCs across the 13-module AMD dependency tree match the rebuilt kernel and
-actual Google helper exports ([check](../../out/overnight/module-crcs.log)). This is static
-link verification, not runtime loading: the unprivileged Android console cannot run modprobe.
-Simpledrm/drm_log work in the separate UEFI console check. No physical-laptop driver is verified.
+All 1,585 import CRCs across the previous 13-module AMD dependency tree matched the prior kernel
+and actual Google helper exports ([check](../../out/overnight/module-crcs.log)); the new build
+preserves those symbol versions and the signing certificate. This is static verification, not
+runtime loading on the new kernel. The existing Android module image still matches the
+[previous module manifest](../../out/framebuffer-handoff-evidence/image-modules.manifest).
+The rebuilt signed modules were published separately, not written into the original disk or USB.
+[drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) releases the firmware
+framebuffer before a PCI display driver takes a DRM minor. It works with virtio in QEMU and is
+based on the owner's working Churro setup; the laptop's missing UI still has an unproven cause.
 
 ## Decisions
 - Google's exact toolchain (clang r584948c, Rust 1.91.1.p3, bindgen 0.72.1, pahole 1.31 from
@@ -34,6 +46,8 @@ Simpledrm/drm_log work in the separate UEFI console check. No physical-laptop dr
   Google's exports and CRCs.
 - Churro's `vex-emulate.patch` (downloaded, SHA-pinned) emulates VEX GFNI/AVX-VNNI — Googlebook
   userspace is built for Intel Panther Lake; this Zen 3 CPU lacks those instructions.
+- The source-level framebuffer handoff follows Churro's PCI display approach; errors are
+  reported and abort DRM initialization. Touchpad settings and security safeguards are unchanged.
 - Builds fail on unlisted config changes, a release-string mismatch, or any missing/changed
   Google export or CRC.
 - New modules use the build's signing key to access protected GKI exports. Do not remove
@@ -47,12 +61,20 @@ Simpledrm/drm_log work in the separate UEFI console check. No physical-laptop dr
 - [tools/kconfig_check.py](../../tools/kconfig_check.py), [tools/kabi_check.py](../../tools/kabi_check.py),
   [tools/kernel_certs.py](../../tools/kernel_certs.py) — config, ABI and certificate checks.
 - [scripts/git-fetch.sh](../../scripts/git-fetch.sh), [scripts/pahole.sh](../../scripts/pahole.sh) — toolchain.
-- [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + emulator patch.
+- [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + emulator and
+  framebuffer handoff patches; a new patch hash creates a separate tree.
+- [kernel/drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) — early PCI
+  framebuffer handoff before DRM minor allocation.
+- [tests/test_kernel_source.py](../../tests/test_kernel_source.py) — source preparation and patch checks.
 - [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [kernel/laptop-modules.list](../../kernel/laptop-modules.list) — explicit signed-module publication.
 
 ## Verify
 `make gki JOBS=12` (about an hour first time, incremental afterwards). It fails on any config,
-compiler, release-string or ABI mismatch. Then `make qemu-check JOBS=12`.
+compiler, release-string or ABI mismatch. Focused source checks:
+`scripts/builder.sh python3 -m unittest discover -s tests -p test_kernel_source.py`. The one-off
+[offline handoff check](../../out/framebuffer-handoff-check.py) uses a short, fresh output
+directory, for example `scripts/builder.sh python3 out/framebuffer-handoff-check.py out/fb4`.
+Inspect the screenshots; this does not verify AMD hardware.
 
 ## Pitfalls
 - `KBUILD_GENDWARFKSYMS_STABLE=1` and `RUSTC_FORCE_RUSTC_VERSION=rustc-android` are required,
@@ -67,7 +89,8 @@ compiler, release-string or ABI mismatch. Then `make qemu-check JOBS=12`.
   and relinks (about 50 s).
 
 ## Actions
-_None agreed._
+- [ ] Check the AMD handoff on the laptop with the updated USB — done when
+  the owner verifies a usable display and input; QEMU uses a different GPU driver.
 
 ### Ideas (not approved)
 - Extend instruction emulation to SSE GFNI if a userspace binary needs it (see gbos-x86 `isa_emu`).
@@ -76,6 +99,8 @@ _None agreed._
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-02 `uncommitted` — Churro-based handoff passes ABI and offline QEMU checks; the owner
+  updated the USB and read-back matched. Original disk preserved; laptop AMD remains untested.
 - 2026-11-01 (this commit) — Added modular AMD display support and EROFS Zstd; Google's 4501
   exports/CRCs and ABI whitelist are preserved. Four signed modules built; UEFI checks pass.
   Physical device binding and display remain unverified.

@@ -1,0 +1,50 @@
+Keep the firmware framebuffer during early boot, but release it before a PCI
+display driver reserves its DRM minor. Otherwise simpledrm can leave card0
+empty after amdgpu takes card1, and Google's composer may miss the GPU.
+
+Based on the framebuffer handoff in Project Churro. Drop this when the GPU
+probe releases the framebuffer before allocating its minor, or the composer
+handles gaps in DRM device numbers.
+
+--- a/drivers/gpu/drm/drm_drv.c
++++ b/drivers/gpu/drm/drm_drv.c
+@@ -698,6 +698,9 @@
+ 	mutex_destroy(&dev->filelist_mutex);
+ }
+ 
++/* Keep PCI headers out of DRM core: they change Google module CRCs. */
++int dali_remove_firmware_fb(struct device *dev, const char *name);
++
+ static int drm_dev_init(struct drm_device *dev,
+ 			const struct drm_driver *driver,
+ 			struct device *parent)
+@@ -745,6 +748,14 @@
+ 	if (ret)
+ 		return ret;
+ 
++	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
++		ret = dali_remove_firmware_fb(parent, driver->name);
++		if (ret) {
++			dev_err(parent, "Failed to remove firmware framebuffer: %d\n", ret);
++			goto err;
++		}
++	}
++
+ 	inode = drm_fs_inode_new();
+ 	if (IS_ERR(inode)) {
+ 		ret = PTR_ERR(inode);
+--- a/drivers/video/aperture.c
++++ b/drivers/video/aperture.c
+@@ -371,4 +371,12 @@
+ 	return ret;
+ 
+ }
+ EXPORT_SYMBOL(aperture_remove_conflicting_pci_devices);
++
++int dali_remove_firmware_fb(struct device *dev, const char *name);
++int dali_remove_firmware_fb(struct device *dev, const char *name)
++{
++	if (!dev_is_pci(dev))
++		return 0;
++	return aperture_remove_conflicting_pci_devices(to_pci_dev(dev), name);
++}

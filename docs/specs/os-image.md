@@ -1,7 +1,13 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-01 — AMD image rebuilt with full metadata checks; all 52,168,658,944
+**Last verified:** 2026-11-01 — diagnostic image rebuilt with full filesystem metadata checks;
+51,657,060,352 bytes outside system/vendor/system_ext are unchanged, including userdata,
+metadata, GPT/liblp and ESP ([comparison](../../out/bootlog-validation/preservation-final.txt)).
+A no-op takes 22.4 s, writes nothing and preserves nanosecond timestamps of nine published
+outputs ([log](../../out/bootlog-validation/noop-final.log),
+[timestamps](../../out/bootlog-validation/noop-timestamps.txt)).
+Earlier: AMD image rebuilt with full metadata checks; all 52,168,658,944
 bytes outside vendor, system_ext, vendor_dlkm and ESP match the baseline, including userdata,
 metadata and GPT/liblp tables. No-op build: 16 s, no writes, all 25 checked output timestamps
 unchanged ([evidence](../../out/overnight/preservation.log), [no-op](../../out/overnight/noop-final.log)).
@@ -25,7 +31,11 @@ Google's PARTUUID) holding the laptop's boot files; updates copy only changed pa
 with read-back hashes; unchanged builds write nothing; updates refuse to run while the VM holds the disk lock.
 OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make android-uefi-check`,
 2026-11-01; [laptop-hardware.md](laptop-hardware.md)). Its disposable boots left the source disk
-byte-identical. Not verified: writing this Android image to physical USB or booting laptop firmware.
+byte-identical. The laptop spec records a physical USB transfer/read-back and failed Android
+boots; a usable physical screen remains unverified ([laptop-hardware.md](laptop-hardware.md)).
+The system/system_ext logging changes and removal of vendor's precompiled policy are built
+and verified through three disposable UEFI boots ([boot.md](boot.md)). Android data/layout
+remain unchanged; this diagnostic candidate has not been transferred to the physical USB.
 
 ## Decisions
 - Change Google's files only through the change directory of each partition,
@@ -96,6 +106,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-01 `uncommitted` — Declared native boot-log services and scoped platform policy;
+  rebuilt metadata checks, unaffected-byte comparison and no-op timestamp/write checks pass.
+  Three disposable UEFI boots pass; physical transfer remains the owner's next step.
 - 2026-11-01 (this commit) — AMD userspace/firmware and signed vendor_dlkm modules added through
   declarative overlays. Zstd fits without removing Google drivers. Full filesystem metadata,
   unaffected disk bytes and unchanged-build publication verified; 59 unit tests pass.
