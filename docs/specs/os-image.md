@@ -5,7 +5,13 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-03 — 28 focused image/USB tests pass in the builder. Cached
+**Last verified:** 2026-11-03 — Copy-only super migration: 43 focused migration/image/USB tests
+pass. All A payloads and every byte outside super are preserved on a disposable disk copy;
+full source/candidate hashes and timestamps stay unchanged on repeat refusal/no-op checks.
+Enforcing UEFI/QEMU reaches the inspected setup screen and responds to an injected tap.
+The working disk and physical USB remain unchanged; normal Intel builds/deployment are blocked.
+[Evidence](../../out/intel-bringup/migration/).
+Earlier the same day: 28 focused image/USB tests pass in the builder. Cached
 `make android-image JOBS=12` runs took 18 and 19 seconds; both verified the GPT and wrote no
 partitions or boot files. All 76 recorded output files kept their metadata and non-disk hashes;
 GPT, liblp, the metadata partition and sampled userdata matched. The entire disk was not hashed.
@@ -56,10 +62,21 @@ Geometry, group limits, six primary/backup metadata copies and every supplied A 
 are verified by [super_candidate.py](../../tools/super_candidate.py). Six focused safety tests
 pass; a second generated super matches every byte, and an unchanged `make lp-tools` preserves
 the tool/build metadata timestamps. The working disk/USB and their layouts remain unchanged.
-This candidate is not boot-tested and is not accepted by the existing updater; no migration
-is implemented.
+This first super-only candidate was not boot-tested and is not accepted by the existing updater.
 Build the host tool with `make lp-tools JOBS=12`; the candidate builder's `--help` documents
 its explicit inputs. [Evidence](../../out/intel-bringup/super-32m.log).
+The subsequent Iris candidate also passes enforcing direct-kernel and USB/UEFI QEMU with
+inspected setup/input screens; see [graphics](graphics.md). This does not establish Intel
+hardware support or permit deploying the enlarged layout through the existing USB updater.
+
+The copy-only [migration tool](../../tools/super_migrate_copy.py) now extracts the installed
+A partitions and uses the verified upstream builder to create the enlarged layout on a new
+regular-file disk copy. It requires successful slot A, inactive B and identical metadata copies,
+holds the source disk lock, verifies read-back and every byte outside super, then publishes
+atomically with private permissions. Existing destinations, devices and `disk.img` outputs are
+refused. A migrated source is a no-write no-op. Nine migration tests plus 34 related tests pass;
+the migrated copy also passes enforcing USB/UEFI QEMU with inspected setup/input screens.
+This does not alter the working disk, enable normal Intel image builds, or migrate a USB.
 
 Verified: `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a` rebuilt as EROFS with every file's bytes,
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
@@ -143,6 +160,8 @@ QEMU test used a reflinked copy.
   when /data is large and on fast storage. The laptop effect is not measured.
 
 ## Files
+- [tools/super_migrate_copy.py](../../tools/super_migrate_copy.py) — verified, copy-only layout
+  migration; [tests/test_super_migrate_copy.py](../../tests/test_super_migrate_copy.py).
 - [android/system/](../../android/system/), [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/) — every change to Google's partitions.
 - [android/vendor_dlkm/](../../android/vendor_dlkm/), [tools/laptop_module_check.py](../../tools/laptop_module_check.py) — new signed modules, dependencies and laptop alias checks.
 - [scripts/android-overlay.sh](../../scripts/android-overlay.sh) — applies one change directory; format in its header.
@@ -160,6 +179,17 @@ QEMU test used a reflinked copy.
 - [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py) — mismatch and early-failure safety.
 
 ## Verify
+For a disposable migration of the installed local image (never a device):
+```sh
+make lp-tools JOBS=12
+scripts/builder.sh python3 tools/super_migrate_copy.py \
+  out/lp-tools/lpmake out/android/disk.img out/migration/migrated.img
+```
+Keep this private copy under ignored `out/`. **Do not flash it onto an existing USB:** it
+contains the local disk's userdata, metadata and boot identity, not the USB's current data.
+Working-disk migration and an interruption-safe owner-run USB operation need separate approval;
+do not run `make android-image` or `make update-usb` with the uncommitted Intel modules yet.
+
 `make test` (including recovery-image hash refusal in
 [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py), sync, lock and overlay tests in
 [tests/test_overlay.py](../../tests/test_overlay.py);
@@ -192,11 +222,16 @@ must print no partition or boot-file writes and leave output timestamps unchange
   account (untested).
 
 ## Actions
+- [ ] Agree the working-disk migration/build allocation and owner-run USB procedure — done when
+  separately approved and verified to preserve each target's own data with interruption recovery.
 - [ ] First physical use of `make update-usb JOBS=12` — done when the owner selects the existing
   USB, verifies OS and boot updates succeed, confirms data remains intact and sees a no-write
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Copy-only layout migration: 43 tests, all-A/read-back/outside-super
+  preservation and full-hash/timestamp no-op checks pass. Enforcing UEFI setup/input inspected.
+  Working disk/USB unchanged; normal Intel build allocation and deployment remain unimplemented.
 - 2026-11-03 (this commit) — Pinned upstream lpmake and guarded disposable 32 MiB vendor_dlkm
   experiment; six tests, 513-entry image metadata/fit, liblp/payload checks and byte-identical
   repeat pass. Working disk/USB untouched; candidate boot and layout migration unimplemented.

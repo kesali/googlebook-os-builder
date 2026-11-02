@@ -11,7 +11,7 @@ The component specs track the details; the plan keeps the overall direction in o
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial | Owner confirms microphone works; remaining brightness check |
 | [Boot chain](boot.md) | partial | Berberis fixes tested laptop apps; retrieve logs after subsequent retests |
-| [OS image and disk](os-image.md) | working | Owner verifies the unified USB updater on the existing stick |
+| [OS image and disk](os-image.md) | working (copy migration verified) | Agree working-layout migration and data-preserving USB procedure |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Camera works on laptop; check wider RADV app rendering |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
