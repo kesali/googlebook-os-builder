@@ -13,7 +13,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Boot chain](boot.md) | partial | Retrieve the snapshot and logs after each laptop retest |
 | [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial | Confirm SurfaceFlinger/HWUI on the laptop use ANGLE/RADV (Chrome does) |
+| [Graphics](graphics.md) | partial | Owner tests opt-in Vulkan HWUI and confirms the compositor renderer |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
 | [Laptop hardware](laptop-hardware.md) | partial | Owner retest of the latest build: HDMI frame rate, brightness slider, speed, Bluetooth |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |

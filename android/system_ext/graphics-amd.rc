@@ -2,6 +2,8 @@
 on early-init
     setprop ro.hardware.egl angle
     setprop ro.hardware.vulkan radeon
+    setprop ro.hwui.use_vulkan false
+    setprop debug.hwui.renderer skiagl
     setprop debug.renderengine.vulkan true
     setprop debug.renderengine.backend skiavkthreaded
     export MESA_LOADER_DRIVER_OVERRIDE zink

@@ -1,22 +1,20 @@
 Select graphics at early init: QEMU's Mesa softpipe fallback or the laptop's ANGLE/RADV
-profile. Keep SDR and GL app UI for both. Drop when Google's image supports these GPUs.
+profile. The selected profile owns the HWUI renderer. Keep SDR; drop when Google supports these GPUs.
 The composer looks for xe's LOG_GAMMA_LUT on every frame when use_log_gamma_lut is set; other
 drivers lack it, so it logged a fallback each frame. With the color pipeline off it only clears
 GAMMA_LUT either way.
 
 --- a/build.prop
 +++ b/build.prop
-@@ -42,7 +42,8 @@
+@@ -42,7 +42,6 @@
  ro.vendor.build.security_patch=2026-10-01
  ro.product.board=
  ro.board.platform=
 -ro.hwui.use_vulkan=true
-+ro.hwui.use_vulkan=false
-+debug.hwui.renderer=skiagl
  ro.build.ab_update=true
  ro.vendor.build.ab_ota_partitions=boot,init_boot,product,pvmfw,system,system_dlkm,system_ext,vbmeta,vendor,vendor_boot,vendor_dlkm
  ro.product.build.16k_page.enabled=false
-@@ -106,7 +107,6 @@
+@@ -106,7 +105,6 @@
  debug.sf.layer_caching_new_layer_exclusion_duration_ms=500
  debug.sf.layer_caching_new_layer_exclude_system_bars=true
  ro.surface_flinger.max_frame_buffer_acquired_buffers=3
@@ -24,7 +22,7 @@ GAMMA_LUT either way.
  ro.gfx.angle.supported=true
  ro.opengles.version=196610
  graphics.gpu.profiler.support.gpu_frequency=true
-@@ -123,7 +123,6 @@
+@@ -123,7 +121,6 @@
  ro.vendor.boot_security_patch=2026-10-01
  ro.media.xml_variant.codecs=_c2_fatcat
  media.c2.hal.selection=aidl
@@ -32,7 +30,7 @@ GAMMA_LUT either way.
  debug.sf.renderengine_gpu_stats=true
  dalvik.vm.heapstartsize=16m
  dalvik.vm.heapgrowthlimit=192m
-@@ -133,17 +132,15 @@
+@@ -133,17 +130,15 @@
  dalvik.vm.heapmaxfree=8m
  ro.boot.hypervisor.vm.supported=1
  ro.boot.hypervisor.protected_vm.supported=1
@@ -56,7 +54,7 @@ GAMMA_LUT either way.
  vendor.hwc.drm.skip_plane_damage_clips=true
  ro.soc.manufacturer=Intel
  ro.sf.lcd_density=240
-@@ -182,4 +179,3 @@
+@@ -182,4 +177,3 @@
  dalvik.vm.jitmaxsize=256m
  dalvik.vm.jitthreshold=5000
  # end of file

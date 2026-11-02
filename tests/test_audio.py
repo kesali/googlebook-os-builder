@@ -101,6 +101,7 @@ class AudioTests(unittest.TestCase):
     def test_service_is_laptop_only_and_restarts_hal_after_readiness(self):
         text = (REPO / "android/vendor/audio-msi.rc").read_text()
         self.assertIn("on boot && property:ro.boot.dali.graphics=amd", text)
+        self.assertIn("on boot && property:ro.boot.dali.graphics=amd-vulkan", text)
         self.assertIn("/vendor/bin/get_variant_audio /sys ALC256", text)
         self.assertIn("on property:vendor.audio.dali.ready=1\n    restart vendor.audio-hal-aidl", text)
         self.assertNotIn("mount", text)

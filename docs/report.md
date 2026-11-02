@@ -191,8 +191,10 @@ Without that GPU it selects softpipe.
   the composer can drive the display.
 - **minigbm:** LineageOS minigbm with [minigbm-amd.patch](../android/minigbm-amd.patch). An ABI
   gate ([minigbm_abi.py](../tools/minigbm_abi.py)) checks it.
-- **Vulkan HWUI is shelved.** Android needs two graphics queues and RADV exposes one. A draft
-  adapted from Churro's earlier RADV queue patch is kept outside the repository.
+- **Vulkan HWUI is an opt-in test only.** An AMD-only GRUB entry selects a RADV two-queue patch and
+  a separate `skiavk` profile; the patch and Android image build, while the normal GL profile stays
+  the default. QEMU exercises only the unchanged softpipe fallback. Laptop Vulkan rendering and
+  performance are not yet verified.
 
 ## 7. Security model
 
@@ -363,7 +365,7 @@ safer to run.
 
 | Gap | Who has it | Comment |
 |---|---|---|
-| Vulkan HWUI | Churro had a RADV two-queue patch | Draft saved; needs testing. Possible app-UI speed gain. |
+| Vulkan HWUI | Churro had a RADV two-queue patch | An opt-in candidate now builds; laptop testing and comparison remain. |
 | Internal mic (ACP DMIC), HDMI audio | Churro generates DMIC/HDMI routes | Next audio step. |
 | Fewer instruction traps | gbos-x86 redirects SHA-NI/Adler in libcrypto/libz | Only with binary patches, which we refuse; our generic-library swap covers libz/bionic. Measure the remaining traps first. |
 | Installer, internal-disk boot | both | Out of scope for now; the USB works. |
@@ -373,17 +375,17 @@ safer to run.
 
 ### Ideas worth considering (not approved; each needs your agreement)
 
-1. Test Vulkan HWUI with the saved RADV two-queue draft, behind a GRUB option, and compare the
-   frame rate with the current GL HWUI.
-2. Add AMD ACP DMIC and HDMI audio routes, following the measured-control approach used for
+1. Add AMD ACP DMIC and HDMI audio routes, following the measured-control approach used for
    ALC256.
-3. Count the remaining instruction traps on the laptop by instruction and by binary. Fix them only
+2. Count the remaining instruction traps on the laptop by instruction and by binary. Fix them only
    if they cost real time.
-4. Send the amdgpu fast-flip fix and the Google lights-HAL backlight finding upstream.
+3. Send the amdgpu fast-flip fix and the Google lights-HAL backlight finding upstream.
 
 ## 11. Next steps
 
 1. **On the laptop:**
+   - Boot the optional Vulkan HWUI entry and compare setup/app rendering with the normal GL entry;
+     report whether setup and apps remain usable.
    - Confirm Bluetooth pairing and the HDMI frame rate.
    - Compare the AMD boot-animation time (`boot_progress_enable_screen` vs `sf_stop_bootanim` in
      the saved logs).

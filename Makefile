@@ -26,8 +26,9 @@ ANDROID := $(OUT)/android
 MESA := $(OUT)/mesa
 MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
 MESA_PATCH := android/mesa-drm-master.patch
-MESA_PATCH_SHA := $(shell sha256sum $(MESA_PATCH) | cut -d' ' -f1)
-MESA_SRC := $(OUT)/src/mesa-$(MESA_SHA)-$(MESA_PATCH_SHA)
+MESA_PATCHES := $(MESA_PATCH) android/mesa-radv-two-queues.patch
+MESA_SOURCE_SHA := $(shell cat $(MESA_PATCHES) scripts/source.sh | sha256sum | cut -d' ' -f1)
+MESA_SRC := $(OUT)/src/mesa-$(MESA_SHA)-$(MESA_SOURCE_SHA)
 LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_SHA).tar.xz
 LIBDRM_SRC := $(OUT)/src/libdrm-$(LIBDRM_SHA)
 EXPAT_TAR := $(DL)/expat-$(EXPAT_SHA).tar.xz
@@ -41,8 +42,8 @@ FIRMWARE := $(OUT)/firmware-$(FIRMWARE_SHA)
 MINIGBM := $(OUT)/minigbm
 MINIGBM_TAR := $(DL)/minigbm-$(MINIGBM_SHA).tar.gz
 MINIGBM_PATCH := android/minigbm-amd.patch
-MINIGBM_PATCH_SHA := $(shell sha256sum $(MINIGBM_PATCH) | cut -d' ' -f1)
-MINIGBM_SRC := $(OUT)/src/minigbm-$(MINIGBM_SHA)-$(MINIGBM_PATCH_SHA)
+MINIGBM_SOURCE_SHA := $(shell cat $(MINIGBM_PATCH) scripts/source.sh | sha256sum | cut -d' ' -f1)
+MINIGBM_SRC := $(OUT)/src/minigbm-$(MINIGBM_SHA)-$(MINIGBM_SOURCE_SHA)
 HEADERS := $(OUT)/android-headers/$(ANDROID_HEADERS_TAG)
 CORE_HEADERS := $(OUT)/src/android-core-$(ANDROID_CORE_REV)
 LOG_HEADERS := $(OUT)/src/android-logging-$(ANDROID_LOGGING_REV)
@@ -179,8 +180,8 @@ $(NDK_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(NDK_URL)" "$(NDK_SHA)" "$@"
 $(ANDROID_EMU_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(ANDROID_EMU_URL)" "$(ANDROID_EMU_SHA)" "$@"
-$(MESA_SRC)/.ready: $(MESA_TAR) $(MESA_PATCH) scripts/source.sh
-	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" "$(MESA_PATCH)"
+$(MESA_SRC)/.ready: $(MESA_TAR) $(MESA_PATCHES) scripts/source.sh
+	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" $(MESA_PATCHES)
 $(LIBDRM_SRC)/.ready: $(LIBDRM_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
 $(EXPAT_SRC)/.ready: $(EXPAT_TAR)

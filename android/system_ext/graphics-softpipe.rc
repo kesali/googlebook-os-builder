@@ -2,6 +2,8 @@
 on early-init
     setprop ro.hardware.egl mesa
     setprop ro.hardware.vulkan none
+    setprop ro.hwui.use_vulkan false
+    setprop debug.hwui.renderer skiagl
     setprop debug.renderengine.vulkan false
     setprop debug.renderengine.backend skiaglthreaded
     # Softpipe spends ~23 s priming SurfaceFlinger's shader cache (it generates 0 shaders) and ~50 s

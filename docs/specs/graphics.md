@@ -1,10 +1,13 @@
 # Graphics
 
 **Status:** partial — QEMU softpipe works; the laptop's desktop runs on AMD, with apps on RADV.
-**Last verified:** 2026-11-02 — the owner completed setup on the laptop and finds apps and
-graphics fast. That boot's log ([android.log](../../out/laptop-boot-2026-11-02-hdmi/current/))
-shows Chrome's ANGLE on `Vulkan 1.1.363 (AMD Radeon Graphics (RADV RENOIR) (0x000015E7))`;
-SurfaceFlinger and HWUI do not log their renderer. Earlier,
+**Last verified:** 2026-11-02 — `make test` (113 tests), `make mesa JOBS=12`,
+`make android-image JOBS=12` and `make qemu-check JOBS=12` pass; the inspected QEMU screenshot
+shows the setup screen. The owner completed setup on the laptop and finds apps and graphics fast.
+That boot's log ([android.log](../../out/laptop-boot-2026-11-02-hdmi/current/)) shows Chrome's
+ANGLE on `Vulkan 1.1.363 (AMD Radeon Graphics (RADV RENOIR) (0x000015E7))`; SurfaceFlinger and
+HWUI do not log their renderer. The new Vulkan HWUI menu entry has not been tested on the laptop.
+Earlier,
 an offline disposable UEFI boot handed simpledrm card0 to
 virtio-gpu; the [setup screen](../../out/fb2/android-uefi-console-g0b93ipe/before-input.png)
 and [mouse-opened dialog](../../out/fb2/android-uefi-console-g0b93ipe/after-input.png) were
@@ -23,7 +26,9 @@ exports used by Google's clients are present. The prior laptop kernel loaded amd
 but SurfaceFlinger repeatedly reported invalid present fences. The
 [source-level handoff](../../kernel/drm-firmware-handoff.patch) gives virtio card0 in QEMU and a
 visible setup screen on the laptop. On the laptop, Chrome renders through ANGLE on RADV; which
-renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. QEMU is still CPU-rendered.
+renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. The opt-in RADV
+two-queue Vulkan HWUI candidate builds, but has not been booted on the laptop; the default AMD
+profile remains GL. QEMU is still CPU-rendered.
 
 ## Decisions
 - Owner's overnight request authorizes an AMD test candidate, retaining softpipe as the verified fallback.
@@ -35,8 +40,9 @@ renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. QEMU
   That profile also skips shader priming and the boot animation, which softpipe draws too slowly ([QEMU spec](qemu.md)).
 - The laptop menu selects AMD only for PCI `1002:15e7`; otherwise softpipe is the default.
   [graphics-amd.rc](../../android/system_ext/graphics-amd.rc) selects Google's ANGLE GLES,
-  RADV Vulkan RenderEngine and Mesa GBM/Zink, with GL HWUI like QEMU. Vulkan HWUI needs a
-  downstream RADV two-queue patch (Churro); it is shelved while GL HWUI displays setup.
+  RADV Vulkan RenderEngine and Mesa GBM/Zink, with GL HWUI like QEMU. The AMD-only Vulkan HWUI
+  entry is opt-in; its RADV queue patch serializes logical queues sharing a hardware ring. Keep GL
+  as the default until the laptop test confirms setup and app rendering.
 - LineageOS minigbm's Mesa backend needs the small AMD/FD/mapping fixes in
   [minigbm-amd.patch](../../android/minigbm-amd.patch). Its C++ interface links to Google's actual
   platform libraries, not NDK libc++; an ABI gate checks Google's clients whenever either image or library changes.
@@ -54,6 +60,9 @@ renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. QEMU
 
 ## Files
 - [scripts/mesa.sh](../../scripts/mesa.sh) — Mesa/libdrm/Expat build; build cache keyed by inputs.
+- [mesa-radv-two-queues.patch](../../android/mesa-radv-two-queues.patch) and
+  [graphics-amd-vulkan.rc](../../android/system_ext/graphics-amd-vulkan.rc) — opt-in Vulkan HWUI
+  test candidate.
 - [scripts/minigbm.sh](../../scripts/minigbm.sh), [tools/minigbm_abi.py](../../tools/minigbm_abi.py) — incremental allocator build and platform ABI gate.
 - [tests/gbm-wrapper.c](../../tests/gbm-wrapper.c), [tests/test_mesa.py](../../tests/test_mesa.py) — FD/error handling and unchanged-output publication.
 - [scripts/ndk.sh](../../scripts/ndk.sh), [scripts/source.sh](../../scripts/source.sh) — NDK and patched source trees.
@@ -61,7 +70,8 @@ renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. QEMU
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch) — Mesa libraries and settings in vendor.
 
 ## Verify
-`make mesa JOBS=12`, then `make qemu-check JOBS=12`. Open `out/qemu/screen.png` and look at it:
+`make test`, `make mesa JOBS=12`, `make android-image JOBS=12`, then
+`make qemu-check JOBS=12`. Open `out/qemu/screen.png` and look at it:
 a correctly sized image can still be QEMU's "Display output is not active" placeholder.
 `out/qemu/surfaceflinger.txt` should name softpipe and the QEMU Monitor display.
 
@@ -86,6 +96,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 
 ## Actions
 - [x] Validate the handoff on the laptop — the owner saw the setup screen and used the touchpad.
+- [ ] Test the opt-in Vulkan HWUI entry — done when the laptop reaches setup, apps render, and logs
+  identify `skiavk`; compare with the normal GL entry. The normal entry remains the default.
 - [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
   output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
@@ -93,9 +105,10 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 
 ### Ideas (not approved)
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
-- Vulkan HWUI with Churro's RADV two-queue patch, if GL HWUI proves slow on the laptop.
 
 ## Handoff log
+- 2026-11-02 `uncommitted` — Opt-in RADV two-queue Vulkan HWUI candidate builds; `make test`,
+  Android image sync and QEMU softpipe check pass. Laptop Vulkan entry remains untested.
 - 2026-11-02 (this commit) — Laptop log reviewed: Chrome's ANGLE runs on RADV RENOIR. Setup
   completed there; SurfaceFlinger/HWUI renderer still to confirm (`dumpsys SurfaceFlinger`).
 - 2026-11-02 `2ee6da9` — Composer log-gamma property corrected; built vendor `build.prop`

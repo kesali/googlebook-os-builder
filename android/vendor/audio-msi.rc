@@ -2,6 +2,9 @@
 on boot && property:ro.boot.dali.graphics=amd
     start vendor.dali.audio
 
+on boot && property:ro.boot.dali.graphics=amd-vulkan
+    start vendor.dali.audio
+
 service vendor.dali.audio /vendor/bin/get_variant_audio /sys ALC256
     user root
     group root
