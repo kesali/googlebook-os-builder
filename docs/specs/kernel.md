@@ -96,7 +96,8 @@ Inspect the screenshots; this does not verify AMD hardware.
 
 ## Actions
 - [ ] Check HDMI frame rate on the laptop — done when the owner sees no frame-rate drop with an
-  HDMI monitor connected (needs both the boot files and the OS partitions updated).
+  HDMI monitor connected (the boot files and OS partitions with the patch have been on the stick
+  since 2026-11-02; it has not been booted since).
 - [ ] Check the brightness slider — done when the owner confirms it changes the panel
   (the snapshot already shows the expected `backlight` name and label).
 

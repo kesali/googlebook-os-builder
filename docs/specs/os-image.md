@@ -1,8 +1,14 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-02 — `make android-image JOBS=12` rebuilt only vendor (24 s) with zram
-writeback off. A QEMU boot of a copy with userdata grown to 64 GiB and its first MiB zeroed (what
+**Last verified:** 2026-11-02 — on the physical stick, `update-os.sh` wrote only `vendor_a` and a
+second run found all five OS ranges unchanged on the enlarged layout; `grow-data.sh --erase-data`
+grew `userdata` from 32 GiB to 215.1 GiB (451,151,872 sectors), read back a blank first MiB and left
+the rest of the table identical to the image
+([update-os.log](../../out/usb-flash-android/update-os.log),
+[grow-data.log](../../out/usb-flash-android/grow-data.log)). Not booted yet. Before that,
+`make android-image JOBS=12` rebuilt only vendor (24 s) with zram writeback off. A QEMU boot of a
+copy with userdata grown to 64 GiB and its first MiB zeroed (what
 `grow-data.sh` leaves) formatted `/data` at 61 GiB, reached setup with SELinux enforcing and had no
 8 GiB writeback device in the kernel log, where the previous vendor image had one
 ([evidence](../../out/data-growth-validation/)); `make test` passes 113 tests. Earlier the same day:
@@ -28,12 +34,13 @@ Google's PARTUUID) holding the laptop's boot files; updates copy only changed pa
 with read-back hashes; unchanged builds write nothing; updates refuse to run while the VM holds the disk lock.
 OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make android-uefi-check`,
 2026-11-01; [laptop-hardware.md](laptop-hardware.md)). Its disposable boots left the source disk
-byte-identical. The owner later completed physical setup with Wi-Fi and input on the prior image;
-the current image has not been transferred to the USB ([laptop-hardware.md](laptop-hardware.md)).
+byte-identical. The owner later completed physical setup with Wi-Fi and input on an earlier image.
+The stick now holds the current image and a 215 GiB `/data`, but has not been booted since
+([laptop-hardware.md](laptop-hardware.md)).
 The system/system_ext logging changes and removal of vendor's precompiled policy are built
 and verified through the QEMU smoke test ([boot.md](boot.md)). The image updater changed only
-the OS partitions named above; Android userdata, metadata and layout were preserved. The
-QEMU test used a reflinked copy, and this candidate has not been transferred to the physical USB.
+the OS partitions named above; Android userdata, metadata and layout were preserved. That
+QEMU test used a reflinked copy.
 
 ## Decisions
 - Pin the local Google recovery image by SHA-256 in [config.mk](../../config.mk). Verify it before
@@ -130,8 +137,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 - Non-`ro.` properties in `/vendor/build.prop` override `/system/build.prop`; init logs
   `Overriding previous property '…':'true' with new value 'false'`. The serial shell cannot read
   mmd's properties (`getprop` prints nothing), so check that kernel-log line and `df /data`.
-- `grow-data.sh`'s USB identity and mount guards cannot run without the physical stick. Its logic
-  runs on regular-file copies shaped like it ([script-test.sh](../../out/data-growth-validation/script-test.sh),
+- `grow-data.sh` ran on the physical stick: with no `ERASE` on stdin it printed its plan and stopped
+  without writing, then the real run passed its own checks. Its logic is also tested on regular-file
+  copies shaped like the stick ([script-test.sh](../../out/data-growth-validation/script-test.sh),
   68 checks, about 10 s). After a wipe, factory-reset protection may ask for the previous Google
   account (untested).
 
@@ -139,6 +147,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — At the owner's request (test data) wrote the stick: `deploy-android`,
+  `update-os.sh` (`vendor_a` only, 369 MiB) and `grow-data.sh --erase-data` (userdata 32 → 215.1 GiB,
+  blanked). A second `update-os.sh` wrote nothing; the boot-file deploy re-ran as a no-op. Not booted.
 - 2026-11-02 (this commit) — Added the owner-run `grow-data.sh` (ignored, under out/) to enlarge /data;
   it erases /data because no resize is possible. `update-os.sh` accepts a larger userdata. Tested on
   file copies (68 checks) and a 64 GiB QEMU boot; the physical stick and its guards are untested.

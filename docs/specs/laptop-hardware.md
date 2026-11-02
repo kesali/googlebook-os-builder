@@ -1,12 +1,13 @@
 # Laptop hardware
 
 **Status:** partial — setup over Wi-Fi, input and sound work; an external HDMI monitor halved
-the frame rate (candidate fix built, untested) and the brightness slider is unconfirmed.
+the frame rate (fix now on the stick, not yet booted) and the brightness slider is unconfirmed.
 **Last verified:** 2026-11-02 — the owner booted `95b3bf6`: sound works; frame rate halves with
 HDMI connected. Its [snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt) shows
 `/sys/class/backlight/backlight` labelled `sysfs_leds`, brightness 51750 of 62451. Commits after
 `95b3bf6` (HDMI page flips, generic bionic/libz, polling fixes, TPM wait, power HAL CPU masks)
-are verified in QEMU only.
+are verified in QEMU only. They reached the stick on 2026-11-02 (see Current state), which has not
+been booted since.
 
 ## Goal
 Run Googlebook OS on the **MSI Modern 15 B7M** (Ryzen 5 7530U, Radeon Vega graphics,
@@ -42,8 +43,15 @@ Audio and backlight were designed from the references, Google's HALs and this la
   the laptop speed difference is not measured.
 
 The regular image is [out/android/disk.img](../../out/android/disk.img), **53,430,190,080 B**
-(49.8 GiB), not the separate diagnostic OS. The BUP Slim USB retains its own Android accounts
-and data. This work updated only the regular image; no physical disk was written or host restarted.
+(49.8 GiB), not the separate diagnostic OS. On 2026-11-02, at the owner's request (test data), the
+BUP Slim received the current image: boot files (kernel `39b8f05…`, new menu), `vendor_a` (14:47 in
+[update-os.log](../../out/usb-flash-android/update-os.log)) and a 215.1 GiB `userdata` with its first
+MiB blanked (14:49 in [grow-data.log](../../out/usb-flash-android/grow-data.log)), so Android
+formats `/data` and runs setup again on the next boot. The stick's newest kernel before that was the
+02:25 one (the `dali/` directory held no later file), so the HDMI page-flip patch and the later menu
+changes were not on it until now. A re-check found the ESP's kernel, initramfs and `BOOTX64.EFI`
+hashes equal to the bundle manifest and `deploy.py` reported nothing to update; the OS partitions
+are in [os-image](os-image.md). The host was not restarted and no disk but the BUP Slim was written.
 
 | Part | Device [ID] | Driver / status |
 |---|---|---|
@@ -151,23 +159,26 @@ metadata/logd starts still needs a screen photo.
   fixed the visible display; the old framebuffer-free experiment caused a separate hard lockup.
 - A saved previous GRUB menu may predate the EFI safeguard. Old UEFI crash records are untouched.
 - Prefer a USB 3 cable/port: the BUP Slim was observed at USB 2.0, about 39 MB/s sequential reads.
+  `lsusb -t` on 2026-11-02 still showed it at 480M on the host's USB 2 side.
+- `update-os.sh` and `grow-data.sh` end by deleting the stick's SCSI device, so Linux stops seeing it
+  while it stays plugged in. Re-attach it without unplugging by rescanning its host as root:
+  `echo '- - -' > /sys/class/scsi_host/host0/scan` (the host name is listed under
+  `/sys/bus/usb/devices/<port>:1.0/`). Mount DALI-BOOT for `make deploy-android` before running them.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
-- [ ] Physical retest of `2ee6da9` or later — done when the owner reports the frame rate with
-  HDMI connected, the brightness slider visibly changing the panel, and boot/app speed with the
-  generic bionic and without the firmware early console (104 s to `boot_completed` before).
+- [ ] Physical retest of the stick written on 2026-11-02 — done when the owner reports the frame rate
+  with HDMI connected, the brightness slider visibly changing the panel, and boot/app speed with the
+  generic bionic and without the firmware early console (104 s to `boot_completed` before). The
+  first boot must also format `/data` (Settings → Storage shows roughly 215 GiB less filesystem
+  overhead instead of 32 GiB, with no 8 GiB jump in used space after a few minutes) and setup must
+  complete again; note whether factory-reset protection asks for the previous Google account. Swap
+  now relies on zram alone; its laptop effect is not measured.
   Retrieve the snapshot and logs either way; the snapshot now records the
   connected displays and their modes, and the CPU governor/EPP actually in effect. In
   `android-boot.log`, compare `boot_progress_enable_screen` with `sf_stop_bootanim`: a long gap
   means WindowManager waited for windows or the boot animation (QEMU waited ~30 s before `7d8e51f`).
 - [ ] Headphone output — done when the owner hears media through the headphone jack.
-- [ ] Deploy the zram-writeback change — done when, after `update-os.sh` (vendor only, no data
-  loss), the owner sees about 8 GiB less used in `/data` and boot/app speed is unchanged. Swap now
-  relies on zram alone; the laptop effect is not measured.
-- [ ] Grow `/data` (optional, erases it) — done when `grow-data.sh --erase-data` has run on the
-  stick, `/data` shows the larger size after the next boot and setup completes again. Note whether
-  factory-reset protection asks for the previous Google account.
 - [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up
   without firmware errors. Check Wi-Fi still works: both run on the same MT7922.
 - [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
@@ -184,6 +195,9 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Wrote the stick at the owner's request (test data): boot files (kernel
+  `39b8f05…`; its newest had been the 02:25 one), `vendor_a` (zram writeback off) and `userdata`
+  32 → 215.1 GiB, blanked. Re-checks found nothing more to write. Not booted yet.
 - 2026-11-02 (this commit) — Owner-run `grow-data.sh` can enlarge /data into the stick's free space
   (userdata can reach about 215 GiB), erasing it ([os-image](os-image.md)). Tested on file copies
   and in QEMU only; the owner decides whether to run it.

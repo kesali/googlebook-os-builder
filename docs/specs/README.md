@@ -15,7 +15,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Owner tests opt-in Vulkan HWUI and confirms the compositor renderer |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Owner retest of the latest build: HDMI frame rate, brightness slider, speed, Bluetooth, free space in /data |
+| [Laptop hardware](laptop-hardware.md) | partial | Owner boots the stick written on 2026-11-02 (first boot formats the 215 GiB /data and reruns setup) and reports HDMI frame rate, brightness slider, speed, Bluetooth, free space in /data |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
