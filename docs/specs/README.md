@@ -10,7 +10,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | Spec | Status | Next action |
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial | Build the MT7922 Wi-Fi modules |
-| [Boot chain](boot.md) | partial | — (laptop boots and joins Wi-Fi with the CLC workaround) |
+| [Boot chain](boot.md) | partial | Collect the read-only hardware snapshot from the updated laptop |
 | [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Confirm the laptop renders on the AMD GPU |

@@ -1,7 +1,12 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-01 — diagnostic image rebuilt with full filesystem metadata checks;
+**Last verified:** 2026-11-02 — `make test` passed 87 tests. `make android-image JOBS=12` updated
+`system_a`, `system_ext_a` and `vendor_dlkm_a`; `android-sync` verified their read-back and
+reported userdata/metadata untouched. The repeat build wrote no partitions or boot files. A
+graphical QEMU smoke test on a reflinked disk copy reached setup with SELinux enforcing
+([screen](../../out/hardware-snapshot-validation/screen.png) inspected).
+Earlier, the diagnostic image was rebuilt with full filesystem metadata checks;
 51,657,060,352 bytes outside system/vendor/system_ext are unchanged, including userdata,
 metadata, GPT/liblp and ESP ([comparison](../../out/bootlog-validation/preservation-final.txt)).
 A no-op takes 22.4 s, writes nothing and preserves nanosecond timestamps of nine published
@@ -31,11 +36,12 @@ Google's PARTUUID) holding the laptop's boot files; updates copy only changed pa
 with read-back hashes; unchanged builds write nothing; updates refuse to run while the VM holds the disk lock.
 OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make android-uefi-check`,
 2026-11-01; [laptop-hardware.md](laptop-hardware.md)). Its disposable boots left the source disk
-byte-identical. The laptop spec records a physical USB transfer/read-back and failed Android
-boots; a usable physical screen remains unverified ([laptop-hardware.md](laptop-hardware.md)).
+byte-identical. The owner later completed physical setup with Wi-Fi and input on the prior image;
+the current image has not been transferred to the USB ([laptop-hardware.md](laptop-hardware.md)).
 The system/system_ext logging changes and removal of vendor's precompiled policy are built
-and verified through three disposable UEFI boots ([boot.md](boot.md)). Android data/layout
-remain unchanged; this diagnostic candidate has not been transferred to the physical USB.
+and verified through the QEMU smoke test ([boot.md](boot.md)). The image updater changed only
+the three OS partitions named above; Android userdata, metadata and layout were preserved. The
+QEMU test used a reflinked copy, and this candidate has not been transferred to the physical USB.
 
 ## Decisions
 - Change Google's files only through the change directory of each partition,
@@ -106,6 +112,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 `uncommitted` — 87 tests pass; rebuilt system, system_ext and vendor_dlkm with kABI
+  clean. Sync verified the OS writes and preserved userdata/metadata; repeat build wrote nothing.
+  QEMU on a reflinked copy reaches setup with SELinux enforcing; physical transfer is pending.
 - 2026-11-01 `uncommitted` — Declared native boot-log services and scoped platform policy;
   rebuilt metadata checks, unaffected-byte comparison and no-op timestamp/write checks pass.
   Three disposable UEFI boots pass; physical transfer remains the owner's next step.

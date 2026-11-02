@@ -21,6 +21,17 @@ service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare
     oneshot
     stdio_to_kmsg
 
+on property:sys.boot_completed=1
+    start dali_hardware_snapshot
+
+service dali_hardware_snapshot /system/bin/sh /system_ext/etc/dali/hardware-snapshot.sh /metadata/dali-bootlog /sys /proc /dev
+    user logd
+    group log
+    seclabel u:r:dali_hardware_diag:s0
+    disabled
+    oneshot
+    stdio_to_kmsg
+
 # Long format has one header per record, avoiding multiline message expansion.
 # Eight 256-KiB files per stream leave headroom below the agreed 16-MiB limit.
 service dali_kernel_log /system/bin/logcat -b kernel -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/kernel.log

@@ -28,6 +28,8 @@ fi
 if [ -n "$saved_id" ] && [ "$saved_id" != "$boot_id" ]; then
     if [ -d previous ]; then
         # Do not recursively delete: an unexpected file must stop rotation, not be erased.
+        test ! -L previous/hardware.txt
+        test ! -L previous/hardware.txt.tmp
         rm -f previous/boot-id previous/boot.txt
         for stream in kernel android; do
             rm -f "previous/$stream.log"
@@ -35,6 +37,7 @@ if [ -n "$saved_id" ] && [ "$saved_id" != "$boot_id" ]; then
                 rm -f "previous/$stream.log.$index"
             done
         done
+        rm -f previous/hardware.txt previous/hardware.txt.tmp
         rmdir previous
     fi
     mv current previous

@@ -144,6 +144,25 @@ class OverlayTests(unittest.TestCase):
 
 
 class ChangeDataTests(unittest.TestCase):
+    def test_vendor_dlkm_unblocks_msi_hda_audio(self):
+        patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        self.assertIn("-blocklist snd_hda_intel", patch)
+        self.assertNotIn("+blocklist snd_hda_intel", patch)
+        self.assertIn(
+            "-options snd_sof_intel_hda_generic hda_model=alc-2024y-chromebook dmic_num=4",
+            patch,
+        )
+        self.assertIn(
+            "+softdep snd_hda_intel pre: snd_hda_codec_alc269 snd_hda_codec_atihdmi",
+            patch,
+        )
+
+    def test_laptop_density_is_only_set_in_amd_graphics_profile(self):
+        amd = (REPO / "android/system_ext/graphics-amd.rc").read_text()
+        softpipe = (REPO / "android/system_ext/graphics-softpipe.rc").read_text()
+        self.assertIn("setprop qemu.sf.lcd_density 160", amd)
+        self.assertNotIn("qemu.sf.lcd_density", softpipe)
+
     def test_install_lists_have_five_columns(self):
         for path in sorted(REPO.glob("android/*/install.list")):
             for entry in entries(path):

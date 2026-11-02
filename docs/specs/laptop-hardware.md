@@ -2,10 +2,19 @@
 
 **Status:** partial — the laptop completes setup over Wi-Fi with a working touchpad; sound and
 screen brightness do not work.
-**Last verified:** 2026-11-02 — with the Wi-Fi/density build (`ab9d9c5`) the owner booted the
-normal entry, joined Wi-Fi and completed initial setup; the touchpad works. The owner finds app
-launches and graphics faster than Churro and gbos-x86 (impression, not measured). Sound and the
-brightness setting do not work. Density 180 and the keyboard were not explicitly confirmed.
+**Last verified:** 2026-11-02 — `make test` passed 87 tests; the density-160/HDA/snapshot image
+build and repeat no-op passed; a QEMU smoke test on a reflinked disk copy reached setup with
+SELinux enforcing ([screen](../../out/hardware-snapshot-validation/screen.png) inspected).
+Physical verification remains the owner's earlier boot of `ab9d9c5`: setup completed over Wi-Fi;
+keyboard and touchpad work. App launches and graphics feel faster than Churro and gbos-x86
+(impression, not measured). Density 180 was still slightly large; the owner chose 160. Sound and
+brightness still do not work on the laptop.
+Recovered [boot logs](../../out/laptop-boot-2026-11-02/dali-bootlog/current/) show the lights HAL
+receiving brightness values, but do not record which panel backlight device it tried. Audio
+services start, but the logs contain no HDA modules or ALSA card; Android reports audio `NO_INIT`.
+The current image adds a read-only hardware snapshot and unblocks Google's HDA driver. Its
+[QEMU snapshot](../../out/hardware-snapshot-validation/hardware.txt) confirms the diagnostic
+service runs, but QEMU has no laptop backlight or audio devices.
 Earlier that day the handoff build showed setup with an oversized UI and no Wi-Fi.
 Earlier that day: the new kernel hands simpledrm card0 to virtio in an offline
 disposable UEFI boot; [setup](../../out/fb2/android-uefi-console-g0b93ipe/before-input.png)
@@ -55,9 +64,12 @@ updating the USB incrementally instead of reflashing.
 
 ## Current state
 The base image is [out/android/disk.img](../../out/android/disk.img), 53,430,190,080 B
-(49.8 GiB; use a 64 GB or larger USB). It is not the 514 MiB diagnostic image.
-It contains the previous kernel/OS, UEFI boot files, signed AMD modules, 23 official runtime firmware
-blobs and the RADV/Zink/minigbm graphics stack. On 2026-11-01 it was written unchanged to the
+(49.8 GiB; use a 64 GB or larger USB). It is not the 514 MiB diagnostic image. The current build
+contains the density-160 AMD profile, HDA unblock, read-only hardware snapshot and prior kernel/
+UEFI files. The build updated only `system_a`, `system_ext_a` and `vendor_dlkm_a`; a repeat wrote
+no partitions or boot files. QEMU tested a reflinked copy, leaving this image's userdata untouched.
+It also contains signed AMD modules, 23 official runtime firmware blobs and the RADV/Zink/minigbm
+graphics stack. On 2026-11-01 it was written unchanged to the
 BUP Slim by a one-time checked sudo script ([flash.sh](../../out/usb-flash-android/flash.sh)):
 35 MB/s write, then a full read-back that matched. Then `sfdisk --relocate gpt-bak-std` moved the
 backup GPT to the disk end; at that point the partition table (same PARTUUIDs), GPT entries and
@@ -72,9 +84,8 @@ Google's full set; [update-os.sh](../../out/usb-flash-android/update-os.sh) put 
 The owner then updated the OS partitions and retested: Android reached boot-complete, but the
 screen stayed on the kernel log. Simpledrm took minor 0 before amdgpu registered as minor 1.
 The composer may have missed the GPU if card0 was absent; its startup messages rotated out, so
-this remains a hypothesis. The owner confirmed that their Churro build booted this laptop with
-AMD and touchpad working; its framebuffer handoff is now built and QEMU-verified, not yet tested
-on the laptop.
+this remains a hypothesis. The owner confirmed that their Churro build booted this laptop with AMD and touchpad working.
+The Dali framebuffer-handoff image later reached setup on the laptop, as described above.
 The opt-in GRUB entry tests the hypothesis without changing the normal default;
 the owner updated the USB menu, and read-back confirmed the new menu and original backup. That
 test later hard-locked during early-init; no usable display or new metadata logs were recovered.
@@ -99,9 +110,11 @@ partitions (`sda`, EFI-SYSTEM at `sda12`) with SELinux enforcing; `nvme_init` hi
 The test uses `virtio-vga` to verify simpledrm/drm_log, and `virtio-gpu-pci` without a firmware
 framebuffer to verify the setup UI. Before the new handoff, both active together showed only a
 status bar. The new kernel's combined offline QEMU boot reaches setup and accepts a mouse click.
-The USB now has the new kernel; the original disk retains the previous kernel. Not verified: AMD
-handoff/rendering, UAS boot, physical input or a usable Android screen on the laptop. Wi-Fi,
-Bluetooth, audio and suspend have not been brought up.
+The owner then updated the USB and completed setup over Wi-Fi; the keyboard and touchpad work.
+That physical boot used build `ab9d9c5`, before the current density-160/HDA/snapshot changes. The
+current image's QEMU copy reaches setup with SELinux enforcing and creates the snapshot, but
+density 160, audio and brightness still need physical testing. GPU acceleration, Bluetooth and
+suspend are also unverified.
 The devices below were read from this laptop running a desktop Linux (`lspci -nnk`, `lsusb`,
 `/proc/bus/input/devices`).
 
@@ -161,13 +174,19 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
   stay (they export everything mt76 needs). `laptop-modules.sh` runs `depmod -e -E` against Google's real
   vendor_dlkm/system_dlkm modules, so a missing export or CRC mismatch fails the build. MT7922
   firmware comes from the pinned linux-firmware; the laptop menu adds `mt7921_common.disable_clc=1`.
-- Density 180 on the laptop only: the AMD profile sets `qemu.sf.lcd_density`, which Google's
-  SurfaceFlinger and zygote read before `ro.sf.lcd_density` (240, kept for QEMU).
+- Density 160 on the laptop only (owner found 180 still slightly large): the AMD profile sets
+  `qemu.sf.lcd_density`, which Google's SurfaceFlinger and zygote read before
+  `ro.sf.lcd_density` (240, kept for QEMU).
+- Google blocks `snd_hda_intel` and forces a Lenovo SOF codec option. Unblock legacy HDA and
+  preload only the MSI's ALC256 and AMD HDMI codec modules; keep Google's audio HAL and SELinux
+  enforcing. The correct HAL card/config still needs confirmation from the next hardware snapshot.
 
 ## Files
 - [kernel/gki.config](../../kernel/gki.config) — where the M1 built-ins and later driver modules are listed.
 - [kernel/laptop-modules.list](../../kernel/laptop-modules.list), [kernel/msi-firmware.list](../../kernel/msi-firmware.list) — exact modules and firmware shipped.
 - [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [scripts/firmware.sh](../../scripts/firmware.sh) — signed-module and official-firmware publication.
+- [android/vendor_dlkm/modules.patch](../../android/vendor_dlkm/modules.patch) — Google's HDA blocklist and codec preload settings.
+- [android/system_ext/hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — read-only physical backlight, ALSA and loaded-module report after boot.
 - [scripts/android-disk.sh](../../scripts/android-disk.sh) — Google's disk layout, which the USB copies.
 - [boot/android-menu.cfg](../../boot/android-menu.cfg), [scripts/android-boot.sh](../../scripts/android-boot.sh) — the laptop's GRUB menu; writes the boot files into the disk's ESP.
 - [tools/deploy.py](../../tools/deploy.py) (diagnostic and android bundle kinds), [tools/android_sync.py](../../tools/android_sync.py) — boot-file and OS-partition updaters.
@@ -197,9 +216,9 @@ M1, in this order:
 
 ### Recovering the new boot logs
 
-The candidate passed review and QEMU validation. The owner updates and boots the USB,
-then returns to Linux. Diagnostics change `system_a`, `vendor_a` and `system_ext_a`;
-a boot-file-only or vendor-only update is insufficient. The existing one-time
+The candidate passed unit tests, image build and QEMU validation. The owner updates and boots the
+USB, then returns to Linux. This build changed `system_a`, `system_ext_a` and `vendor_dlkm_a`;
+`vendor_a`, `vbmeta_a` and boot files are unchanged. The existing one-time
 [OS updater](../../out/usb-flash-android/update-os.sh) covers these ranges, checks layout and
 read-back, and preserves data; running it remains an owner-authorized physical write,
 not an assistant action. Do not reflash the entire image over existing Android data.
@@ -215,7 +234,8 @@ extract the logs and remove the copy; never run recovery on the USB. Check that 
 disk-backed before using tmpfs.
 
 Each directory contains `boot-id`, `boot.txt`, `kernel.log` and `android.log`, plus up to
-seven numbered archives per stream (largest archive number is oldest).
+seven numbered archives per stream (largest archive number is oldest). The next diagnostic
+image also records `hardware.txt` with read-only backlight, sound-card and module metadata.
 Logs can contain private app/account information: inspect locally and share only the relevant
 filtered excerpts. Preparation/collector errors are reported to the kernel log; a hang before
 metadata/logd becomes available may leave no saved files, so also photograph the screen.
@@ -230,8 +250,8 @@ The physical retest required journal replay on an owner-approved RAM copy before
   comparison without `X86_AMD_PLATFORM_DEVICE` are still untested.
   The reference port never got this touchpad working.
 - Google's kernel config has no `DRM_SIMPLEDRM`, `FB`, `VT` or `amdgpu`, so nothing would draw the
-  kernel log once the early console (`earlycon=efifb`) ends; the M1 built-ins add that (expected,
-  not yet seen on the laptop).
+  kernel log once the early console (`earlycon=efifb`) ends; the M1 built-ins add that. The owner
+  later reached setup on the laptop with working input; GPU acceleration itself remains unverified.
 - The initrd names EFI-SYSTEM's PARTUUID ([android-initrd.sh](../../scripts/android-initrd.sh));
   any GPT written to the USB must keep it, or first-stage init cannot find the disk.
 - Merge only `KERN-A`: `ROOT-B` holds a 17 MB EROFS and `ota_recovery_a` a nested GPT.
@@ -259,12 +279,13 @@ The physical retest required journal replay on an owner-approved RAM copy before
 ## Actions
 Next, with this spec updated after the physical test:
 - [x] Validate the framebuffer handoff on the laptop — setup screen and touchpad confirmed by the owner.
-- [ ] Wi-Fi (MT7922) so setup can finish — done when the laptop joins a network in setup.
-- [ ] Laptop density 180 (owner's Churro setting), QEMU unchanged — done when the owner confirms
-  normal-sized UI on the laptop.
-- [ ] Audio (ALC256 over HDA) — after Wi-Fi; done when the owner hears sound.
-- [ ] First laptop Android boot — done when an inspected photo shows usable setup and the
-  keyboard/touchpad work. Setup and touchpad are confirmed; keyboard not yet checked.
+- [x] Wi-Fi (MT7922) so setup can finish — owner joined Wi-Fi and completed setup.
+- [ ] Laptop density 160, QEMU unchanged — 180 was better but still slightly large for the owner;
+  done when the owner confirms 160 on the laptop.
+- [ ] Audio (ALC256 over HDA) — HDA unblock and codec preload are drafted; done when the owner
+  hears sound through the laptop speakers or headphones.
+- [ ] Screen brightness — the current logs lack the backlight path; done when the owner confirms
+  the brightness setting changes the panel.
 - [ ] Diagnose the framebuffer-free hard lockup — done when the cause and a safe next test are
   established. Keep NVMe hidden and networking, audio and speculative performance changes out
   of this repair.
@@ -280,6 +301,12 @@ Next, with this spec updated after the physical test:
   OS ranges that differ, after checking the stick's GPT and super metadata match the image.
 
 ## Handoff log
+- 2026-11-02 `uncommitted` — Density 160, HDA unblock and read-only snapshot built. 87 tests,
+  kABI checks, data-preserving image update, no-op repeat and enforcing QEMU smoke pass; setup
+  screenshot inspected. Physical density/audio/backlight behavior awaits the owner's retest.
+- 2026-11-02 `ab9d9c5` — Owner updated the USB (boot files, vendor, system_ext, vendor_dlkm;
+  read back) and completed setup over Wi-Fi; touchpad works, UI feels faster than Churro and
+  gbos-x86. Not working: sound, brightness. Next: audio and backlight.
 - 2026-11-02 `uncommitted` — Vulkan HWUI draft reverted (GL HWUI kept). Wi-Fi and density 180
   built: `make test` passed, `make gki` kABI clean, laptop-module check passed against Google's
   mac80211 (`mt7921-common` also needs `hwmon`, added to `modules.patch`), MT7922 firmware and

@@ -1,7 +1,13 @@
 # Boot chain
 
-**Status:** partial — the prior laptop boot had no UI; the updated USB awaits a retest.
-**Last verified:** 2026-11-02 — 26 focused tests and `grub-script-check` pass. Offline
+**Status:** partial — the laptop completed setup; the built hardware snapshot awaits a physical retest.
+**Last verified:** 2026-11-02 — `make test` passed 87 tests; `make android-image JOBS=12` rebuilt
+the changed partitions with 0 missing/changed kABI exports, and the repeat wrote nothing. The
+graphical QEMU smoke test on a reflinked disk copy completed with SELinux enforcing; the setup
+screen was inspected and the snapshot file was recovered
+([screen](../../out/hardware-snapshot-validation/screen.png),
+[snapshot](../../out/hardware-snapshot-validation/hardware.txt)). The owner previously booted the
+normal USB entry, joined Wi-Fi and completed setup; keyboard and touchpad work. Offline
 disposable UEFI boots show the unguarded control registers EFI pstore, while both guarded entries
 disable it and have no active backend. The QEMU monitor read the matching kernel's state with
 SELinux enforcing; the NVMe decoy remained unchanged
@@ -26,7 +32,7 @@ Earlier, 19 focused boot-log/overlay tests, an image rebuild and three
 disposable UEFI boots: enforcing collectors, Linux-readable streams and two-boot retention pass
 ([results](../../out/bootlog-validation/persistence-checked.log),
 [setup screenshot](../../out/bootlog-validation/rotation-checked/boot-3/screen.png) inspected).
-Earlier separate console/UI UEFI checks also pass; physical graphics remain unverified.
+Earlier separate console/UI UEFI checks also pass; physical AMD acceleration remains unverified.
 
 ## Goal
 Assemble what a Googlebook's firmware would hand the kernel — command line, initrd, bootconfig —
@@ -36,14 +42,17 @@ from Google's boot images plus a short, readable list of our changes.
 Verified: initrd = Google platform ramdisk + Google module ramdisk extended with our virtio
 modules + Google generic ramdisk + bootconfig; slot A boots normally; first-stage mounts succeed.
 Also verified through OVMF/GRUB on disposable USB disks for both menu entries.
-A normal physical boot reached `sys.boot_completed` but showed only the kernel log.
-The framebuffer-free test reached Android early-init and panicked; its metadata logs are from
-the earlier boot. The simpledrm-to-AMD handoff remains unverified.
+The normal physical boot completed setup on the AMD desktop with working Wi-Fi, keyboard and
+touchpad. Actual GPU acceleration remains unverified. The framebuffer-free test reached
+Android early-init and panicked; its metadata logs are from the earlier boot.
 Native logcat collectors now save kernel/init and Android logs under `/metadata/dali-bootlog/`.
 Three QEMU boots verified current/previous retention, archive limits and no logger SELinux
 denials. The largest observed stream was 2,055,373 bytes; policy compilation took 0.54–0.61 s.
 The diagnostic candidate was transferred and booted on the laptop; its saved logs were
 recovered after journal replay on an owner-approved RAM copy of metadata.
+The recovered logs show no backlight path and no loaded HDA/ALSA card. The one-shot, read-only
+snapshot now runs in QEMU under its dedicated enforcing domain, with no matching SELinux denials;
+QEMU does not expose the laptop's backlight or audio hardware, so the physical snapshot is next.
 
 ## Decisions
 - Command line is Google's, minus Intel-only arguments, minus SPI-flash write enables,
@@ -51,7 +60,8 @@ recovered after journal replay on an owner-approved RAM copy of metadata.
 - Disable EFI pstore with `efi_pstore.pstore_disable=1` so that backend does not write UEFI
   crash records. This does not prevent other firmware writes. The existing records are untouched;
   saved previous menus keep their old arguments and are warned about in GRUB. QEMU validation
-  and USB menu read-back passed; the laptop retest is pending.
+  and USB menu read-back passed; the owner later booted the normal entry and completed setup.
+  The EFI pstore backend itself has not been queried on the laptop.
 - Bootconfig is Google's plus [android/bootconfig.txt](../../android/bootconfig.txt): slot A,
   orange/unlocked verified boot, external boot source, StrongBox disabled.
 - Only the QEMU modules needed are added: `virtio_dma_buf`, `virtio-gpu`, `virtio_input`,
@@ -69,6 +79,9 @@ recovered after journal replay on an owner-approved RAM copy of metadata.
   Each stream rotates at 256 KiB with seven archives, leaving headroom below the agreed
   16 MiB per stream per boot and space for other files on the 64 MiB metadata partition.
   Collection begins at `post-fs`, not first-stage init; an earlier hang still needs a photo.
+- A one-shot `sys.boot_completed` diagnostic may read backlight, ALSA and loaded-module metadata
+  into the current boot log directory. It must not read sound device nodes or write sysfs, and it
+  uses a separate enforcing SELinux domain.
 
 ## Files
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
@@ -79,15 +92,16 @@ recovered after journal replay on an owner-approved RAM copy of metadata.
 - [scripts/android-modules.sh](../../scripts/android-modules.sh) — applies them; checks the kernel release and `modules.patch` dependencies against Google's QEMU driver build.
 - [scripts/android-initrd.sh](../../scripts/android-initrd.sh) — initrd assembly.
 - [android/system_ext/bootlog.rc](../../android/system_ext/bootlog.rc),
-  [bootlog-prepare.sh](../../android/system_ext/bootlog-prepare.sh) — native collectors and
-  two-boot rotation; failures do not signal readiness.
+  [bootlog-prepare.sh](../../android/system_ext/bootlog-prepare.sh),
+  [hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — native collectors,
+  two-boot rotation and the one-shot read-only hardware snapshot.
 - [android/system/bootlog-policy.patch](../../android/system/bootlog-policy.patch),
   [bootlog-file-contexts.patch](../../android/system/bootlog-file-contexts.patch),
   [bootlog-property-contexts.patch](../../android/system/bootlog-property-contexts.patch) —
   the dedicated domain, directory and readiness property. Google's precompiled vendor policy
   is removed through [remove.list](../../android/vendor/remove.list), so init compiles the text policy.
 - [tests/test_bootlog.py](../../tests/test_bootlog.py) — retention, interrupted rotation,
-  failure reporting and readiness gates.
+  snapshot safety, failure reporting and readiness gates.
 
 ## Verify
 `make android-initrd`, then `make qemu-check JOBS=12`. Kernel and init log: `out/qemu/kernel.log`.
@@ -130,12 +144,15 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   these collectors do not guarantee every final byte survives a hang or power cut.
 
 ## Actions
-- [ ] Retest the normal guarded entry on the laptop — done when the owner records the screen
-  and input result. Do not select the framebuffer-free test or saved previous menu.
+- [ ] Collect the hardware snapshot from the updated laptop — done when its backlight and ALSA
+  device details are reviewed from `/metadata/dali-bootlog/current/hardware.txt`.
 
 ## Handoff log
+- 2026-11-02 `uncommitted` — 87 tests pass; image build and no-op repeat pass. QEMU on a reflinked
+  copy shows setup with SELinux enforcing and creates the snapshot; physical hardware details await
+  the owner's USB update and retest.
 - 2026-11-02 `uncommitted` — EFI safeguard passes offline UEFI checks; the owner updated the
-  USB and read-back matched. Its saved previous menu can be unsafe; laptop retest is pending.
+  USB and read-back matched. Its saved previous menu can be unsafe.
 - 2026-11-01 `uncommitted` — Added an opt-in framebuffer-free menu entry; focused tests and both
   disposable UEFI shell checks pass. The USB menu and backup read back correctly; laptop test panicked.
 - 2026-11-01 `uncommitted` — Added bounded native collectors, a rotation/readiness helper and

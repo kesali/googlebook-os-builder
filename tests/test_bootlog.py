@@ -8,6 +8,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 PREPARE = REPO / "android/system_ext/bootlog-prepare.sh"
+SNAPSHOT = REPO / "android/system_ext/hardware-snapshot.sh"
 BOOT_ONE = "11111111-1111-1111-1111-111111111111"
 BOOT_TWO = "22222222-2222-2222-2222-222222222222"
 BOOT_THREE = "33333333-3333-3333-3333-333333333333"
@@ -113,6 +114,22 @@ class BootlogTests(unittest.TestCase):
         self.assertEqual(unknown.read_text(), "do not delete\n")
         self.assertEqual((self.logs / "current/boot-id").read_text(), BOOT_TWO + "\n")
 
+    def test_previous_snapshot_symlink_stops_rotation(self):
+        self.assert_ready(self.prepare())
+        self.assert_ready(self.prepare(BOOT_TWO))
+        target = self.work / "outside"
+        target.write_text("keep\n")
+        snapshot = self.logs / "previous/hardware.txt"
+        snapshot.symlink_to(target)
+
+        result = self.prepare(BOOT_THREE)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.ready.exists())
+        self.assertTrue(snapshot.is_symlink())
+        self.assertEqual(target.read_text(), "keep\n")
+        self.assertEqual((self.logs / "current/boot-id").read_text(), BOOT_TWO + "\n")
+
     def test_symlinked_directory_or_marker_is_rejected(self):
         outside = self.work / "outside"
         outside.mkdir()
@@ -145,6 +162,8 @@ class BootlogTests(unittest.TestCase):
         text = (REPO / "android/system_ext/bootlog.rc").read_text()
         self.assertIn("setprop ro.logd.kernel true", text)
         self.assertIn("on property:sys.dali.bootlog.ready=1", text)
+        self.assertIn("on property:sys.boot_completed=1\n    start dali_hardware_snapshot", text)
+        self.assertIn("seclabel u:r:dali_hardware_diag:s0", text)
         commands = [line.split() for line in text.splitlines()
                     if line.startswith("service dali_") and "/system/bin/logcat" in line]
         self.assertEqual(len(commands), 2)
@@ -167,6 +186,96 @@ class BootlogTests(unittest.TestCase):
         self.assertNotIn("(permissive", policy)
         self.assertNotIn("(capability", policy)
         self.assertNotIn("blk_file", policy)
+        self.assertIn("dali_hardware_diag proc_asound", policy)
+        self.assertIn("dali_hardware_diag proc_modules", policy)
+        self.assertIn("dali_hardware_diag audio_device", policy)
+        self.assertIn("dali_hardware_diag sysfs", policy)
+        self.assertIn("dali_hardware_diag device (dir (search))", policy)
+        self.assertNotIn("allow dali_hardware_diag audio_device (chr_file", policy)
+
+    def test_hardware_snapshot_reads_only_declared_device_metadata(self):
+        script = SNAPSHOT.read_text()
+        for path in ("/class/backlight/*", "/class/sound/card[0-9]*",
+                     "/asound/cards", "/asound/pcm", "/modules", "/snd/*"):
+            self.assertIn(path, script)
+        self.assertNotRegex(script, r'(?m)^.*(?:>|>>)\s*"\$sys_root')
+        self.assertNotIn("chmod", script)
+
+
+class HardwareSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.work = Path(directory.name)
+        self.logs = self.work / "logs"
+        (self.logs / "current").mkdir(parents=True)
+        self.sys = self.work / "sys"
+        self.proc = self.work / "proc"
+        self.dev = self.work / "dev"
+        for root in (self.sys, self.proc, self.dev):
+            root.mkdir()
+
+    def snapshot(self):
+        return subprocess.run(
+            ["sh", str(SNAPSHOT), str(self.logs), str(self.sys), str(self.proc), str(self.dev)],
+            capture_output=True, text=True)
+
+    def test_records_backlight_and_audio_device_details(self):
+        backlight = self.sys / "class/backlight/amdgpu_bl0"
+        backlight.mkdir(parents=True)
+        (backlight / "type").write_text("raw\n")
+        (backlight / "brightness").write_text("128\n")
+        (backlight / "actual_brightness").write_text("128\n")
+        (backlight / "max_brightness").write_text("255\n")
+        card = self.sys / "class/sound/card1"
+        chip = card / "device/hdaudioC1D0"
+        chip.mkdir(parents=True)
+        (card / "id").write_text("Generic_1\n")
+        (card / "number").write_text("1\n")
+        (chip / "chip_name").write_text("Realtek ALC256\n")
+        asound = self.proc / "asound"
+        asound.mkdir()
+        (asound / "cards").write_text(" 1 [Generic_1]: HD-Audio Generic - Realtek ALC256\n")
+        (asound / "pcm").write_text("01-00: ALC256 Analog : playback 1 : capture 1\n")
+        (self.proc / "modules").write_text("snd_hda_intel 1 0 - Live 0x0\n")
+        sound_devices = self.dev / "snd"
+        sound_devices.mkdir()
+        (sound_devices / "controlC1").touch()
+        (sound_devices / "pcmC1D0p").touch()
+
+        result = self.snapshot()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hardware = (self.logs / "current/hardware.txt").read_text()
+        self.assertIn("device=amdgpu_bl0\n", hardware)
+        self.assertIn("brightness=128\n", hardware)
+        self.assertIn("max_brightness=255\n", hardware)
+        self.assertIn("card=card1\n", hardware)
+        self.assertIn("id=Generic_1\n", hardware)
+        self.assertIn("chip_name=Realtek ALC256\n", hardware)
+        self.assertIn("asound_cards= 1 [Generic_1]: HD-Audio Generic - Realtek ALC256\n", hardware)
+        self.assertIn("snd_hda_intel", hardware)
+        self.assertIn("controlC1", hardware)
+        self.assertFalse((self.logs / "current/hardware.txt.tmp").exists())
+
+    def test_reports_absent_devices_and_missing_sound_files(self):
+        result = self.snapshot()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hardware = (self.logs / "current/hardware.txt").read_text()
+        self.assertIn("backlight_devices:\nnone\n", hardware)
+        self.assertIn("sound_cards:\nnone\n", hardware)
+        self.assertIn("asound_cards=[missing or unreadable]", hardware)
+        self.assertIn("asound_pcm=[missing or unreadable]\n", hardware)
+        self.assertIn("loaded_sound_modules:\n[missing or unreadable]", hardware)
+        self.assertIn("sound_device_nodes:\nabsent\n", hardware)
+
+    def test_refuses_symlinked_output(self):
+        target = self.work / "outside"
+        target.write_text("keep\n")
+        (self.logs / "current/hardware.txt").symlink_to(target)
+        result = self.snapshot()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(target.read_text(), "keep\n")
 
 
 if __name__ == "__main__":

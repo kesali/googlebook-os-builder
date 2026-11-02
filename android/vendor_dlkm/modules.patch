@@ -1,6 +1,5 @@
-Load our signed AMD GPU and MT7922 Wi-Fi modules with Google's existing helpers (drm, cfg80211,
-mac80211). Only the MSI's aliases are added (GPU 1002:15e7, Wi-Fi 14c3:0616); firmware for other
-devices is not shipped. Drop when Google's image includes these drivers.
+Google blocks snd_hda_intel and forces Lenovo SOF codec options. Unblock legacy HDA and preload
+the MSI's Realtek ALC256 and AMD HDMI codecs. Drop when Google supports this laptop.
 
 --- a/lib/modules/modules.dep
 +++ b/lib/modules/modules.dep
@@ -25,3 +24,22 @@ devices is not shipped. Drop when Google's image includes these drivers.
  alias pci:v00008086d0000119Asv*sd*bc*sc*i* snd_sof_pci_intel_tng
 +alias pci:v00001002d000015E7sv*sd*bc*sc*i* amdgpu
 +alias pci:v000014C3d00000616sv*sd*bc*sc*i* mt7921e
+--- a/lib/modules/modules.blocklist
++++ b/lib/modules/modules.blocklist
+@@ -1 +0,0 @@
+-blocklist snd_hda_intel
+--- a/lib/modules/modules.options
++++ b/lib/modules/modules.options
+@@ -1,5 +1,4 @@
+ dyn_options snd_sof_pci system "/vendor/bin/mod_options --sof-fw"
+-options snd_sof_intel_hda_generic hda_model=alc-2024y-chromebook dmic_num=4
+ options snd_sof_intel_hda_generic softdep pre: snd_ctl_led
+ options snd_sof_intel_hda softdep pre: snd_hda_codec_alc269
+ options snd_sof_intel_hda softdep pre: snd-hda-codec-intelhdmi
+--- a/lib/modules/modules.softdep
++++ b/lib/modules/modules.softdep
+@@ -4,3 +4,4 @@
+ softdep r8169 pre: realtek
+ softdep snd_sof_intel_hda pre: snd-hda-codec-hdmi
+ softdep intel_skl_int3472_tps68470 pre: clk-tps68470 tps68470-regulator
++softdep snd_hda_intel pre: snd_hda_codec_alc269 snd_hda_codec_atihdmi
