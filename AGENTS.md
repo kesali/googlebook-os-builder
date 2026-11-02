@@ -23,6 +23,14 @@ The priority is that a person can understand how to build, update and deploy it,
   not blanket approval to implement every idea in it.
 - Prefer a short explanation, focused diff and relevant test over process-heavy handoffs. Update a
   component spec when the change affects its status, decisions or next action.
+- Proactively capture verified, reusable findings in the relevant skills or specs, and make small,
+  directly related tool or development-speed improvements without a separate owner request.
+  Keep these evidence-driven and scoped to the task, not speculative frameworks or unrelated
+  cleanup. Existing validation approvals, long-build approvals and safety boundaries still apply;
+  discuss larger changes or behavior changes first.
+- Commit focused, verified milestones without a separate reminder, including owner-confirmed
+  hardware fixes. Review the diff, exclude unrelated changes and generated/private files, and
+  leave unverified work uncommitted. Do not push or rewrite history without permission.
 
 ## Ground rules
 
