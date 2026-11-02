@@ -13,7 +13,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Boot chain](boot.md) | partial | Retrieve the snapshot and logs after each laptop retest |
 | [OS image and disk](os-image.md) | working | Owner verifies the unified USB updater on the existing stick |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial | Validate software video playback after the codec sandbox affinity-query fix |
+| [Graphics](graphics.md) | partial | Retest video after source-level YV12 format/pitch fixes from prior gbos findings |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
 | [Laptop hardware](laptop-hardware.md) | partial | Owner retests video after the vendor fix; confirms brightness slider, Bluetooth and free space in /data |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |

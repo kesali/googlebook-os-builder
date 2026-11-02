@@ -1,0 +1,34 @@
+# Software-decoded YV12 has no Vulkan-equivalent Android format. RADV's private query returns
+# UNDEFINED with externalFormat=0, so Skia cannot create a video texture and SurfaceFlinger aborts.
+# Use Mesa's existing gralloc-aware query for external-only formats, as the gbos reference does,
+# while retaining RADV's exclusion of 32-bit memory types. RGB and NV12 keep their current path.
+# Drop when RADV handles these formats through the common Android implementation upstream.
+
+--- a/src/amd/vulkan/radv_android.c
++++ b/src/amd/vulkan/radv_android.c
+@@ -23,6 +23,7 @@
+ #include "util/os_file.h"
+ 
+ #include "vk_android.h"
++#include "vk_common_entrypoints.h"
+ #include "vk_format.h"
+ #include "vk_log.h"
+ #include "vk_util.h"
+@@ -427,6 +428,17 @@
+    VK_FROM_HANDLE(radv_device, dev, device_h);
+    struct radv_physical_device *pdev = radv_device_physical(dev);
+ 
++   AHardwareBuffer_Desc desc;
++   AHardwareBuffer_describe(buffer, &desc);
++   if (vk_format_from_android(desc.format, desc.usage) == VK_FORMAT_UNDEFINED) {
++      VkResult result = vk_common_GetAndroidHardwareBufferPropertiesANDROID(device_h, buffer, pProperties);
++      if (result != VK_SUCCESS)
++         return result;
++
++      pProperties->memoryTypeBits &= ~pdev->memory_types_32bit;
++      return VK_SUCCESS;
++   }
++
+    VkAndroidHardwareBufferFormatPropertiesANDROID *format_prop =
+       vk_find_struct(pProperties->pNext, ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID);
+ 

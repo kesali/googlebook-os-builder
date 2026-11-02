@@ -1,7 +1,7 @@
 # Laptop hardware
 
 **Status:** partial — setup over Wi-Fi, input and sound work; owner reports HDMI performance is
-now fine. Video playback fails in Play Store and Photos; the brightness slider is unconfirmed.
+now fine. Video crashes the desktop after the codec sandbox update; the brightness slider is unconfirmed.
 **Last verified:** 2026-11-02 — the owner booted `95b3bf6`: sound works; frame rate halves with
 HDMI connected. Its [snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt) shows
 `/sys/class/backlight/backlight` labelled `sysfs_leds`, brightness 51750 of 62451. Commits after
@@ -200,6 +200,9 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Owner's video retest crashes the desktop. Reused their earlier gbos
+  YV12 findings as Mesa/minigbm source patches. 131 tests, vendor rebuild/ABI checks and enforcing
+  QEMU pass; patches not deployed and new crash log not yet retrieved.
 - 2026-11-02 (this commit) — Main USB update workflow is now `make update-usb JOBS=12`: select
   the disk, confirm by serial, update OS and boot files without touching data. 129 fixture tests
   pass; first physical use of the new tool is pending. No USB write made.

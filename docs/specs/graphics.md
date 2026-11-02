@@ -31,7 +31,7 @@ renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. The 
 two-queue Vulkan HWUI candidate was tested by the owner with no noticeable performance difference;
 the default AMD profile remains GL. QEMU is still CPU-rendered.
 
-Video playback is broken in Play Store and Photos. The latest
+Video playback is broken in Play Store and Photos. The first
 [logs](../../out/laptop-boot-2026-11-02-video/dali-bootlog/current/) show software AVC/HEVC/VP9
 selection and 11 `media.swcodec` crashes: minijail blocks `sched_getaffinity` while Mesa maps a
 video buffer through minigbm. The vendor policy extension below allows only this query.
@@ -39,8 +39,20 @@ Validation: 16 graphics/overlay tests pass; the image rebuild changed only vendo
 build wrote nothing. Enforcing QEMU reaches the inspected setup screen; explicit
 `c2.android.avc.encoder` screen recording succeeds with `media.swcodec` still at `Seccomp: 2`,
 and the guest can read the installed rule ([evidence](../../out/video-codec-runtime/)).
-Not verified: playback after installing the extension; other decoder or display failures may remain.
-QEMU's virtio allocator does not exercise the failing AMD mapping path.
+After installing it, the owner reports that video crashes the desktop. The owner previously fixed
+the same symptom in gbos: YV12 format reporting and chroma-plane pitch
+([reference handoff](../../reference/gbos-x86-msi-modern-15-B7M/HANDOFF.md)).
+The pinned sources still contain both gaps: RADV reports no external format for YV12, and the
+allocator's planar fallback does not align chroma pitches for GFX9. Source patches now reuse
+Mesa's common gralloc-aware format query and align planar luma to 512 bytes (chroma to 256).
+RADV's 32-bit memory exclusion, directly supported RGB/NV12 queries and software decoding remain.
+
+Verified: `make test` passes 131 tests, including compiled query/error-path and pitch tests through
+8K widths. Mesa/minigbm compile, all 49 gralloc and 22 GBM exports pass, vendor's 1,620 metadata
+entries pass, and the repeat image build writes nothing. Enforcing QEMU reaches the inspected
+setup screen ([build](../../out/video-yv12-build.log), [QEMU](../../out/video-yv12-qemu.log)).
+Not verified: the new desktop crash's log signature (not retrieved) or AMD playback after these
+source patches. QEMU's virtio allocator does not exercise the AMD video-buffer path.
 
 ## Decisions
 - Owner's overnight request authorizes an AMD test candidate, retaining softpipe as the verified fallback.
@@ -60,6 +72,9 @@ QEMU's virtio allocator does not exercise the failing AMD mapping path.
   platform libraries, not NDK libc++; an ABI gate checks Google's clients whenever either image or library changes.
 - [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch): Mesa drops DRM master after
   opening the primary node, so the composer can drive the display. A source patch, no added privileges.
+- Reuse the owner's gbos video findings at source level, not its binary patches.
+  External-only AHB formats use Mesa's common gralloc query; planar YUV fallback allocations
+  have 256-byte-aligned chroma pitches for RADV. Keep directly supported formats unchanged.
 - QEMU loads Google's virtio-gpu; the laptop adds amdgpu with official firmware.
   Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
   DRM node labels: [android/vendor/file-contexts.patch](../../android/vendor/file-contexts.patch).
@@ -82,6 +97,10 @@ QEMU's virtio allocator does not exercise the failing AMD mapping path.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch) — Mesa libraries and settings in vendor.
 - [mediaswcodec.policy](../../android/vendor/mediaswcodec.policy) — additive software-codec
   seccomp policy for Mesa's CPU-affinity query; the platform sandbox and enforcing SELinux remain.
+- [mesa-radv-yv12.patch](../../android/mesa-radv-yv12.patch),
+  [minigbm-yv12.patch](../../android/minigbm-yv12.patch),
+  [test_video_buffers.py](../../tests/test_video_buffers.py) — source-level external-format query
+  and planar pitch fixes based on the owner's earlier gbos findings.
 
 ## Verify
 `make test`, `make mesa JOBS=12`, `make android-image JOBS=12`, then
@@ -111,7 +130,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 ## Actions
 - [x] Validate the handoff on the laptop — the owner saw the setup screen and used the touchpad.
 - [ ] Retest Play Store and Photos video — done when both play on the laptop after the vendor
-  update, without `media.swcodec` sandbox crashes. Test the same clips; keep CPU decoding.
+  update, without codec or compositor crashes. Test the same clips; keep CPU decoding.
+  If it still fails, retrieve the new crash log before extending the patches.
 - [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
   output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
@@ -121,6 +141,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Owner reports desktop crash on video after the sandbox fix. Ported
+  prior gbos YV12 findings as source fixes: common format query and aligned chroma pitch. 131 tests,
+  vendor build/ABI checks and enforcing QEMU pass; not deployed, new crash signature unconfirmed.
 - 2026-11-02 (this commit) — Software codecs crash on Mesa's affinity query; added one vendor
   seccomp rule. 16 tests, vendor rebuild/no-op repeat, enforcing QEMU and software AVC encoding pass.
   Owner reports HDMI fine and no Vulkan HWUI speed difference; laptop video fix awaits deployment.

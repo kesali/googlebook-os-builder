@@ -5,10 +5,12 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-02 — the codec affinity-query policy rebuilt only vendor; all 1,620
+**Last verified:** 2026-11-02 — the source-level YV12 fixes rebuilt only vendor; all 1,620
 entries passed metadata checks. Repeat build wrote no partitions; enforcing QEMU reached the
-inspected setup screen ([build](../../out/video-codec-image-build.log),
-[QEMU](../../out/video-codec-qemu-check.log)). This vendor update is not on the USB yet.
+inspected setup screen ([build](../../out/video-yv12-build.log),
+[QEMU](../../out/video-yv12-qemu.log)); 131 tests pass. These source fixes are not on the USB yet.
+The owner deployed the earlier affinity-query policy, but video then crashed the desktop;
+see [graphics](graphics.md) for the prior gbos findings and unverified laptop retest.
 Earlier, on the physical stick, `update-os.sh` wrote only `vendor_a` and a
 second run found all five OS ranges unchanged on the enlarged layout; `grow-data.sh --erase-data`
 grew `userdata` from 32 GiB to 215.1 GiB (451,151,872 sectors), read back a blank first MiB and left
@@ -164,6 +166,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Rebuilt vendor with RADV external-format and allocator planar-pitch
+  source fixes; 1,620 metadata entries and allocator ABI pass. 131 tests and enforcing QEMU pass;
+  repeat writes nothing. USB unchanged; owner retest pending.
 - 2026-11-02 (this commit) — Promoted USB updates into `make update-usb`: select/confirm by serial,
   derive OS extents, preserve data/layout, reuse menu-last boot installation. 129 tests pass and
   real-image ranges match; physical USB use remains untested. No disk written.

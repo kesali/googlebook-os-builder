@@ -26,7 +26,7 @@ ANDROID := $(OUT)/android
 MESA := $(OUT)/mesa
 MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
 MESA_PATCH := android/mesa-drm-master.patch
-MESA_PATCHES := $(MESA_PATCH) android/mesa-radv-two-queues.patch
+MESA_PATCHES := $(MESA_PATCH) android/mesa-radv-two-queues.patch android/mesa-radv-yv12.patch
 MESA_SOURCE_SHA := $(shell cat $(MESA_PATCHES) scripts/source.sh | sha256sum | cut -d' ' -f1)
 MESA_SRC := $(OUT)/src/mesa-$(MESA_SHA)-$(MESA_SOURCE_SHA)
 LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_SHA).tar.xz
@@ -42,7 +42,8 @@ FIRMWARE := $(OUT)/firmware-$(FIRMWARE_SHA)
 MINIGBM := $(OUT)/minigbm
 MINIGBM_TAR := $(DL)/minigbm-$(MINIGBM_SHA).tar.gz
 MINIGBM_PATCH := android/minigbm-amd.patch
-MINIGBM_SOURCE_SHA := $(shell cat $(MINIGBM_PATCH) scripts/source.sh | sha256sum | cut -d' ' -f1)
+MINIGBM_PATCHES := $(MINIGBM_PATCH) android/minigbm-yv12.patch
+MINIGBM_SOURCE_SHA := $(shell cat $(MINIGBM_PATCHES) scripts/source.sh | sha256sum | cut -d' ' -f1)
 MINIGBM_SRC := $(OUT)/src/minigbm-$(MINIGBM_SHA)-$(MINIGBM_SOURCE_SHA)
 HEADERS := $(OUT)/android-headers/$(ANDROID_HEADERS_TAG)
 CORE_HEADERS := $(OUT)/src/android-core-$(ANDROID_CORE_REV)
@@ -205,8 +206,8 @@ $(FIRMWARE)/manifest: $(FIRMWARE_TAR) kernel/msi-firmware.list scripts/firmware.
 	$(BUILDER) bash scripts/firmware.sh "$<" "$(FIRMWARE_VERSION)" kernel/msi-firmware.list "$(FIRMWARE)"
 $(MINIGBM_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(MINIGBM_URL)" "$(MINIGBM_SHA)" "$@"
-$(MINIGBM_SRC)/.ready: $(MINIGBM_TAR) $(MINIGBM_PATCH) scripts/source.sh
-	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" "$(MINIGBM_PATCH)"
+$(MINIGBM_SRC)/.ready: $(MINIGBM_TAR) $(MINIGBM_PATCHES) scripts/source.sh
+	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" $(MINIGBM_PATCHES)
 $(BUILDTOOLS_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(ANDROID_BUILDTOOLS_URL)" "$(ANDROID_BUILDTOOLS_SHA)" "$@"
 $(dir $(AIDL))lib64/libc++.so: $(BUILDTOOLS_ZIP)
