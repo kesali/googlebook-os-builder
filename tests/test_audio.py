@@ -1,13 +1,60 @@
-"""Exercise MSI audio preparation with fake sysfs; never open a real sound device."""
+"""Exercise MSI audio preparation and XML routing; never open a real sound device."""
 
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 REPO = Path(__file__).resolve().parents[1]
 SELECTOR = REPO / "android/vendor/get_variant_audio"
+
+
+class AudioRouteTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        audio = root / "etc/audio/sof-rt5682_alc5682ivs_tas2563"
+        shutil.copytree(REPO / "tests/audio", audio)
+        result = subprocess.run(
+            ["patch", "--batch", "--fuzz=0", "-p1", "-i",
+             str(REPO / "android/vendor/audio-msi.patch")],
+            cwd=root, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.config = ET.parse(audio / "audio_config.xml").getroot()
+        self.mixer = ET.parse(audio / "mixer_paths.xml").getroot()
+
+    def test_internal_mic_uses_named_acp_card_not_analog_headset(self):
+        self.assertEqual(self.config.findtext("SoundCardName"), "hw:sofrt5682")
+        route = self.config.find("HiFi/InternalMic")
+        self.assertIsNotNone(route)
+        self.assertEqual(route.findtext("CapturePCM"), "hw:acp,0")
+        self.assertEqual(route.findtext("CaptureChannelMap/FL"), "0")
+        self.assertEqual(route.findtext("CaptureChannelMap/FR"), "1")
+        self.assertIsNone(route.find("JackDev"))
+        self.assertIsNone(route.find("CaptureMixerElem"))
+        path = self.mixer.find("path[@name='InternalMic']")
+        self.assertIsNotNone(path)
+        self.assertEqual(list(path), [])
+
+    def test_existing_analog_routes_and_capture_controls_are_preserved(self):
+        for route in ("Speaker", "Headphone"):
+            self.assertEqual(self.config.findtext(f"HiFi/{route}/PlaybackPCM"),
+                             "hw:sofrt5682,0")
+        self.assertEqual(self.config.findtext("HiFi/Mic/CapturePCM"), "hw:sofrt5682,0")
+        self.assertEqual(self.config.findtext("HiFi/Mic/JackDev"), "HD-Audio Generic Mic")
+        self.assertEqual(self.config.findtext("HiFi/Headphone/JackDev"),
+                         "HD-Audio Generic Headphone")
+        self.assertEqual(self.mixer.find("ctl[@name='Capture Switch']").get("value"), "0 0")
+        headset = self.mixer.find("path[@name='Mic']")
+        self.assertEqual([(control.get("name"), control.get("value")) for control in headset],
+                         [("Capture Volume", "23 23"), ("Capture Switch", "1 1")])
+        self.assertEqual({route.tag for route in self.config.find("HiFi")},
+                         {"Speaker", "Headphone", "Mic", "InternalMic"})
 
 
 class AudioTests(unittest.TestCase):

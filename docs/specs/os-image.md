@@ -103,7 +103,8 @@ QEMU test used a reflinked copy.
 - The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a`, `vbmeta_a` — never
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
 - `make update-usb` is the supported physical USB update workflow: build in the container, then
-  run the host updater with sudo. List USB disks, select explicitly and confirm by serial.
+  run the host updater with sudo. List USB disks, select explicitly, then confirm with `y`/`yes`
+  at a default-no prompt showing the device path, model and serial.
   Require matching GPT/liblp and the Android boot marker, preserve larger userdata, and update
   OS ranges plus boot files with read-back. Private boot mounts are read-only until confirmation;
   payloads precede the menu. Never format, repartition, auto-select or offer internal disks.
@@ -174,6 +175,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Replaced serial retyping with default-no `y`/`yes` confirmation
+  after selection and the update summary; device identity/layout/read-back safeguards unchanged.
+  All 15 focused updater tests pass using regular-file fixtures; no physical disk writes.
 - 2026-11-02 (this commit) — Native-bridge selection and crash capture changed only system and
   system_ext; metadata, 53 focused tests, no-write repeat and two enforcing UEFI runs pass.
   Owner deployed and confirms the failing game, another native app and Hearthstone work in Berberis.

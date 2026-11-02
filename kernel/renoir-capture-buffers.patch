@@ -1,0 +1,23 @@
+Android's desktop audio HAL requests two capture periods, with 3840 or 7680
+bytes per period at 48 kHz stereo S32_LE. Renoir advertises exactly four
+periods and a 4096-byte minimum, rejecting those configurations.
+
+Allow two periods and use the generic upstream ACP driver's 1024-byte
+minimum. Keep the existing maxima and fixed DMA allocation; Renoir already
+programs its ring size and interrupt watermark from negotiated parameters.
+This is a Renoir compatibility candidate, not a generic ACP driver switch.
+Drop when upstream Renoir accepts these buffers or a verified upstream ACP
+replacement makes this driver unnecessary.
+
+--- a/sound/soc/amd/renoir/rn_acp3x.h
++++ b/sound/soc/amd/renoir/rn_acp3x.h
+@@ -51,7 +51,7 @@
+-#define CAPTURE_MIN_NUM_PERIODS     4
++#define CAPTURE_MIN_NUM_PERIODS     2
+ #define CAPTURE_MAX_NUM_PERIODS     4
+ #define CAPTURE_MAX_PERIOD_SIZE     8192
+-#define CAPTURE_MIN_PERIOD_SIZE     4096
++#define CAPTURE_MIN_PERIOD_SIZE     1024
+ 
+ #define MAX_BUFFER (CAPTURE_MAX_PERIOD_SIZE * CAPTURE_MAX_NUM_PERIODS)
+ #define MIN_BUFFER MAX_BUFFER

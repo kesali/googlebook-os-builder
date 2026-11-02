@@ -261,15 +261,24 @@ class USBUpdateTests(unittest.TestCase):
                 patch.object(update_usb, "boot_mount", side_effect=fake_mount) as mounts, \
                 patch.object(update_usb, "snapshot_bundle", side_effect=fake_snapshot):
             before = self.target.read_bytes()
-            with patch("builtins.input", return_value="wrong confirmation"):
-                update_usb.update(self.image, self.bundle)
-            self.assertEqual(self.target.read_bytes(), before)
-            self.assertFalse(any(call.kwargs.get("writable") for call in mounts.call_args_list))
-            # An updated boot menu must be installed alongside the OS.
-            (self.boot / "dali/grub.cfg").write_bytes(b"old boot menu")
-            with patch("builtins.input", return_value="UPDATE test-serial"):
-                update_usb.update(self.image, self.bundle)
-            self.assertEqual(install(self.bundle, self.boot, dry_run=True), [])
+            boot_before = {p: p.read_bytes() for p in self.boot.rglob("*") if p.is_file()}
+            for answer in ("", "n", "no", "wrong confirmation", "UPDATE test-serial"):
+                with self.subTest(answer=answer), patch("builtins.input", return_value=answer) as prompt:
+                    update_usb.update(self.image, self.bundle)
+                    prompt.assert_called_once_with(
+                        f"Write updates to {self.target} (Test, test-serial)? [y/N] ")
+                    self.assertEqual(self.target.read_bytes(), before)
+                    self.assertEqual({p: p.read_bytes() for p in boot_before}, boot_before)
+                    self.assertFalse(any(call.kwargs.get("writable") for call in mounts.call_args_list))
+            for answer in ("y", "yes", "Y", " YES "):
+                with self.subTest(answer=answer):
+                    self.target.write_bytes(before)
+                    # An updated boot menu must be installed alongside the OS.
+                    (self.boot / "dali/grub.cfg").write_bytes(b"old boot menu")
+                    with patch("builtins.input", return_value=answer):
+                        update_usb.update(self.image, self.bundle)
+                    self.assertNotEqual(self.target.read_bytes(), before)
+                    self.assertEqual(install(self.bundle, self.boot, dry_run=True), [])
             timestamp = self.target.stat().st_mtime_ns
             with patch("builtins.input", side_effect=AssertionError("no confirmation for a no-op")):
                 update_usb.update(self.image, self.bundle)

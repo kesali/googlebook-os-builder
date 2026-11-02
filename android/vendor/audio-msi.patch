@@ -1,11 +1,12 @@
 Google's board audio configuration is for a Lenovo SOF codec. The MSI ALC256 uses analog PCM 0
 and HDA mixer controls, with a mono Master and stereo outputs. Keep the neutral DSP graph and
-volume curves; do not advertise absent HDMI or ACP microphone PCMs. Drop when Google supports
-this laptop.
+volume curves. The built-in DMIC is on separate card acp, PCM 0; its upstream driver needs no
+HDA mixer controls. Keep the headset on the analog card and omit absent HDMI routes.
+Drop when Google supports this laptop.
 
 --- a/etc/audio/sof-rt5682_alc5682ivs_tas2563/audio_config.xml
 +++ b/etc/audio/sof-rt5682_alc5682ivs_tas2563/audio_config.xml
-@@ -7,55 +7,18 @@
+@@ -7,13 +7,12 @@
  	<HiFi>
  		<Headphone>
  			<PlaybackPCM>hw:sofrt5682,0</PlaybackPCM>
@@ -15,15 +16,14 @@ this laptop.
  			<JackSwitch>2</JackSwitch>
  			<DSPLatency>0</DSPLatency>
  		</Headphone>
--		<InternalMic>
+ 		<InternalMic>
 -			<CapturePCM>hw:sofrt5682,99</CapturePCM>
--			<CaptureChannelMap>
--				<FL>0</FL>
--				<FR>1</FR>
--			</CaptureChannelMap>
--			<IntrinsicSensitivity>-2600</IntrinsicSensitivity>
--			<DSPLatency>0</DSPLatency>
--		</InternalMic>
++			<CapturePCM>hw:acp,0</CapturePCM>
+ 			<CaptureChannelMap>
+ 				<FL>0</FL>
+ 				<FR>1</FR>
+@@ -23,39 +22,12 @@
+ 		</InternalMic>
  		<Mic>
  			<CapturePCM>hw:sofrt5682,0</CapturePCM>
 -			<CaptureMixerElem>Headset Mic</CaptureMixerElem>
@@ -66,7 +66,7 @@ this laptop.
  </audio_config>
 --- a/etc/audio/sof-rt5682_alc5682ivs_tas2563/mixer_paths.xml
 +++ b/etc/audio/sof-rt5682_alc5682ivs_tas2563/mixer_paths.xml
-@@ -3,60 +3,19 @@
+@@ -3,60 +3,20 @@
  	<!--Copyright 2024 The Chromium OS Authors. All rights reserved.
  Use of this source code is governed by a BSD-style license that can be
  found in the LICENSE file.-->
@@ -125,6 +125,7 @@ this laptop.
 +	<ctl name="Capture Switch" value="0 0" />
 +	<path name="Headphone" />
 +	<path name="Speaker" />
++	<path name="InternalMic" />
  	<path name="Mic">
 -		<ctl name="Headset Mic Switch" value="1" />
 -	</path>

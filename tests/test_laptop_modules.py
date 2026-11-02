@@ -1,11 +1,15 @@
 """Dependency metadata checks use fake module graphs."""
 
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from laptop_module_check import dependency_closure
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "tools"))
+from laptop_module_check import check, dependency_closure, LAPTOP_ALIASES
 
 
 class LaptopModuleTests(unittest.TestCase):
@@ -28,6 +32,75 @@ class LaptopModuleTests(unittest.TestCase):
     def test_vendor_modules_still_need_an_entry(self):
         with self.assertRaisesRegex(ValueError, "missing.ko"):
             dependency_closure(["video.ko"], {"video.ko": ["missing.ko"]}, {"rfkill.ko"})
+
+    def test_microphone_modules_are_modular_and_installed_without_replacing_dmic(self):
+        config = (REPO / "kernel/gki.config").read_text()
+        for option in ("SND_SOC_AMD_RENOIR", "SND_SOC_AMD_RENOIR_MACH",
+                       "SND_AMD_ACP_CONFIG", "SND_SOC_DMIC"):
+            self.assertIn(f"CONFIG_{option}=m\n", config)
+        paths = {line for line in (REPO / "kernel/laptop-modules.list").read_text().splitlines()
+                 if line and not line.startswith("#")}
+        installs = [line.split() for line in
+                    (REPO / "android/vendor_dlkm/install.list").read_text().splitlines()
+                    if line and not line.startswith("#")]
+        for path in ("sound/soc/amd/snd-acp-config.ko",
+                     "sound/soc/amd/renoir/snd-rn-pci-acp3x.ko",
+                     "sound/soc/amd/renoir/snd-acp3x-pdm-dma.ko",
+                     "sound/soc/amd/renoir/snd-acp3x-rn.ko"):
+            with self.subTest(path=path):
+                self.assertIn(path, paths)
+                name = Path(path).name
+                self.assertIn([f"lib/modules/{name}", "0644", "0:0",
+                               "vendor_kernel_modules", f"gki/{name}"], installs)
+        self.assertFalse(any(Path(path).name == "snd-soc-dmic.ko" for path in paths))
+
+    def test_alias_check_uses_compiled_module_name_not_hyphenated_filename(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            modules = root / "lib/modules"
+            modules.mkdir(parents=True)
+            installs = root / "install.list"
+            installs.write_text("")
+            (modules / "modules.dep").write_text("")
+            alias_file = modules / "modules.alias"
+            alias_file.write_text("".join(
+                f"alias {alias} {name.replace('-', '_')}\n"
+                for name, alias in LAPTOP_ALIASES.items()))
+
+            def modinfo(arguments, text):
+                self.assertTrue(text)
+                name = Path(arguments[-1]).stem
+                if arguments[2] == "alias":
+                    return LAPTOP_ALIASES[name] + "\n"
+                self.assertEqual(arguments[2], "name")
+                return name.replace("-", "_") + "\n"
+
+            with patch("laptop_module_check.subprocess.check_output", side_effect=modinfo):
+                check(root, installs)
+                alias_file.write_text(alias_file.read_text().replace(
+                    "platform:acp_pdm_mach snd_acp3x_rn",
+                    "platform:acp_pdm_mach snd-acp3x-rn"))
+                with self.assertRaisesRegex(ValueError, "snd-acp3x-rn"):
+                    check(root, installs)
+
+    def test_sound_module_paths_keep_traversal_and_root_guards(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            build = work / "build"
+            build.mkdir()
+            (build / ".config").write_text('CONFIG_MODULE_SIG_HASH="sha256"\n')
+            listing = work / "modules.list"
+            for path in ("sound/../outside.ko", "/sound/absolute.ko",
+                         "other/module.ko", "sound/soc/amd/not-a-module"):
+                with self.subTest(path=path):
+                    listing.write_text(path + "\n")
+                    result = subprocess.run(
+                        ["bash", str(REPO / "scripts/laptop-modules.sh"), str(build),
+                         str(work), str(listing), str(work), str(work / "output")],
+                        capture_output=True, text=True,
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(f"Invalid laptop module path: {path}", result.stderr)
 
 
 if __name__ == "__main__":

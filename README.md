@@ -80,8 +80,8 @@ make update-usb JOBS=12
 
 This builds changed components, then asks for sudo to run the tracked
 [USB updater](tools/update_usb.py) on the host. Choose a numbered USB disk from its model,
-capacity and serial; review the planned OS and boot-file changes, then type `UPDATE <serial>`
-to confirm. Enter at selection or a nonmatching confirmation cancels without writing.
+capacity and serial; review the planned OS and boot-file changes, then type `y` or `yes`
+at the `[y/N]` prompt to confirm. Enter or any other answer cancels without writing.
 
 The updater:
 - Accepts only an **existing Dali Android USB**, not a blank disk or the diagnostic OS.
@@ -99,6 +99,21 @@ Keep downloads, sources and build directories in `out/`; deleting them makes the
 
 For boot-only manual deployment, `make deploy-android JOBS=12 USB=/path/to/mounted/DALI-BOOT`
 remains available. **`make deploy` is for the separate diagnostic OS, not Android.**
+
+### Reading laptop logs
+
+After returning to Linux, connect the Android USB and unmount its partitions, then run:
+
+```sh
+make laptop-logs
+```
+
+Select the USB by model/serial. Sudo authorizes read-only `debugfs`; no mounts, filesystem
+repair or USB writes occur. Current and previous boot logs are copied to a private, timestamped
+folder under `out/laptop-logs/`, owned by your normal user. `out/laptop-logs/latest/current/`
+always points to the newest successful retrieval; older copies are retained.
+Android already saves these logs automatically. Retrieval needs host `debugfs` (e2fsprogs),
+sudo, lsblk and Python 3; it does not build an image. Treat the logs as private.
 
 Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so
 the owner's local [grow-data.sh](out/usb-flash-android/grow-data.sh) enlarges the `userdata`

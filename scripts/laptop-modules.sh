@@ -14,7 +14,7 @@ test -n "$hash" || { echo "No module-signing algorithm in $build/.config" >&2; e
 
 while read -r path; do
     [[ -z "$path" || "$path" == \#* ]] && continue
-    [[ "$path" == drivers/*.ko && "$path" != *..* ]] || {
+    [[ ( "$path" == drivers/*.ko || "$path" == sound/*.ko ) && "$path" != *..* ]] || {
         echo "Invalid laptop module path: $path" >&2; exit 1;
     }
     name=${path##*/}

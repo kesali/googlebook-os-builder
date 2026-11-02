@@ -3,17 +3,19 @@
 Written 2026-11-02 at commit `e7f7865`, after the owner confirmed that the laptop boots quickly
 with the important hardware working. The details are in the component specs
 ([specs/README.md](specs/README.md)) and the code; this document explains how they fit together.
+Microphone status updated later on 2026-11-02 from the owner's laptop retest.
 
 ## 1. Status
 
 **Working on the MSI Modern 15 B7M** (owner report): fast boot, setup completed, Wi-Fi, keyboard,
-touchpad, speaker sound (ALC256), screen brightness, AMD-accelerated desktop. App launches feel
+touchpad, speaker sound (ALC256), built-in microphone (ACP DMIC), screen brightness,
+AMD-accelerated desktop. App launches feel
 faster than Churro and gbos-x86, but no benchmark has measured this.
 
 **Built but not confirmed on hardware:** Bluetooth (official MT7922 firmware added after the
 log showed it was missing) and the HDMI frame-rate fix.
 
-**Not done:** internal microphone (AMD ACP), HDMI audio, suspend/resume, Vulkan app UI (HWUI),
+**Not done:** HDMI audio, suspend/resume, Vulkan app UI (HWUI),
 camera, SD reader, and the remaining instruction traps in Google's signed ART/Rust code.
 
 **QEMU:** the regression check reaches the setup screen. `sys.boot_completed` takes about 20 s
@@ -133,7 +135,7 @@ plus [android/cmdline.txt](../android/cmdline.txt) and [android/bootconfig.txt](
 
 | Patch | Change |
 |---|---|
-| vendor `audio-msi`, `audio-policy` | ALC256 mixer paths: speaker, headphone and mic on analog PCM 0. |
+| vendor `audio-msi`, `audio-policy` | ALC256 speaker/headphone/headset mic on analog PCM 0; InternalMic on named ACP PCM `hw:acp,0`. |
 | vendor `build-prop` | Graphics profile properties; gamma log spam fix; zram writeback off (Google's mmd made an 8 GiB file in `/data` every boot). |
 | vendor `file-contexts` | SELinux labels for DRM, GPU sysfs, the sound card ID and the backlight. |
 | vendor `powerhint` | Drop the 8-CPU masks that confined apps to CPUs 0–7 and media to 4–7. |
@@ -369,7 +371,7 @@ safer to run.
 | Gap | Who has it | Comment |
 |---|---|---|
 | Vulkan HWUI | Churro had a RADV two-queue patch | An opt-in candidate now builds; laptop testing and comparison remain. |
-| Internal mic (ACP DMIC), HDMI audio | Churro generates DMIC/HDMI routes | Next audio step. |
+| HDMI audio | Churro generates HDMI routes | Still pending; built-in ACP microphone now owner-confirmed. |
 | Fewer instruction traps | gbos-x86 redirects SHA-NI/Adler in libcrypto/libz | Only with binary patches, which we refuse; our generic-library swap covers libz/bionic. Measure the remaining traps first. |
 | Installer, internal-disk boot | both | Out of scope for now; the USB works. |
 | Root (KernelSU) | gbos-x86 | Out of scope unless you ask. |
@@ -378,8 +380,10 @@ safer to run.
 
 ### Ideas worth considering (not approved; each needs your agreement)
 
-1. Add AMD ACP DMIC and HDMI audio routes, following the measured-control approach used for
-   ALC256.
+1. Add HDMI audio routes, following the measured-control approach used for ALC256.
+   Built-in DMIC now works with Renoir modules, the named InternalMic route and an isolated
+   [buffer compatibility patch](../kernel/renoir-capture-buffers.patch); generic ACP migration
+   remains separate and untested.
 2. Count the remaining instruction traps on the laptop by instruction and by binary. Fix them only
    if they cost real time.
 3. Send the amdgpu fast-flip fix and the Google lights-HAL backlight finding upstream.
@@ -392,6 +396,6 @@ safer to run.
    - Confirm Bluetooth pairing and the HDMI frame rate.
    - Compare the AMD boot-animation time (`boot_progress_enable_screen` vs `sf_stop_bootanim` in
      the saved logs).
-2. **Then:** microphone, HDMI audio and suspend, one at a time, each tracked in
+2. **Then:** HDMI audio and suspend, one at a time, each tracked in
    [specs/laptop-hardware.md](specs/laptop-hardware.md).
 3. **Keep the baseline safe:** always run `make test` and `make qemu-check` before updating the USB.

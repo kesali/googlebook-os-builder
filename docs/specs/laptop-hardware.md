@@ -2,8 +2,12 @@
 
 **Status:** partial — setup over Wi-Fi, input and sound work; owner reports HDMI performance is
 now fine. Video and tested games work after the YV12 fixes and optional Berberis selection;
-the brightness slider is unconfirmed.
-**Last verified:** 2026-11-02 — the owner confirms video playback is fixed and the previously
+the built-in microphone now works (owner report); the brightness slider is unconfirmed.
+**Last verified:** 2026-11-02 — owner confirms microphone works after the Renoir buffer update.
+The driver, InternalMic route and buffer patch pass focused tests, ABI/image checks, no-write
+repeat and enforcing QEMU ([evidence](../../out/renoir-buffer/)). No fresh capture logs or
+recording-quality measurements were supplied with the owner report.
+Earlier, the owner confirms video playback is fixed and the previously
 failing game, another native app and Hearthstone work with the optional Berberis boot entry.
 This is owner-reported hardware verification; new laptop logs have not been retrieved.
 Earlier, the owner booted `95b3bf6`: sound works; frame rate halves with
@@ -27,7 +31,7 @@ impression, not a benchmark. Density 160 replaces 180 in the AMD profile only; Q
 Video works after the source-level YV12 fixes. The owner reports the previously failing game,
 another native app and Hearthstone work with Berberis; normal boot still selects Houdini.
 See [boot](boot.md) for the translator comparison and its limits.
-GPU acceleration, Bluetooth, microphones and suspend have not been independently verified.
+GPU acceleration, Bluetooth, headset microphone and suspend have not been independently verified.
 In the `95b3bf6` kernel log, Google's `btusb`/`btmtk` found the MT7922 Bluetooth but `hci0` setup
 failed: `mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin` was missing. The official file is now installed.
 
@@ -39,7 +43,25 @@ Audio and backlight were designed from the references, Google's HALs and this la
 - Google's audio HAL requires its mapped `sofrt5682` card ID and board configuration.
   The candidate selects `chip_name=ALC256`, renames only that card, verifies the ID and restarts
   the HAL after readiness. Declarative XML maps Speaker/Headphone/Mic to analog PCM 0 and
-  unmutes the host-observed mixer controls. Internal ACP mic and HDMI routes are not implemented.
+  unmutes the host-observed mixer controls. HDMI routes remain unimplemented.
+- Built-in mic: host Linux uses `snd_rn_pci_acp3x` at `03:00.5` with `acp` digital-mic capture.
+  Android's pre-change snapshot has only HDMI/ALC256 PCMs. The driver-only image now includes
+  upstream Renoir ACP modules and reuses Google's DMIC helper. Build/ABI/module metadata checks,
+  29 focused tests and enforcing QEMU regression pass ([evidence](../../out/microphone-drivers/)).
+  The owner updated and booted the USB; the [new snapshot](../../out/laptop-boot-2026-11-02-microphone/current/hardware.txt)
+  confirms all five ACP/DMIC modules, card `acp` and its capture PCM. This driver-only stage
+  did not yet provide microphone input in apps.
+  The built route candidate maps `InternalMic` to `hw:acp,0`, preserves
+  Google's stereo channel map and adds an empty mixer path (ACP needs no HDA capture controls).
+  Existing `Mic` remains the analog headset input; speaker/headset selection, HAL and SELinux
+  are unchanged. Google's inherited sensitivity is not a measured MSI calibration.
+  The patched XML was read back from `vendor_a`, all 1,620 filesystem entries passed metadata
+  checks, and 348,319,744 B fits the 387,108,864 B limit. Repeat build preserved published
+  timestamps and wrote no partitions ([evidence](../../out/microphone-routing/)).
+  With the route alone, the microphone slider appeared but diagnostic input was silent.
+  HAL resolved ACP `(2,0)` and stereo S32_LE correctly, but its two-period buffers conflicted
+  with Renoir's limits. After the isolated buffer patch below, the owner confirms the
+  microphone works. Capture quality and speaker/headset regression were not separately reported.
 - Native panel backlight is under the GPU's `cardN-eDP-1`, with `max_brightness=65535`.
   Google's lights HAL accepts `backlight`, but not `amdgpu_blN`. The source patch gives only
   this model's first AMD panel that supported name; the driver/scaling algorithm is unchanged.
@@ -139,6 +161,13 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
    and relevant logs whether the result succeeds or fails.
 
 ### Recovering the new boot logs
+`make laptop-logs` selects the USB, locates metadata by name
+and reads current/previous logs without mounting or writing the USB. Copies belong to the normal
+user; `out/laptop-logs/latest/current/` points to the newest successful retrieval. All 23 focused
+log-retrieval/USB tests pass, including read-only extraction from a disposable ext4 image.
+The owner ran it successfully on the USB; the retrieved [boot logs](../../out/laptop-logs/20261102-203905-md1owaep/current/)
+are readable without chown. Manual recovery below remains available.
+
 After returning to Linux, use the checked USB by-id path, not an ambiguous `/dev/sdX`. Metadata
 is currently partition 17; verify the layout. Mount it `ro,noload` or read it with debugfs and
 copy only `/dali-bootlog/current/` and `previous/` into a pre-created ignored evidence directory.
@@ -199,14 +228,48 @@ metadata/logd starts still needs a screen photo.
   agreed diagnostic A/B test; leave the working production input path unchanged.
 
 ### Ideas (not approved)
-- Internal ACP microphone, HDMI audio, battery/suspend bring-up.
+- HDMI audio, battery/suspend bring-up.
 - Generalize the local OS updater only if needed; no passwordless physical-write udev rule.
 - CPU frequency policy: Google's command line sets `cpufreq.default_governor=performance`; with
   amd-pstate in active mode that probably keeps the EPP at `performance` (fast, but costs battery).
   Google's powertool tries to switch non-Intel CPUs to schedutil. Decide only after the laptop
   snapshot shows the governor and EPP actually in effect.
 
+### Capture buffer compatibility (owner-confirmed on this laptop)
+- Current upstream Renoir still requires four periods, so a newer pin of this driver does not
+  solve the mismatch. No capture-period setting was found in the shipped XML/HAL options;
+  the visible forced-buffer option is output-only.
+- The pinned kernel also contains a generic ACP stack accepting 2–8 periods and 1024-byte
+  minimum periods, but its PCI selector rejects this MSI's default config flag (0). Switching
+  stacks is not a configuration-only shortcut and adds more modules/machine dependencies.
+- Approved [isolated patch](../../kernel/renoir-capture-buffers.patch): allow two periods and
+  a 1024-byte minimum in the current Renoir driver,
+  retaining all maxima, allocation, rate/channel/format and DMA safeguards. The DMA ring and
+  interrupt watermark already use negotiated sizes, not a hardcoded four-period layout.
+  At stereo S32_LE the HAL's 20 ms period is 7680 B; its 10 ms variant is 3840 B, below today's
+  4096 B minimum. 44 focused tests, image build, all 4501 Google exports/5509 prior symbol CRCs,
+  signed-module metadata and image-fit checks pass. The repeat preserves 29 published file
+  sizes/timestamps and writes nothing; enforcing QEMU reaches setup (screenshot inspected).
+  [Evidence](../../out/renoir-buffer/). Owner confirms microphone working after the update.
+  No HAL replacement or generic ACP migration; other machines and capture-quality measurements
+  remain unverified.
+
 ## Handoff log
+- 2026-11-02 `uncommitted` — Owner confirms microphone works after the Renoir buffer update.
+  Closed the built-in capture task; no new capture logs, quality measurements or separate
+  speaker/headset regression result supplied. HDMI audio and camera remain separate work.
+- 2026-11-02 (this commit) — Renoir-specific buffer candidate passes 44 tests, ABI/image checks,
+  no-write repeat and enforcing QEMU; screen inspected. Separate from generic ACP migration;
+  microphone-slider/no-input remains the latest physical result until the owner updates/retests.
+- 2026-11-02 (this commit) — Owner sees the microphone slider but diagnostic app detects no input;
+  new logs confirm correct ACP/format but incompatible HAL period count (2 vs driver's 4).
+  `make laptop-logs` passes 23 tests and owner USB retrieval; no USB writes or recording success.
+- 2026-11-02 (this commit) — Laptop ACP PCM confirmed; added InternalMic route on named card `acp`.
+  31 tests, image metadata/read-back/fit, no-write repeat and enforcing QEMU pass; analog routes
+  unchanged. Owner update and physical recording test pending.
+- 2026-11-02 (this commit) — Driver-only Renoir ACP image passes tests/build/kABI and enforcing
+  QEMU; unchanged repeat writes nothing. Laptop PCM check pending; speaker/headset routes unchanged.
+  HDMI audio/camera remain; camera is already discovered by Google's USB HAL.
 - 2026-11-02 (this commit) — Owner confirms video fixed and the previously failing game,
   another native app and Hearthstone working with optional Berberis. Normal boot remains Houdini;
   new laptop logs and broader app compatibility remain unverified.

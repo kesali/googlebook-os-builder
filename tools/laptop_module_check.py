@@ -28,6 +28,9 @@ def dependency_closure(direct, dependencies, system_modules=frozenset()):
 LAPTOP_ALIASES = {
     "amdgpu": "pci:v00001002d000015E7sv*sd*bc*sc*i*",
     "mt7921e": "pci:v000014C3d00000616sv*sd*bc*sc*i*",
+    "snd-rn-pci-acp3x": "pci:v00001022d000015E2sv*sd*bc04sc80i00*",
+    "snd-acp3x-pdm-dma": "platform:acp_rn_pdm_dma",
+    "snd-acp3x-rn": "platform:acp_pdm_mach",
 }
 
 
@@ -58,7 +61,9 @@ def check(root, install_list):
     for module, alias in LAPTOP_ALIASES.items():
         aliases = subprocess.check_output(
             ["modinfo", "-F", "alias", str(modules / f"{module}.ko")], text=True).splitlines()
-        if alias not in aliases or f"alias {alias} {module}" not in installed_aliases:
+        module_name = subprocess.check_output(
+            ["modinfo", "-F", "name", str(modules / f"{module}.ko")], text=True).strip()
+        if alias not in aliases or f"alias {alias} {module_name}" not in installed_aliases:
             raise ValueError(f"The kernel or installed aliases do not match the MSI's {module} device")
     print("Laptop module signatures, dependency metadata and device aliases verified")
 

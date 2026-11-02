@@ -292,8 +292,10 @@ def update(image, bundle):
             if not planned and not boot_changes:
                 print("USB is already up to date; nothing written.")
                 return
-            confirmation = f"UPDATE {selected['serial']}"
-            if input(f"Type {confirmation} to proceed: ").strip() != confirmation:
+            confirmation = input(
+                f"Write updates to {path} ({selected['model']}, {selected['serial']})? [y/N] "
+            ).strip().lower()
+            if confirmation not in ("y", "yes"):
                 print("Cancelled; nothing written.")
                 return
             unused()

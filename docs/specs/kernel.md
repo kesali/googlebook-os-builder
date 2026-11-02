@@ -1,8 +1,9 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-02 — `make gki JOBS=12` with the fast-flip patch: `kABI: 4501 Google
-exports, 0 missing, 0 changed`; `make qemu-check` reaches setup with enforcing SELinux
+**Last verified:** 2026-11-02 — `make android-image JOBS=12` with the Renoir buffer patch: `kABI:
+4501 Google exports, 0 missing, 0 changed`; 44 focused source/module/audio/overlay tests pass.
+`make qemu-check JOBS=12` reaches setup with enforcing SELinux and stable service PIDs
 ([screen](../../out/qemu/screen.png), inspected). The owner's boot of `95b3bf6` had sound, and its
 snapshot shows the panel as `backlight` (`sysfs_leds`, 51750 of 62451, so the HAL wrote it);
 a visible brightness change was not reported. Earlier: all 5507 prior symbol versions unchanged
@@ -19,11 +20,11 @@ config changes are listed in [kernel/gki.config](../../kernel/gki.config): trust
 simpledrm/drm_log, modular amdgpu and its display helpers, and EROFS Zstd support.
 Every Google export and CRC is preserved; Google's certificate remains trusted;
 Google's prebuilt virtio GPU/input/net modules load in QEMU, which still reaches the setup screen.
-The nine AMD display and MT7922 modules in [laptop-modules.list](../../kernel/laptop-modules.list)
+The thirteen AMD display, MT7922 and Renoir ACP modules in [laptop-modules.list](../../kernel/laptop-modules.list)
 are stripped, signed with this build's trusted key and included in the regular Android image.
 The vendor_dlkm build checks imports against Google's actual helpers; those helpers and the ABI
-whitelist remain unchanged. The new source-tree path caused a full rebuild and changed all nine
-module hashes and the kernel bytes, not just amdgpu. No physical USB was updated.
+whitelist remain unchanged. An earlier source-tree path change caused a full rebuild and changed
+all nine then-existing module hashes and the kernel bytes, not just amdgpu. No physical USB was updated.
 [drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) releases the firmware
 framebuffer before a PCI display driver takes a DRM minor. It works with virtio in QEMU and is
 based on the owner's working Churro setup; the owner subsequently reached physical setup.
@@ -32,6 +33,31 @@ name on the exact MSI model so Google's unchanged lights HAL can discover it.
 [amdgpu-fast-flips.patch](../../kernel/amdgpu-fast-flips.patch) keeps page flips on amdgpu's fast
 path when an HDMI monitor is connected (owner saw the frame rate halve); the owner subsequently
 retested the updated stick and reports HDMI performance is now fine (frame rate not instrumented).
+
+Initial driver build: four unchanged upstream Renoir ACP microphone modules, with
+signatures, imports, PCI/platform aliases and dependency metadata checked against the compiled
+modules. Google's existing `snd-soc-dmic` is reused byte-for-byte; the machine driver preloads
+PDM DMA/DMIC. Vendor_dlkm is 17,588,224 B against Google's 18,096,128 B limit; all 511 filesystem
+entries passed ownership/mode/SELinux checks. An unchanged build took 15.6 s, preserved published
+output/disk timestamps and wrote no partitions ([evidence](../../out/microphone-drivers/)).
+
+Verified on the updated laptop: the [new snapshot](../../out/laptop-boot-2026-11-02-microphone/current/hardware.txt)
+shows all five ACP/DMIC modules loaded, card ID `acp`, `DMIC capture dmic-hifi-0` and
+`pcmC2D0c`. After adding the route and buffer patch below, the owner reports the microphone
+working on 2026-11-02. Fresh capture logs and recording-quality measurements were not supplied.
+QEMU has no ACP hardware. The separate audio route is tracked in
+[laptop hardware](laptop-hardware.md).
+
+Built and checked: [renoir-capture-buffers.patch](../../kernel/renoir-capture-buffers.patch) allows
+2–4 periods and a 1024-byte minimum for the desktop HAL's observed two-period buffers.
+Only two Renoir header constants change; maxima, fixed DMA allocation and driver selection
+are unchanged. 44 focused tests pass; the 11 min 36 s image rebuild preserves all 4501 Google
+exports and all 5509 prior symbol CRCs. Signed-module checks and all 511 vendor_dlkm metadata
+entries pass; its 17,588,224 B image still fits. The 18.0 s repeat preserves 29 published file
+sizes/timestamps and writes no partitions or boot files. Bounded QEMU passes in 75.5 s with
+enforcing SELinux and stable services; setup screenshot inspected, input not retested.
+[Evidence](../../out/renoir-buffer/). The owner subsequently confirms physical microphone
+functionality; generic ACP migration and other machines remain untested.
 
 ## Decisions
 - Google's exact toolchain (clang r584948c, Rust 1.91.1.p3, bindgen 0.72.1, pahole 1.31 from
@@ -59,6 +85,9 @@ retested the updated stick and reports HDMI performance is now fine (frame rate 
   `TRIM_UNUSED_KSYMS`, change Google's ABI whitelist or publish the private key.
 - Vendor_dlkm uses Zstd to fit the additional modules without removing Google's drivers or
   resizing partitions; its decompressor must be built in before that filesystem is mounted.
+- Keep the Renoir buffer compatibility patch separate from MSI routing and driver selection.
+  A generic ACP driver migration is separate work; drop the patch when upstream accepts these
+  buffers or the old driver is replaced and verified.
 
 ## Files
 - [scripts/gki-kernel.sh](../../scripts/gki-kernel.sh) — configure, build, check, publish `out/gki/`.
@@ -72,6 +101,8 @@ retested the updated stick and reports HDMI performance is now fine (frame rate 
   framebuffer handoff before DRM minor allocation.
 - [kernel/msi-backlight.patch](../../kernel/msi-backlight.patch) — exact-model panel naming.
 - [kernel/amdgpu-fast-flips.patch](../../kernel/amdgpu-fast-flips.patch) — no full update for plain flips on DCN < 3.2.
+- [kernel/renoir-capture-buffers.patch](../../kernel/renoir-capture-buffers.patch) — isolated
+  Renoir capture-period compatibility candidate for the desktop audio HAL.
 - [tests/test_kernel_source.py](../../tests/test_kernel_source.py) — source preparation and patch checks.
 - [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [kernel/laptop-modules.list](../../kernel/laptop-modules.list) — explicit signed-module publication.
 
@@ -106,6 +137,18 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-02 `uncommitted` — Owner confirms microphone works after the Renoir buffer update.
+  Driver, named InternalMic route and isolated buffer patch now have owner hardware confirmation;
+  no new capture logs or recording-quality measurements supplied.
+- 2026-11-02 (this commit) — Isolated Renoir buffer patch passes 44 tests, build/kABI/module/
+  metadata/fit checks, no-write repeat and enforcing QEMU (screen inspected). Driver selection/
+  routing unchanged. Owner USB update and actual recording test pending.
+- 2026-11-02 (this commit) — Updated laptop snapshot confirms ACP/DMIC modules, `acp` card and
+  DMIC capture PCM. Owner reports app recording still unavailable; separate InternalMic routing
+  approved and in progress, not a further kernel-driver change.
+- 2026-11-02 (this commit) — Upstream Renoir ACP modules built/signed; Google DMIC reused.
+  29 tests, 4501-export kABI, image metadata/fit, no-write repeat and enforcing QEMU pass.
+  Laptop capture-device check pending; audio routes unchanged, no physical USB write.
 - 2026-11-02 (this commit) — Owner retested the updated stick: HDMI works and performance seems
   fine. Removed the subjective HDMI retest action; no instrumented frame-rate measurement.
 - 2026-11-02 (this commit) — amdgpu fast flips with HDMI; `kernel-source.sh` takes a patch list.

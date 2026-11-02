@@ -1,9 +1,12 @@
 Google blocks snd_hda_intel and forces Lenovo SOF codec options. Unblock legacy HDA and preload
-the MSI's Realtek ALC256 and AMD HDMI codecs. Drop when Google supports this laptop.
+the MSI's Realtek ALC256 and AMD HDMI codecs. Add upstream Renoir ACP microphone modules and
+their hotplug aliases. Preload PDM DMA and Google's DMIC codec before the machine driver;
+Android relies on ueventd aliases rather than the kernel's request_module fallback.
+Drop when Google supports this laptop.
 
 --- a/lib/modules/modules.dep
 +++ b/lib/modules/modules.dep
-@@ -582,3 +582,12 @@
+@@ -582,3 +582,16 @@
  /vendor/lib/modules/igc.ko: /system/lib/modules/ptp.ko /system/lib/modules/pps_core.ko
  /vendor/lib/modules/snd-soc-sst-cht-bsw-rt5645.ko: /vendor/lib/modules/snd-soc-rt5645.ko /vendor/lib/modules/snd-soc-rl6231.ko
  /vendor/lib/modules/snd-sof-pci-intel-tng.ko: /vendor/lib/modules/snd-sof-intel-atom.ko /vendor/lib/modules/snd-sof-xtensa-dsp.ko /vendor/lib/modules/snd-sof-pci.ko /vendor/lib/modules/snd-sof.ko /vendor/lib/modules/snd-sof-utils.ko
@@ -16,14 +19,21 @@ the MSI's Realtek ALC256 and AMD HDMI codecs. Drop when Google supports this lap
 +/vendor/lib/modules/mt792x-lib.ko: /vendor/lib/modules/mt76-connac-lib.ko /vendor/lib/modules/mt76.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
 +/vendor/lib/modules/mt7921-common.ko: /vendor/lib/modules/mt792x-lib.ko /vendor/lib/modules/mt76-connac-lib.ko /vendor/lib/modules/mt76.ko /vendor/lib/modules/hwmon.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
 +/vendor/lib/modules/mt7921e.ko: /vendor/lib/modules/mt7921-common.ko /vendor/lib/modules/mt792x-lib.ko /vendor/lib/modules/mt76-connac-lib.ko /vendor/lib/modules/mt76.ko /vendor/lib/modules/hwmon.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/snd-acp-config.ko:
++/vendor/lib/modules/snd-rn-pci-acp3x.ko: /vendor/lib/modules/snd-acp-config.ko
++/vendor/lib/modules/snd-acp3x-pdm-dma.ko:
++/vendor/lib/modules/snd-acp3x-rn.ko:
 --- a/lib/modules/modules.alias
 +++ b/lib/modules/modules.alias
-@@ -7655,3 +7655,5 @@
+@@ -7655,3 +7655,8 @@
  alias pci:v00008086d000015FDsv*sd*bc*sc*i* igc
  alias platform:cht-bsw-rt5645 snd_soc_sst_cht_bsw_rt5645
  alias pci:v00008086d0000119Asv*sd*bc*sc*i* snd_sof_pci_intel_tng
 +alias pci:v00001002d000015E7sv*sd*bc*sc*i* amdgpu
 +alias pci:v000014C3d00000616sv*sd*bc*sc*i* mt7921e
++alias pci:v00001022d000015E2sv*sd*bc04sc80i00* snd_rn_pci_acp3x
++alias platform:acp_rn_pdm_dma snd_acp3x_pdm_dma
++alias platform:acp_pdm_mach snd_acp3x_rn
 --- a/lib/modules/modules.blocklist
 +++ b/lib/modules/modules.blocklist
 @@ -1 +0,0 @@
@@ -38,8 +48,9 @@ the MSI's Realtek ALC256 and AMD HDMI codecs. Drop when Google supports this lap
  options snd_sof_intel_hda softdep pre: snd-hda-codec-intelhdmi
 --- a/lib/modules/modules.softdep
 +++ b/lib/modules/modules.softdep
-@@ -4,3 +4,4 @@
+@@ -4,3 +4,5 @@
  softdep r8169 pre: realtek
  softdep snd_sof_intel_hda pre: snd-hda-codec-hdmi
  softdep intel_skl_int3472_tps68470 pre: clk-tps68470 tps68470-regulator
 +softdep snd_hda_intel pre: snd_hda_codec_alc269 snd_hda_codec_atihdmi
++softdep snd_acp3x_rn pre: snd_acp3x_pdm_dma snd_soc_dmic

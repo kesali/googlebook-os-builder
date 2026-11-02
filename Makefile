@@ -13,7 +13,8 @@ EMU_PATCH := $(DL)/emulator-$(EMU_SHA).patch
 BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
 KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
 # Our kernel source patches, applied in this order after the emulator patch.
-KERNEL_PATCHES := kernel/drm-firmware-handoff.patch kernel/msi-backlight.patch kernel/amdgpu-fast-flips.patch
+KERNEL_PATCHES := kernel/drm-firmware-handoff.patch kernel/msi-backlight.patch kernel/amdgpu-fast-flips.patch \
+	kernel/renoir-capture-buffers.patch
 KERNEL_PATCH_SHA := $(shell cat $(KERNEL_PATCHES) | sha256sum | cut -d' ' -f1)
 KERNEL_SRC := $(KERNEL_CACHE)-$(KERNEL_PATCH_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
@@ -63,7 +64,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
-.PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki \
+.PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki laptop-logs \
 	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console update-usb FORCE
 
 help: ## Show this list
@@ -72,6 +73,9 @@ help: ## Show this list
 # Device selection and mounts belong to the host, never a privileged builder container.
 update-usb: android-image ## Select an existing Android USB and update OS + boot files, preserving data
 	sudo -- python3 tools/update_usb.py "$(ANDROID)/disk.img" "$(ANDROID)/boot"
+
+laptop-logs: ## Select an Android USB and read saved boot logs into out/laptop-logs/latest
+	python3 tools/laptop_logs.py "$(OUT)/laptop-logs"
 
 builder: $(BUILD_READY) ## Build the Debian tool environment
 $(BUILD_READY): docker/Dockerfile

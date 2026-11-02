@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<audio_config>
+	<!--Copyright 2024 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.-->
+	<SoundCardName>hw:sofrt5682</SoundCardName>
+	<HiFi>
+		<Headphone>
+			<PlaybackPCM>hw:sofrt5682,0</PlaybackPCM>
+			<PlaybackMixerElem>DAC1</PlaybackMixerElem>
+			<JackDev>sof-rt5682 Headset Jack</JackDev>
+			<JackSwitch>2</JackSwitch>
+			<DSPLatency>0</DSPLatency>
+		</Headphone>
+		<InternalMic>
+			<CapturePCM>hw:sofrt5682,99</CapturePCM>
+			<CaptureChannelMap>
+				<FL>0</FL>
+				<FR>1</FR>
+			</CaptureChannelMap>
+			<IntrinsicSensitivity>-2600</IntrinsicSensitivity>
+			<DSPLatency>0</DSPLatency>
+		</InternalMic>
+		<Mic>
+			<CapturePCM>hw:sofrt5682,0</CapturePCM>
+			<CaptureMixerElem>Headset Mic</CaptureMixerElem>
+			<JackDev>sof-rt5682 Headset Jack</JackDev>
+			<DSPLatency>0</DSPLatency>
+		</Mic>
+		<Speaker>
+			<PlaybackPCM>hw:sofrt5682,1</PlaybackPCM>
+			<DSPLatency>0</DSPLatency>
+		</Speaker>
+		<HDMI1>
+			<PlaybackPCM>hw:sofrt5682,5</PlaybackPCM>
+			<JackDev>sof-rt5682 HDMI/DP,pcm=5</JackDev>
+			<PlaybackChannels>2</PlaybackChannels>
+		</HDMI1>
+		<HDMI2>
+			<PlaybackPCM>hw:sofrt5682,6</PlaybackPCM>
+			<JackDev>sof-rt5682 HDMI/DP,pcm=6</JackDev>
+			<PlaybackChannels>2</PlaybackChannels>
+		</HDMI2>
+		<HDMI3>
+			<PlaybackPCM>hw:sofrt5682,7</PlaybackPCM>
+			<JackDev>sof-rt5682 HDMI/DP,pcm=7</JackDev>
+			<PlaybackChannels>2</PlaybackChannels>
+		</HDMI3>
+		<HDMI4>
+			<PlaybackPCM>hw:sofrt5682,8</PlaybackPCM>
+			<JackDev>sof-rt5682 HDMI/DP,pcm=8</JackDev>
+			<PlaybackChannels>2</PlaybackChannels>
+		</HDMI4>
+		<SCOLineOut>
+			<PlaybackPCM>hw:sofrt5682,2</PlaybackPCM>
+		</SCOLineOut>
+		<SCOLineIn>
+			<CapturePCM>hw:sofrt5682,2</CapturePCM>
+		</SCOLineIn>
+	</HiFi>
+</audio_config>

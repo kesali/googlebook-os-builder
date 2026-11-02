@@ -10,3 +10,8 @@ drivers/net/wireless/mediatek/mt76/mt76-connac-lib.ko
 drivers/net/wireless/mediatek/mt76/mt792x-lib.ko
 drivers/net/wireless/mediatek/mt76/mt7921/mt7921-common.ko
 drivers/net/wireless/mediatek/mt76/mt7921/mt7921e.ko
+# Internal digital microphone; snd-soc-dmic is already shipped by Google.
+sound/soc/amd/snd-acp-config.ko
+sound/soc/amd/renoir/snd-rn-pci-acp3x.ko
+sound/soc/amd/renoir/snd-acp3x-pdm-dma.ko
+sound/soc/amd/renoir/snd-acp3x-rn.ko

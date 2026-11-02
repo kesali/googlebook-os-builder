@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mixer enum_mixer_numeric_fallback="true">
+	<!--Copyright 2024 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.-->
+	<ctl name="Headphone Jack Switch" value="0" />
+	<ctl name="Stereo1 DAC MIXL DAC L1 Switch" value="0" />
+	<ctl name="Stereo1 DAC MIXR DAC R1 Switch" value="0" />
+	<ctl name="Stereo1 ADC L Mux" value="0" />
+	<ctl name="STO1 ADC Capture Switch" value="1 1" />
+	<ctl name="Speaker Digital Volume" value="235" />
+	<ctl name="RECMIX1L CBJ Switch" value="1" />
+	<ctl name="IF1 01 ADC Swap Mux" value="2" />
+	<ctl name="CBJ Boost Volume" value="16" />
+	<ctl name="Dmic0 Capture Volume" value="44 44" />
+	<ctl name="Stereo1 ADC L1 Mux" value="1" />
+	<ctl name="Stereo1 ADC R1 Mux" value="1" />
+	<ctl name="Stereo1 ADC MIXL ADC2 Switch" value="0" />
+	<ctl name="Stereo1 ADC MIXR ADC2 Switch" value="0" />
+	<ctl name="Stereo1 ADC MIXL ADC1 Switch" value="1" />
+	<ctl name="Stereo1 ADC MIXR ADC1 Switch" value="1" />
+	<ctl name="DAC1 Playback Volume" value="122 122" />
+	<ctl name="Dmic0 Capture Switch" value="0 0 0 0" />
+	<ctl name="Headset Mic Switch" value="0" />
+	<ctl name="Spk Switch" value="0" />
+	<!-- DAX Controls -->
+	<!-- For path Speaker -->
+	<ctl name="DAX Speaker Tuning" bin="/vendor/etc/audio/dax/ruby/dax_param.bin" />
+	<ctl name="DAX Speaker Switch" value="1" />
+	<ctl name="DAX Speaker Switch CP" value="1" />
+	<ctl name="DAX Speaker Switch CTC" value="1" />
+	<ctl name="DAX Speaker Profile" value="0" />
+	<ctl name="DAX Speaker Device" value="0" />
+	<!-- Headphone -->
+	<ctl name="DAX Headphone Tuning" bin="/vendor/etc/audio/dax/ruby/dax_param.bin" />
+	<ctl name="DAX Headphone Switch" value="1" />
+	<ctl name="DAX Headphone Switch CP" value="1" />
+	<ctl name="DAX Headphone Switch CTC" value="1" />
+	<ctl name="DAX Headphone Profile" value="0" />
+	<ctl name="DAX Headphone Device" value="1" />
+	<!-- End of DAX Controls -->
+	<path name="Headphone">
+		<ctl name="Headphone Jack Switch" value="1" />
+		<ctl name="Stereo1 DAC MIXL DAC L1 Switch" value="1" />
+		<ctl name="Stereo1 DAC MIXR DAC R1 Switch" value="1" />
+	</path>
+	<path name="InternalMic">
+		<ctl name="Dmic0 Capture Switch" value="1 1 1 1" />
+	</path>
+	<path name="Mic">
+		<ctl name="Headset Mic Switch" value="1" />
+	</path>
+	<path name="Speaker">
+		<ctl name="Spk Switch" value="1" />
+	</path>
+	<path name="HDMI1" />
+	<path name="HDMI2" />
+	<path name="HDMI3" />
+	<path name="HDMI4" />
+	<path name="SCOLineOut" />
+	<path name="SCOLineIn" />
+</mixer>

@@ -9,3 +9,8 @@ lib/modules/mt76-connac-lib.ko         0644 0:0   vendor_kernel_modules gki/mt76
 lib/modules/mt792x-lib.ko              0644 0:0   vendor_kernel_modules gki/mt792x-lib.ko
 lib/modules/mt7921-common.ko           0644 0:0   vendor_kernel_modules gki/mt7921-common.ko
 lib/modules/mt7921e.ko                 0644 0:0   vendor_kernel_modules gki/mt7921e.ko
+# AMD ACP digital microphone; keep Google's snd-soc-dmic helper unchanged.
+lib/modules/snd-acp-config.ko          0644 0:0   vendor_kernel_modules gki/snd-acp-config.ko
+lib/modules/snd-rn-pci-acp3x.ko        0644 0:0   vendor_kernel_modules gki/snd-rn-pci-acp3x.ko
+lib/modules/snd-acp3x-pdm-dma.ko       0644 0:0   vendor_kernel_modules gki/snd-acp3x-pdm-dma.ko
+lib/modules/snd-acp3x-rn.ko            0644 0:0   vendor_kernel_modules gki/snd-acp3x-rn.ko
