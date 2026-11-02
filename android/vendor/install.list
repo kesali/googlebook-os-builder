@@ -8,6 +8,9 @@
 bin/get_variant_audio                                                   0755 0:2000 get_variant_audio_exec      ./get_variant_audio
 etc/init/dali-audio.rc                                                   0644 0:0    vendor_configs_file         ./audio-msi.rc
 
+# Extend the software codec sandbox only for Mesa's CPU-affinity query.
+etc/seccomp_policy/mediaswcodec.policy                                   0644 0:0    vendor_configs_file         ./mediaswcodec.policy
+
 # Software KeyMint, unmodified from Google's emulator image. Not hardware-backed.
 bin/hw/android.hardware.security.keymint-service                         0755 0:2000 hal_keymint_default_exec    emulator/vendor/bin/hw/android.hardware.security.keymint-service
 etc/init/android.hardware.security.keymint-service.rc                    0644 0:0    vendor_configs_file         emulator/vendor/etc/init/android.hardware.security.keymint-service.rc

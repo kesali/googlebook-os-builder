@@ -1,6 +1,6 @@
 # Kernel (GKI)
 
-**Status:** partial — laptop display/input/Wi-Fi/sound work; the HDMI fast-flip patch needs a physical test.
+**Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
 **Last verified:** 2026-11-02 — `make gki JOBS=12` with the fast-flip patch: `kABI: 4501 Google
 exports, 0 missing, 0 changed`; `make qemu-check` reaches setup with enforcing SELinux
 ([screen](../../out/qemu/screen.png), inspected). The owner's boot of `95b3bf6` had sound, and its
@@ -30,7 +30,8 @@ based on the owner's working Churro setup; the owner subsequently reached physic
 [msi-backlight.patch](../../kernel/msi-backlight.patch) changes only the first panel's registered
 name on the exact MSI model so Google's unchanged lights HAL can discover it.
 [amdgpu-fast-flips.patch](../../kernel/amdgpu-fast-flips.patch) keeps page flips on amdgpu's fast
-path when an HDMI monitor is connected (owner saw the frame rate halve); not yet tested on hardware.
+path when an HDMI monitor is connected (owner saw the frame rate halve); the owner subsequently
+retested the updated stick and reports HDMI performance is now fine (frame rate not instrumented).
 
 ## Decisions
 - Google's exact toolchain (clang r584948c, Rust 1.91.1.p3, bindgen 0.72.1, pahole 1.31 from
@@ -95,9 +96,6 @@ Inspect the screenshots; this does not verify AMD hardware.
   and relinks (about 50 s).
 
 ## Actions
-- [ ] Check HDMI frame rate on the laptop — done when the owner sees no frame-rate drop with an
-  HDMI monitor connected (the boot files and OS partitions with the patch have been on the stick
-  since 2026-11-02; it has not been booted since).
 - [ ] Check the brightness slider — done when the owner confirms it changes the panel
   (the snapshot already shows the expected `backlight` name and label).
 
@@ -108,6 +106,8 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Owner retested the updated stick: HDMI works and performance seems
+  fine. Removed the subjective HDMI retest action; no instrumented frame-rate measurement.
 - 2026-11-02 (this commit) — amdgpu fast flips with HDMI; `kernel-source.sh` takes a patch list.
   kABI clean, 11 source tests (incl. a compiled model of the condition) and enforcing QEMU pass.
   Next: owner retests HDMI frame rate on the laptop.

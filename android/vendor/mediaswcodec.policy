@@ -1,0 +1,3 @@
+# Mesa queries CPU affinity when the software codec maps an AMD video buffer.
+# Drop when the platform codec policy permits this query or Mesa no longer needs it.
+sched_getaffinity: 1

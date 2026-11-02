@@ -1,13 +1,15 @@
 # Laptop hardware
 
-**Status:** partial — setup over Wi-Fi, input and sound work; an external HDMI monitor halved
-the frame rate (fix now on the stick, not yet booted) and the brightness slider is unconfirmed.
+**Status:** partial — setup over Wi-Fi, input and sound work; owner reports HDMI performance is
+now fine. Video playback fails in Play Store and Photos; the brightness slider is unconfirmed.
 **Last verified:** 2026-11-02 — the owner booted `95b3bf6`: sound works; frame rate halves with
 HDMI connected. Its [snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt) shows
 `/sys/class/backlight/backlight` labelled `sysfs_leds`, brightness 51750 of 62451. Commits after
 `95b3bf6` (HDMI page flips, generic bionic/libz, polling fixes, TPM wait, power HAL CPU masks)
-are verified in QEMU only. They reached the stick on 2026-11-02 (see Current state), which has not
-been booted since.
+reached the stick on 2026-11-02 (see Current state). The owner subsequently tested it: HDMI
+performance seems fine, and the opt-in Vulkan HWUI profile makes no noticeable speed difference.
+The [new logs](../../out/laptop-boot-2026-11-02-video/dali-bootlog/) contain normal AMD and
+AMD-Vulkan boots; video diagnosis and the undeployed vendor fix are in [graphics](graphics.md).
 
 ## Goal
 Run Googlebook OS on the **MSI Modern 15 B7M** (Ryzen 5 7530U, Radeon Vega graphics,
@@ -167,13 +169,14 @@ metadata/logd starts still needs a screen photo.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
-- [ ] Physical retest of the stick written on 2026-11-02 — done when the owner reports the frame rate
-  with HDMI connected, the brightness slider visibly changing the panel, and boot/app speed with the
+- [ ] Remaining physical checks — done when the owner reports
+  the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before). The
   first boot must also format `/data` (Settings → Storage shows roughly 215 GiB less filesystem
   overhead instead of 32 GiB, with no 8 GiB jump in used space after a few minutes) and setup must
   complete again; note whether factory-reset protection asks for the previous Google account. Swap
   now relies on zram alone; its laptop effect is not measured.
+  Video playback after the pending vendor update is tracked in [graphics](graphics.md).
   Retrieve the snapshot and logs either way; the snapshot now records the
   connected displays and their modes, and the CPU governor/EPP actually in effect. In
   `android-boot.log`, compare `boot_progress_enable_screen` with `sf_stop_bootanim`: a long gap
@@ -195,6 +198,9 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Owner reports HDMI fine; Vulkan HWUI has no noticeable speed benefit.
+  Retrieved both boots' logs read-only: software codecs crash on Mesa's sandboxed affinity query.
+  Vendor policy fix built and QEMU-checked, not written to the USB; laptop playback retest pending.
 - 2026-11-02 (this commit) — Wrote the stick at the owner's request (test data): boot files (kernel
   `39b8f05…`; its newest had been the 02:25 one), `vendor_a` (zram writeback off) and `userdata`
   32 → 215.1 GiB, blanked. Re-checks found nothing more to write. Not booted yet.

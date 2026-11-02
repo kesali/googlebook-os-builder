@@ -6,7 +6,8 @@
 shows the setup screen. The owner completed setup on the laptop and finds apps and graphics fast.
 That boot's log ([android.log](../../out/laptop-boot-2026-11-02-hdmi/current/)) shows Chrome's
 ANGLE on `Vulkan 1.1.363 (AMD Radeon Graphics (RADV RENOIR) (0x000015E7))`; SurfaceFlinger and
-HWUI do not log their renderer. The new Vulkan HWUI menu entry has not been tested on the laptop.
+HWUI do not log their renderer. The owner subsequently tested the Vulkan HWUI entry with no
+noticeable performance difference and reported HDMI performance is now fine.
 Earlier,
 an offline disposable UEFI boot handed simpledrm card0 to
 virtio-gpu; the [setup screen](../../out/fb2/android-uefi-console-g0b93ipe/before-input.png)
@@ -27,8 +28,19 @@ but SurfaceFlinger repeatedly reported invalid present fences. The
 [source-level handoff](../../kernel/drm-firmware-handoff.patch) gives virtio card0 in QEMU and a
 visible setup screen on the laptop. On the laptop, Chrome renders through ANGLE on RADV; which
 renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. The opt-in RADV
-two-queue Vulkan HWUI candidate builds, but has not been booted on the laptop; the default AMD
-profile remains GL. QEMU is still CPU-rendered.
+two-queue Vulkan HWUI candidate was tested by the owner with no noticeable performance difference;
+the default AMD profile remains GL. QEMU is still CPU-rendered.
+
+Video playback is broken in Play Store and Photos. The latest
+[logs](../../out/laptop-boot-2026-11-02-video/dali-bootlog/current/) show software AVC/HEVC/VP9
+selection and 11 `media.swcodec` crashes: minijail blocks `sched_getaffinity` while Mesa maps a
+video buffer through minigbm. The vendor policy extension below allows only this query.
+Validation: 16 graphics/overlay tests pass; the image rebuild changed only vendor and the repeat
+build wrote nothing. Enforcing QEMU reaches the inspected setup screen; explicit
+`c2.android.avc.encoder` screen recording succeeds with `media.swcodec` still at `Seccomp: 2`,
+and the guest can read the installed rule ([evidence](../../out/video-codec-runtime/)).
+Not verified: playback after installing the extension; other decoder or display failures may remain.
+QEMU's virtio allocator does not exercise the failing AMD mapping path.
 
 ## Decisions
 - Owner's overnight request authorizes an AMD test candidate, retaining softpipe as the verified fallback.
@@ -68,6 +80,8 @@ profile remains GL. QEMU is still CPU-rendered.
 - [scripts/ndk.sh](../../scripts/ndk.sh), [scripts/source.sh](../../scripts/source.sh) — NDK and patched source trees.
 - [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch) — Mesa source patch.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch) — Mesa libraries and settings in vendor.
+- [mediaswcodec.policy](../../android/vendor/mediaswcodec.policy) — additive software-codec
+  seccomp policy for Mesa's CPU-affinity query; the platform sandbox and enforcing SELinux remain.
 
 ## Verify
 `make test`, `make mesa JOBS=12`, `make android-image JOBS=12`, then
@@ -96,8 +110,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 
 ## Actions
 - [x] Validate the handoff on the laptop — the owner saw the setup screen and used the touchpad.
-- [ ] Test the opt-in Vulkan HWUI entry — done when the laptop reaches setup, apps render, and logs
-  identify `skiavk`; compare with the normal GL entry. The normal entry remains the default.
+- [ ] Retest Play Store and Photos video — done when both play on the laptop after the vendor
+  update, without `media.swcodec` sandbox crashes. Test the same clips; keep CPU decoding.
 - [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
   output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
@@ -107,6 +121,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Software codecs crash on Mesa's affinity query; added one vendor
+  seccomp rule. 16 tests, vendor rebuild/no-op repeat, enforcing QEMU and software AVC encoding pass.
+  Owner reports HDMI fine and no Vulkan HWUI speed difference; laptop video fix awaits deployment.
 - 2026-11-02 `uncommitted` — Opt-in RADV two-queue Vulkan HWUI candidate builds; `make test`,
   Android image sync and QEMU softpipe check pass. Laptop Vulkan entry remains untested.
 - 2026-11-02 (this commit) — Laptop log reviewed: Chrome's ANGLE runs on RADV RENOIR. Setup

@@ -36,6 +36,20 @@ class GraphicsProfileTests(unittest.TestCase):
         self.assertIn("set dali_graphics=amd-vulkan", menu)
         self.assertIn("set default=0", menu)
 
+    def test_software_codec_sandbox_allows_only_the_mesa_affinity_query(self):
+        vendor = REPO / "android/vendor"
+        policy = (vendor / "mediaswcodec.policy").read_text()
+        rules = [line.strip() for line in policy.splitlines()
+                 if line.strip() and not line.startswith("#")]
+        self.assertEqual(rules, ["sched_getaffinity: 1"])
+        installs = [line.split() for line in (vendor / "install.list").read_text().splitlines()
+                    if line.strip() and not line.startswith("#")]
+        self.assertIn(
+            ["etc/seccomp_policy/mediaswcodec.policy", "0644", "0:0",
+             "vendor_configs_file", "./mediaswcodec.policy"],
+            installs,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

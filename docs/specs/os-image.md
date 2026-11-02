@@ -1,12 +1,16 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-02 — on the physical stick, `update-os.sh` wrote only `vendor_a` and a
+**Last verified:** 2026-11-02 — the codec affinity-query policy rebuilt only vendor; all 1,620
+entries passed metadata checks. Repeat build wrote no partitions; enforcing QEMU reached the
+inspected setup screen ([build](../../out/video-codec-image-build.log),
+[QEMU](../../out/video-codec-qemu-check.log)). This vendor update is not on the USB yet.
+Earlier, on the physical stick, `update-os.sh` wrote only `vendor_a` and a
 second run found all five OS ranges unchanged on the enlarged layout; `grow-data.sh --erase-data`
 grew `userdata` from 32 GiB to 215.1 GiB (451,151,872 sectors), read back a blank first MiB and left
 the rest of the table identical to the image
 ([update-os.log](../../out/usb-flash-android/update-os.log),
-[grow-data.log](../../out/usb-flash-android/grow-data.log)). Not booted yet. Before that,
+[grow-data.log](../../out/usb-flash-android/grow-data.log)). The owner subsequently booted it. Before that,
 `make android-image JOBS=12` rebuilt only vendor (24 s) with zram writeback off. A QEMU boot of a
 copy with userdata grown to 64 GiB and its first MiB zeroed (what
 `grow-data.sh` leaves) formatted `/data` at 61 GiB, reached setup with SELinux enforcing and had no
@@ -35,8 +39,8 @@ with read-back hashes; unchanged builds write nothing; updates refuse to run whi
 OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make android-uefi-check`,
 2026-11-01; [laptop-hardware.md](laptop-hardware.md)). Its disposable boots left the source disk
 byte-identical. The owner later completed physical setup with Wi-Fi and input on an earlier image.
-The stick now holds the current image and a 215 GiB `/data`, but has not been booted since
-([laptop-hardware.md](laptop-hardware.md)).
+The stick holds that image and a 215 GiB userdata partition and has since been booted
+([laptop-hardware.md](laptop-hardware.md)); the newer codec policy extension is built locally only.
 The system/system_ext logging changes and removal of vendor's precompiled policy are built
 and verified through the QEMU smoke test ([boot.md](boot.md)). The image updater changed only
 the OS partitions named above; Android userdata, metadata and layout were preserved. That
@@ -147,6 +151,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Added the software-codec vendor seccomp extension for Mesa's
+  affinity query. Vendor-only rebuild and unchanged repeat pass; enforcing QEMU setup and software
+  AVC encoding pass. The physical stick is unchanged; playback retest remains.
 - 2026-11-02 (this commit) — At the owner's request (test data) wrote the stick: `deploy-android`,
   `update-os.sh` (`vendor_a` only, 369 MiB) and `grow-data.sh --erase-data` (userdata 32 → 215.1 GiB,
   blanked). A second `update-os.sh` wrote nothing; the boot-file deploy re-ran as a no-op. Not booted.

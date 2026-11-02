@@ -9,13 +9,13 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial | Owner checks the HDMI frame rate and brightness slider on the laptop |
+| [Kernel (GKI)](kernel.md) | partial | Owner checks the brightness slider on the laptop |
 | [Boot chain](boot.md) | partial | Retrieve the snapshot and logs after each laptop retest |
 | [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial | Owner tests opt-in Vulkan HWUI and confirms the compositor renderer |
+| [Graphics](graphics.md) | partial | Validate software video playback after the codec sandbox affinity-query fix |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Owner boots the stick written on 2026-11-02 (first boot formats the 215 GiB /data and reruns setup) and reports HDMI frame rate, brightness slider, speed, Bluetooth, free space in /data |
+| [Laptop hardware](laptop-hardware.md) | partial | Owner retests video after the vendor fix; confirms brightness slider, Bluetooth and free space in /data |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
