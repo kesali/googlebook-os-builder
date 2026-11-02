@@ -122,6 +122,42 @@ snapshot_file() {
     else
         echo absent
     fi
+
+    # Connector state shows whether HDMI was attached and which modes the monitor offered.
+    echo "display_connectors:"
+    found=0
+    for connector in "$sys_root"/class/drm/card[0-9]*-*; do
+        if [ ! -e "$connector" ] && [ ! -L "$connector" ]; then
+            continue
+        fi
+        found=1
+        printf 'connector=%s\n' "${connector##*/}"
+        for field in status enabled dpms modes; do
+            snapshot_file "$field" "$connector/$field"
+        done
+    done
+    if [ "$found" -eq 0 ]; then
+        echo none
+    fi
+
+    # The kernel command line picks a governor; powertool may change it after boot.
+    echo "cpu_frequency:"
+    snapshot_file amd_pstate_status "$sys_root/devices/system/cpu/amd_pstate/status"
+    found=0
+    for policy in "$sys_root"/devices/system/cpu/cpufreq/policy[0-9]*; do
+        if [ ! -d "$policy" ]; then
+            continue
+        fi
+        found=1
+        printf 'policy=%s\n' "${policy##*/}"
+        for field in scaling_driver scaling_governor energy_performance_preference \
+                scaling_min_freq scaling_max_freq; do
+            snapshot_file "$field" "$policy/$field"
+        done
+    done
+    if [ "$found" -eq 0 ]; then
+        echo none
+    fi
 } > "$temporary"
 mv "$temporary" "$output"
 sync

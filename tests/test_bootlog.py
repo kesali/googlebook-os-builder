@@ -197,7 +197,9 @@ class BootlogTests(unittest.TestCase):
     def test_hardware_snapshot_reads_only_declared_device_metadata(self):
         script = SNAPSHOT.read_text()
         for path in ("/class/backlight/*", "/class/sound/card[0-9]*",
-                     "/asound/cards", "/asound/pcm", "/modules", "/snd/*"):
+                     "/asound/cards", "/asound/pcm", "/modules", "/snd/*",
+                     "/class/drm/card[0-9]*-*", "/devices/system/cpu/amd_pstate/status",
+                     "/devices/system/cpu/cpufreq/policy[0-9]*"):
             self.assertIn(path, script)
         self.assertNotRegex(script, r'(?m)^.*(?:>|>>)\s*"\$sys_root')
         self.assertNotIn("chmod", script)
@@ -259,6 +261,40 @@ class HardwareSnapshotTests(unittest.TestCase):
         self.assertIn("controlC1", hardware)
         self.assertFalse((self.logs / "current/hardware.txt.tmp").exists())
 
+    def test_records_display_connectors_and_cpu_frequency_policy(self):
+        connector_target = self.work / "devices/card0/card0-HDMI-A-1"
+        connector_target.mkdir(parents=True)
+        (connector_target / "status").write_text("connected\n")
+        (connector_target / "enabled").write_text("enabled\n")
+        (connector_target / "dpms").write_text("On\n")
+        (connector_target / "modes").write_text("1920x1080\n1280x720\n")
+        drm = self.sys / "class/drm"
+        drm.mkdir(parents=True)
+        (drm / "card0-HDMI-A-1").symlink_to(connector_target)
+        (drm / "renderD128").mkdir()
+        cpu = self.sys / "devices/system/cpu"
+        (cpu / "amd_pstate").mkdir(parents=True)
+        (cpu / "amd_pstate/status").write_text("active\n")
+        policy = cpu / "cpufreq/policy11"
+        policy.mkdir(parents=True)
+        (policy / "scaling_driver").write_text("amd-pstate-epp\n")
+        (policy / "scaling_governor").write_text("performance\n")
+        (policy / "energy_performance_preference").write_text("performance\n")
+
+        result = self.snapshot()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hardware = (self.logs / "current/hardware.txt").read_text()
+        self.assertIn("connector=card0-HDMI-A-1\n", hardware)
+        self.assertIn("status=connected\n", hardware)
+        self.assertIn("modes=1920x1080\n1280x720\n", hardware)
+        self.assertNotIn("renderD128", hardware)
+        self.assertIn("amd_pstate_status=active\n", hardware)
+        self.assertIn("policy=policy11\n", hardware)
+        self.assertIn("scaling_driver=amd-pstate-epp\n", hardware)
+        self.assertIn("energy_performance_preference=performance\n", hardware)
+        self.assertIn("scaling_max_freq=[missing or unreadable]\n", hardware)
+
     def test_reports_absent_devices_and_missing_sound_files(self):
         result = self.snapshot()
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -269,6 +305,8 @@ class HardwareSnapshotTests(unittest.TestCase):
         self.assertIn("asound_pcm=[missing or unreadable]\n", hardware)
         self.assertIn("loaded_sound_modules:\n[missing or unreadable]", hardware)
         self.assertIn("sound_device_nodes:\nabsent\n", hardware)
+        self.assertIn("display_connectors:\nnone\n", hardware)
+        self.assertIn("cpu_frequency:\namd_pstate_status=[missing or unreadable]\nnone\n", hardware)
 
     def test_refuses_symlinked_output(self):
         target = self.work / "outside"

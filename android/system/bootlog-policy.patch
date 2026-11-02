@@ -1,4 +1,4 @@
-The one-shot boot snapshot reads backlight, sound-card and loaded-module metadata only; it never opens sound devices or writes sysfs. Drop this dedicated enforcing domain after diagnostics.
+The one-shot boot snapshot reads backlight, sound-card, display-connector, CPU-frequency and loaded-module metadata only; it never opens sound devices or writes sysfs. Drop this dedicated enforcing domain after diagnostics.
 
 --- a/system/etc/selinux/plat_sepolicy.cil
 +++ b/system/etc/selinux/plat_sepolicy.cil

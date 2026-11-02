@@ -1,7 +1,13 @@
 # Boot chain
 
 **Status:** partial — the laptop completed setup; its boot logs and snapshot are retrieved after each test.
-**Last verified:** 2026-11-02 — the owner retrieved the laptop's `/dali-bootlog/current/` from
+**Last verified:** 2026-11-02 — the snapshot now also records display connectors and cpufreq
+policies. An enforcing 12-vCPU QEMU boot recorded the virtual connector's status and modes, the
+service exited 0 with no `dali_hardware_diag` denials, and QEMU correctly shows no cpufreq
+([snapshot](../../out/snapshot-display-cpu-validation/hardware.txt),
+[service](../../out/snapshot-display-cpu-validation/service.txt)); `make qemu-check JOBS=12`
+passed and its setup [screen](../../out/snapshot-display-cpu-validation/screen.png) was inspected.
+Before that, the owner retrieved the laptop's `/dali-bootlog/current/` from
 its `95b3bf6` boot ([snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt)): it
 records the eDP `backlight` device and labels, ALC256 on card1 and the loaded HDA modules.
 Before that, a readiness-gated snapshot was recovered from a disposable enforcing
@@ -62,6 +68,8 @@ QEMU does not expose the laptop's backlight or ALC256 hardware. The owner booted
 image but reported sound/brightness still broken; its latest USB logs were inaccessible during
 the autonomous investigation. The snapshot now also reports backlight permission/SELinux labels,
 requires both boot completion and log-preparation readiness, and rejects directory/symlink outputs.
+It also records DRM connector status/modes and each cpufreq policy's driver, governor, EPP and
+limits; Google's base policy already lets every domain read the cpufreq files.
 
 ## Decisions
 - Command line is Google's, minus Intel-only arguments, minus SPI-flash write enables,
@@ -158,7 +166,10 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
-- 2026-11-02 (this commit) — Reviewed the owner's laptop snapshot and logs from `95b3bf6`
+- 2026-11-02 (this commit) — Snapshot adds display connectors and cpufreq policies (to answer the
+  HDMI and governor/EPP questions). 104 tests, image rebuild (system_ext only) and enforcing QEMU
+  pass; laptop output awaits the owner's next retest.
+- 2026-11-02 `0ff3e8a` — Reviewed the owner's laptop snapshot and logs from `95b3bf6`
   (backlight, ALSA, battery, power HAL writes, a 10 s TPM wait). The snapshot still lacks DRM
   connector and cpufreq details.
 - 2026-11-02 `95b3bf6` — Snapshot waits for successful log preparation, rejects directory

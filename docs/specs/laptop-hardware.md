@@ -153,7 +153,8 @@ metadata/logd starts still needs a screen photo.
 ## Actions
 - [ ] Physical retest of `2ee6da9` or later — done when the owner reports the frame rate with
   HDMI connected, the brightness slider visibly changing the panel, and boot/app speed with the
-  generic bionic. Retrieve the snapshot and logs either way.
+  generic bionic. Retrieve the snapshot and logs either way; the snapshot now records the
+  connected displays and their modes, and the CPU governor/EPP actually in effect.
 - [ ] Headphone output — done when the owner hears media through the headphone jack.
 - [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
 - [ ] Diagnose the old framebuffer-free hard lockup only with a safe, evidence-based test.
@@ -163,9 +164,15 @@ metadata/logd starts still needs a screen photo.
 ### Ideas (not approved)
 - Bluetooth, internal ACP microphone, HDMI audio, battery/suspend bring-up.
 - Generalize the local OS updater only if needed; no passwordless physical-write udev rule.
+- CPU frequency policy: Google's command line sets `cpufreq.default_governor=performance`; with
+  amd-pstate in active mode that probably keeps the EPP at `performance` (fast, but costs battery).
+  Google's powertool tries to switch non-Intel CPUs to schedutil. Decide only after the laptop
+  snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
-- 2026-11-02 (this commit) — Power HAL CPU masks removed: with 12 vCPUs, QEMU cpusets went from
+- 2026-11-02 (this commit) — Snapshot now records DRM connectors and cpufreq policies, so the next
+  retest shows HDMI state and the real governor/EPP. Verified in enforcing QEMU only.
+- 2026-11-02 `3f49946` — Power HAL CPU masks removed: with 12 vCPUs, QEMU cpusets went from
   0-7/4-7 to 0-11 everywhere and the 500 ms xe-IRQ write retries stopped; `qemu-check` passed.
   `9663a21` removed the 10 s TPM wait. Laptop effect not measured.
 - 2026-11-02 `6d0d663`–`9663a21` — Owner confirmed sound on `95b3bf6`, reported HDMI halving the
