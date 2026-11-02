@@ -24,8 +24,10 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
 - No face sensor: Google's face HAL APEX is removed and
   [no-face.xml](../../android/vendor/no-face.xml) marks the feature unavailable, so FaceService
   does not start and poll for its virtual test HAL once a second.
-- Firmware updaters and OTA are removed. The only firmware command left is a source-built
-  `crossystem` stand-in that accepts the boot HAL's success values and rejects everything else.
+- Firmware updaters and OTA are removed. This includes the security-chip update at startup
+  (`gscutil.rc`): init waited 10 s for a `/dev/tpm0` that the TPM blacklist keeps absent. The
+  only firmware command left is a source-built `crossystem` stand-in that accepts the boot HAL's
+  success values and rejects everything else.
 - No SELinux permissive domains or broad policy changes.
 
 ## Files
@@ -51,6 +53,8 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Removed `gscutil.rc`; the laptop and QEMU logs both showed init
+  blocked 10 s on `wait /dev/tpm0`. QEMU `boot_completed` 59.7 s → 49.9 s; setup screen inspected.
 - 2026-11-02 (this commit) — Disabled `udsattestation` and the face feature. QEMU kernel log:
   IGsc start requests 389 → 0, face IVirtualHal 356 → 0; KeyMint/Gatekeeper PIDs stable, enforcing.
 - 2026-11-01 (this commit) — Common security settings moved to `dali.rc`; graphics profiles are

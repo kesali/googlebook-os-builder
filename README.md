@@ -331,7 +331,8 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   a second. The same files from the pinned Android 17 emulator image, a generic x86-64 build,
   replace them **unmodified**; [scripts/check-replacements.sh](scripts/check-replacements.sh)
   checks each is a drop-in. Remaining traps are rare (Rust std, HWUI, ART).
-- Google firmware updaters, OTA and the absent EC logger are removed. The only replacement
+- Google firmware updaters (including the security-chip update that blocked startup for 10 s
+  waiting for a TPM), OTA and the absent EC logger are removed. The only replacement
   firmware command is [android/crossystem-qemu.c](android/crossystem-qemu.c), compiled from source:
   it accepts the boot HAL's success assignments for this VM, rejects everything else, and never
   accesses firmware.

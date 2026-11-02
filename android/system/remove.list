@@ -6,6 +6,9 @@
 system/etc/init/update_engine.rc
 # Chrome OS EC log collection; the VM has no EC.
 system/etc/init/timberslide.rc
+# Google security-chip firmware update at every boot. Init blocks up to 10 s waiting for
+# /dev/tpm0, which never appears because the TPM drivers are blacklisted: 10 s lost per boot.
+system/etc/init/gscutil.rc
 
 # Google builds these for Panther Lake and uses GFNI and AVX-VNNI without asking the CPU. On
 # older CPUs every such instruction traps into the kernel's emulator; these files caused most
