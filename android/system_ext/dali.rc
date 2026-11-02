@@ -2,6 +2,8 @@
 import /system_ext/etc/dali/graphics-${ro.boot.dali.graphics:-softpipe}.rc
 
 on early-init
+    # ro.* properties cannot change once set; the system patch leaves this one to init.
+    setprop ro.dalvik.vm.native.bridge ${ro.boot.dali.native_bridge:-libhoudini.so}
     setprop trusty.security_vm.enabled 0
     setprop remote_provisioning.tee.rkp_only 0
     setprop remote_provisioning.strongbox.rkp_only 0

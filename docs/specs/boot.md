@@ -1,7 +1,18 @@
 # Boot chain
 
 **Status:** partial — the laptop completed setup; its boot logs and snapshot are retrieved after each test.
-**Last verified:** 2026-11-02 — the laptop's `95b3bf6` kernel log shows `earlycon=efifb` drawing
+**Last verified:** 2026-11-02 — 53 focused tests pass; the image rebuild changed only system
+and system_ext, with metadata verified. A repeat preserves image/bundle timestamps and writes
+no partitions. Two enforcing UEFI/QEMU runs reached inspected setup screens, selected Houdini
+then Berberis, persisted bridge identity and controlled fatal records, and retained the previous
+crash stream. The hidden NVMe decoy stayed unchanged
+([results](../../out/arm-translation-diagnostic/verification-final.log)).
+The same NDK-built ARM64 executable traps inside Houdini (`SIGTRAP`, `libhoudini.so+0x321bec`)
+but prints its success marker under Berberis. This tests executable translation, not an ARM
+app's ART/JNI or graphics path. The owner subsequently updated the USB and reports the previously
+failing game, another native app and Hearthstone work on the laptop with Berberis. No new laptop
+logs were retrieved; Houdini's internal failure cause and broader app compatibility remain unknown.
+Earlier, the laptop's `95b3bf6` kernel log shows `earlycon=efifb` drawing
 686 early lines at 89 ms each: 60.8 s of its 104 s to `boot_completed`
 ([summary](../../out/earlycon-validation/summary.txt)). The normal entry now omits it;
 `make android-uefi-check JOBS=12` passed, the early [screen](../../out/earlycon-validation/uefi-early-screen.png)
@@ -86,6 +97,18 @@ limits; Google's base policy already lets every domain read the cpufreq files.
 `android.log` rolls within about a minute of boot, so a third collector writes
 `android-boot.log*` until boot completes; QEMU's startup took 4.0 MB of its 8 MiB.
 
+Verified in QEMU: the optional Berberis ARM64 boot entry and independent `crash.log*` collector.
+The normal entry retains Houdini; the test uses Google's existing `libndk_translation.so`
+and its ARM64-library/executable-registration init hooks. `boot.txt` records the selected bridge.
+Before the switch, the owner reported Besiege closing back to the desktop and many other apps
+failing. The retrieved
+[logs](../../out/laptop-boot-2026-11-02-apps/dali-bootlog/current/) retain only about ten seconds
+of rolling Android output, flooded by game-session/focus transitions; no fatal signature was
+retained. A small ARM64 executable traps in Houdini but runs in Berberis in QEMU. The owner
+subsequently confirms the previously failing game, another native app and Hearthstone work with
+Berberis on the laptop. This supports a translator-compatibility problem, not a proven internal
+cause; the game-controls loop was not established as the cause.
+
 ## Decisions
 - Command line is Google's, minus Intel-only arguments, minus SPI-flash write enables,
   plus a TPM/SPI-flash driver blacklist — never let Google's tools write firmware.
@@ -114,7 +137,13 @@ limits; Google's base policy already lets every domain read the cpufreq files.
   16 MiB per stream per boot and space for other files on the 64 MiB metadata partition.
   A third copy, `android-boot.log`, rotates at 1 MiB (8 MiB total) and stops at boot completion,
   because startup alone overflows the 2 MiB `android.log`.
+  A crash-buffer-only copy, `crash.log`, rotates at 256 KiB (2 MiB total) and remains running
+  after boot, so desktop transition spam cannot evict fatal records. All four streams together
+  budget 14 MiB per boot, plus record-size overshoot and the small snapshots.
   Collection begins at `post-fs`, not first-stage init; an earlier hang still needs a photo.
+- Keep Houdini as the default native bridge. An explicit Berberis test entry changes only
+  `androidboot.dali.native_bridge`; early-init sets the read-only bridge property before zygote.
+  Use Google's bundled translators and existing init hooks unchanged; no new security permissions.
 - A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.dali.bootlog.ready=1`
   may read backlight, ALSA and loaded-module metadata
   into the current boot log directory. It must not read sound device nodes or write sysfs, and it
@@ -122,6 +151,8 @@ limits; Google's base policy already lets every domain read the cpufreq files.
 
 ## Files
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
+- [native-bridge.patch](../../android/system/native-bridge.patch) and
+  [dali.rc](../../android/system_ext/dali.rc) — let early-init select the native bridge.
 - [boot/android-menu.cfg](../../boot/android-menu.cfg) — laptop GRUB menu, also used by the UEFI check; the direct-kernel VM does not use it.
 - [tools/android_uefi_test.py](../../tools/android_uefi_test.py) — OVMF/GRUB and USB-partition checks with an NVMe decoy.
 - [android/bootconfig.txt](../../android/bootconfig.txt), [tools/bootconfig.py](../../tools/bootconfig.py) — settings and packing.
@@ -185,7 +216,14 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
 - [ ] After each laptop retest, retrieve `/dali-bootlog/current/` from the metadata partition —
   done when its snapshot and logs are reviewed for that build.
 
+### Ideas (not approved)
+- Make Berberis the default and retain Houdini as an optional fallback, following the owner's
+  successful laptop tests. The current default remains unchanged.
+
 ## Handoff log
+- 2026-11-02 (this commit) — Added opt-in Berberis boot selection, preserved Houdini default,
+  and isolated crash capture. 53 tests, image/no-op rebuild and two enforcing UEFI runs pass.
+  Owner confirms the failing game, another native app and Hearthstone now work with Berberis.
 - 2026-11-02 (this commit) — Normal laptop entry drops `earlycon=efifb` (60.8 s of the `95b3bf6`
   boot); it moved to a debug entry. 104 tests and both UEFI checks pass; the laptop's new boot
   time awaits the owner's boot-file update.

@@ -5,12 +5,19 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-02 — the source-level YV12 fixes rebuilt only vendor; all 1,620
+**Last verified:** 2026-11-02 — native-bridge diagnostics rebuilt only system/system_ext;
+3,642/236 entries passed metadata checks. The repeat preserved image/bundle timestamps and
+wrote no partitions. 53 focused tests and two enforcing UEFI/QEMU runs pass
+([build](../../out/arm-translation-diagnostic/build.log),
+[runtime](../../out/arm-translation-diagnostic/verification-final.log)).
+The same small ARM64 executable traps in normal Houdini but runs in optional Berberis;
+the default stays Houdini. The owner subsequently updated the USB and reports the previously
+failing game, another native app and Hearthstone work with Berberis; no new laptop logs retrieved.
+Earlier, the source-level YV12 fixes rebuilt only vendor; all 1,620
 entries passed metadata checks. Repeat build wrote no partitions; enforcing QEMU reached the
 inspected setup screen ([build](../../out/video-yv12-build.log),
-[QEMU](../../out/video-yv12-qemu.log)); 131 tests pass. These source fixes are not on the USB yet.
-The owner deployed the earlier affinity-query policy, but video then crashed the desktop;
-see [graphics](graphics.md) for the prior gbos findings and unverified laptop retest.
+[QEMU](../../out/video-yv12-qemu.log)); 131 tests pass. The owner subsequently deployed these
+source fixes and confirms video playback is fixed; see [graphics](graphics.md).
 Earlier, on the physical stick, `update-os.sh` wrote only `vendor_a` and a
 second run found all five OS ranges unchanged on the enlarged layout; `grow-data.sh --erase-data`
 grew `userdata` from 32 GiB to 215.1 GiB (451,151,872 sectors), read back a blank first MiB and left
@@ -46,7 +53,8 @@ OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make androi
 2026-11-01; [laptop-hardware.md](laptop-hardware.md)). Its disposable boots left the source disk
 byte-identical. The owner later completed physical setup with Wi-Fi and input on an earlier image.
 The stick holds that image and a 215 GiB userdata partition and has since been booted
-([laptop-hardware.md](laptop-hardware.md)); the newer codec policy extension is built locally only.
+([laptop-hardware.md](laptop-hardware.md)); the owner confirms the codec/YV12 update fixes video.
+The optional native-bridge diagnostics are built locally and await deployment.
 The system/system_ext logging changes and removal of vendor's precompiled policy are built
 and verified through the QEMU smoke test ([boot.md](boot.md)). The image updater changed only
 the OS partitions named above; Android userdata, metadata and layout were preserved. That
@@ -166,6 +174,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Native-bridge selection and crash capture changed only system and
+  system_ext; metadata, 53 focused tests, no-write repeat and two enforcing UEFI runs pass.
+  Owner deployed and confirms the failing game, another native app and Hearthstone work in Berberis.
 - 2026-11-02 (this commit) — Rebuilt vendor with RADV external-format and allocator planar-pitch
   source fixes; 1,620 metadata entries and allocator ABI pass. 131 tests and enforcing QEMU pass;
   repeat writes nothing. USB unchanged; owner retest pending.

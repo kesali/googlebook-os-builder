@@ -29,6 +29,7 @@ class BootlogTests(unittest.TestCase):
                   'case "$1" in\n'
                   'ro.build.fingerprint) echo test/fingerprint ;;\n'
                   'ro.boot.dali.graphics) echo amd ;;\n'
+                  'ro.dalvik.vm.native.bridge) echo "${NATIVE_BRIDGE:-libhoudini.so}" ;;\n'
                   'ro.boot.bootreason) echo cold ;;\n'
                   '*) exit 1 ;;\n'
                   'esac\n')
@@ -58,8 +59,14 @@ class BootlogTests(unittest.TestCase):
         self.assertEqual((current / "boot-id").read_text(), BOOT_ONE + "\n")
         self.assertIn("fingerprint=test/fingerprint\n", (current / "boot.txt").read_text())
         self.assertIn("graphics_boot_property=amd\n", (current / "boot.txt").read_text())
+        self.assertIn("native_bridge=libhoudini.so\n", (current / "boot.txt").read_text())
         self.assertEqual(current.stat().st_mode & 0o777, 0o700)
         self.assertFalse((self.logs / "previous").exists())
+
+    def test_selected_native_bridge_is_recorded(self):
+        self.assert_ready(self.prepare(NATIVE_BRIDGE="libndk_translation.so"))
+        self.assertIn("native_bridge=libndk_translation.so\n",
+                      (self.logs / "current/boot.txt").read_text())
 
     def test_same_boot_restart_preserves_streams(self):
         self.assert_ready(self.prepare())
@@ -74,7 +81,7 @@ class BootlogTests(unittest.TestCase):
     def test_two_boots_retained_and_all_archive_names_removed(self):
         self.assert_ready(self.prepare())
         current = self.logs / "current"
-        for stream in ("kernel", "android", "android-boot"):
+        for stream in ("kernel", "android", "android-boot", "crash"):
             for suffix in ("", ".1", ".2", ".3", ".4", ".5", ".6", ".7"):
                 (current / f"{stream}.log{suffix}").write_text("old\n")
         self.assert_ready(self.prepare(BOOT_TWO))
@@ -168,7 +175,7 @@ class BootlogTests(unittest.TestCase):
         self.assertIn("seclabel u:r:dali_hardware_diag:s0", text)
         commands = [line.split() for line in text.splitlines()
                     if line.startswith("service dali_") and "/system/bin/logcat" in line]
-        self.assertEqual(len(commands), 3)
+        self.assertEqual(len(commands), 4)
         rotate_kib = {}
         for command in commands:
             self.assertEqual(command[2], "/system/bin/logcat")
@@ -179,7 +186,7 @@ class BootlogTests(unittest.TestCase):
             self.assertLessEqual(rotate_kib[command[1]] * 8, 16 * 1024)
             self.assertTrue(command[-1].startswith("/metadata/dali-bootlog/current/"))
         self.assertEqual(rotate_kib, {"dali_kernel_log": 256, "dali_android_log": 256,
-                                      "dali_android_boot_log": 1024})
+                                      "dali_android_boot_log": 1024, "dali_crash_log": 256})
         self.assertEqual(commands[0][commands[0].index("-b") + 1], "kernel")
         self.assertEqual(commands[1][commands[1].index("-b") + 1], "main,system,crash,events")
         self.assertEqual(commands[2][1], "dali_android_boot_log")
@@ -190,6 +197,9 @@ class BootlogTests(unittest.TestCase):
 
         self.assertEqual(without_rotate_size(commands[2]), without_rotate_size(commands[1]))
         self.assertEqual(commands[2][-1], "/metadata/dali-bootlog/current/android-boot.log")
+        self.assertEqual(commands[3][commands[3].index("-b") + 1], "crash")
+        self.assertEqual(commands[3][-1], "/metadata/dali-bootlog/current/crash.log")
+        self.assertNotIn("stop dali_crash_log", text)
         for command in commands:
             self.assertIn(f"    start {command[1]}\n", text)
 

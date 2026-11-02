@@ -1,0 +1,15 @@
+Select the native bridge at early-init so an optional boot entry can test Google's
+included Berberis translator. The normal entry keeps Houdini. Google's existing init
+hooks select the matching ARM64 libraries and executable handlers.
+Drop when Google's default translator works on this laptop without comparison tests.
+
+--- a/system/build.prop
++++ b/system/build.prop
+@@ -163,7 +163,6 @@
+ ro.khungtask.enable=true
+ apexd.config.erofs_file_backed_mount.use_dio=true
+ persist.sys.sf.color_saturation=1.0
+-ro.dalvik.vm.native.bridge=libhoudini.so
+ ro.dalvik.vm.isa.arm64=x86_64
+ ro.berberis.is_2nd_native_bridge=true
+ ro.berberis.version=16.0.0

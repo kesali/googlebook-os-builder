@@ -31,7 +31,7 @@ if [ -n "$saved_id" ] && [ "$saved_id" != "$boot_id" ]; then
         test ! -L previous/hardware.txt
         test ! -L previous/hardware.txt.tmp
         rm -f previous/boot-id previous/boot.txt
-        for stream in kernel android android-boot; do
+        for stream in kernel android android-boot crash; do
             rm -f "previous/$stream.log"
             for index in 1 2 3 4 5 6 7; do
                 rm -f "previous/$stream.log.$index"
@@ -49,11 +49,14 @@ printf '%s\n' "$boot_id" > current/boot-id
 fingerprint=$(getprop ro.build.fingerprint)
 test -n "$fingerprint"
 graphics=$(getprop ro.boot.dali.graphics)
+native_bridge=$(getprop ro.dalvik.vm.native.bridge)
+test -n "$native_bridge"
 bootreason=$(getprop ro.boot.bootreason)
 {
     echo "boot_id=$boot_id"
     echo "fingerprint=$fingerprint"
     echo "graphics_boot_property=$graphics"
+    echo "native_bridge=$native_bridge"
     echo "bootreason=$bootreason"
 } > current/boot.txt
 sync

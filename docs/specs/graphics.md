@@ -31,7 +31,8 @@ renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. The 
 two-queue Vulkan HWUI candidate was tested by the owner with no noticeable performance difference;
 the default AMD profile remains GL. QEMU is still CPU-rendered.
 
-Video playback is broken in Play Store and Photos. The first
+The owner now confirms video playback is fixed after the source-level YV12 changes below.
+The first
 [logs](../../out/laptop-boot-2026-11-02-video/dali-bootlog/current/) show software AVC/HEVC/VP9
 selection and 11 `media.swcodec` crashes: minijail blocks `sched_getaffinity` while Mesa maps a
 video buffer through minigbm. The vendor policy extension below allows only this query.
@@ -51,8 +52,11 @@ Verified: `make test` passes 131 tests, including compiled query/error-path and 
 8K widths. Mesa/minigbm compile, all 49 gralloc and 22 GBM exports pass, vendor's 1,620 metadata
 entries pass, and the repeat image build writes nothing. Enforcing QEMU reaches the inspected
 setup screen ([build](../../out/video-yv12-build.log), [QEMU](../../out/video-yv12-qemu.log)).
-Not verified: the new desktop crash's log signature (not retrieved) or AMD playback after these
-source patches. QEMU's virtio allocator does not exercise the AMD video-buffer path.
+Not verified independently: the original desktop crash's log signature (not retrieved) or
+hardware playback measurements. QEMU's virtio allocator does not exercise the AMD video-buffer
+path. The owner subsequently confirms the previously failing game, another native app and
+Hearthstone work with Berberis; see [boot diagnostics](boot.md) for the translator comparison.
+Houdini's internal failure cause is not established.
 
 ## Decisions
 - Owner's overnight request authorizes an AMD test candidate, retaining softpipe as the verified fallback.
@@ -129,9 +133,6 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 
 ## Actions
 - [x] Validate the handoff on the laptop — the owner saw the setup screen and used the touchpad.
-- [ ] Retest Play Store and Photos video — done when both play on the laptop after the vendor
-  update, without codec or compositor crashes. Test the same clips; keep CPU decoding.
-  If it still fails, retrieve the new crash log before extending the patches.
 - [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
   output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
@@ -141,6 +142,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Owner confirms video fixed after the YV12 update, then the previously
+  failing game, another native app and Hearthstone working with Berberis. Native-bridge comparison
+  and isolated crash capture are tracked in the boot spec; no new graphics changes.
 - 2026-11-02 (this commit) — Owner reports desktop crash on video after the sandbox fix. Ported
   prior gbos YV12 findings as source fixes: common format query and aligned chroma pitch. 131 tests,
   vendor build/ABI checks and enforcing QEMU pass; not deployed, new crash signature unconfirmed.

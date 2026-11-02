@@ -1,15 +1,19 @@
 # Laptop hardware
 
 **Status:** partial — setup over Wi-Fi, input and sound work; owner reports HDMI performance is
-now fine. Video crashes the desktop after the codec sandbox update; the brightness slider is unconfirmed.
-**Last verified:** 2026-11-02 — the owner booted `95b3bf6`: sound works; frame rate halves with
+now fine. Video and tested games work after the YV12 fixes and optional Berberis selection;
+the brightness slider is unconfirmed.
+**Last verified:** 2026-11-02 — the owner confirms video playback is fixed and the previously
+failing game, another native app and Hearthstone work with the optional Berberis boot entry.
+This is owner-reported hardware verification; new laptop logs have not been retrieved.
+Earlier, the owner booted `95b3bf6`: sound works; frame rate halves with
 HDMI connected. Its [snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt) shows
 `/sys/class/backlight/backlight` labelled `sysfs_leds`, brightness 51750 of 62451. Commits after
 `95b3bf6` (HDMI page flips, generic bionic/libz, polling fixes, TPM wait, power HAL CPU masks)
 reached the stick on 2026-11-02 (see Current state). The owner subsequently tested it: HDMI
 performance seems fine, and the opt-in Vulkan HWUI profile makes no noticeable speed difference.
 The [new logs](../../out/laptop-boot-2026-11-02-video/dali-bootlog/) contain normal AMD and
-AMD-Vulkan boots; video diagnosis and the undeployed vendor fix are in [graphics](graphics.md).
+AMD-Vulkan boots; the subsequently deployed video fixes are in [graphics](graphics.md).
 
 ## Goal
 Run Googlebook OS on the **MSI Modern 15 B7M** (Ryzen 5 7530U, Radeon Vega graphics,
@@ -20,6 +24,9 @@ with readable source changes and incremental USB updates.
 Verified on the laptop: the normal framebuffer-handoff boot, setup over Wi-Fi, keyboard and
 touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86; this is an
 impression, not a benchmark. Density 160 replaces 180 in the AMD profile only; QEMU keeps 240.
+Video works after the source-level YV12 fixes. The owner reports the previously failing game,
+another native app and Hearthstone work with Berberis; normal boot still selects Houdini.
+See [boot](boot.md) for the translator comparison and its limits.
 GPU acceleration, Bluetooth, microphones and suspend have not been independently verified.
 In the `95b3bf6` kernel log, Google's `btusb`/`btmtk` found the MT7922 Bluetooth but `hci0` setup
 failed: `mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin` was missing. The official file is now installed.
@@ -178,7 +185,7 @@ metadata/logd starts still needs a screen photo.
   overhead instead of 32 GiB, with no 8 GiB jump in used space after a few minutes) and setup must
   complete again; note whether factory-reset protection asks for the previous Google account. Swap
   now relies on zram alone; its laptop effect is not measured.
-  Video playback after the pending vendor update is tracked in [graphics](graphics.md).
+  Video playback is now confirmed by the owner; details are in [graphics](graphics.md).
   Retrieve the snapshot and logs either way; the snapshot now records the
   connected displays and their modes, and the CPU governor/EPP actually in effect. In
   `android-boot.log`, compare `boot_progress_enable_screen` with `sf_stop_bootanim`: a long gap
@@ -200,6 +207,9 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Owner confirms video fixed and the previously failing game,
+  another native app and Hearthstone working with optional Berberis. Normal boot remains Houdini;
+  new laptop logs and broader app compatibility remain unverified.
 - 2026-11-02 (this commit) — Owner's video retest crashes the desktop. Reused their earlier gbos
   YV12 findings as Mesa/minigbm source patches. 131 tests, vendor rebuild/ABI checks and enforcing
   QEMU pass; patches not deployed and new crash log not yet retrieved.

@@ -49,6 +49,14 @@ Android accounts and data. Use the normal GRUB entry. The old framebuffer-free e
 panicked; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
 shows the earliest kernel messages for a black screen but adds about a minute to the boot.
 
+For ARM-app diagnostics, the optional **test: Berberis ARM translation** entry selects Google's
+included alternative translator; the normal entry still uses Houdini. The owner confirms the
+previously failing game, another native app and Hearthstone work on the laptop with Berberis.
+In enforcing QEMU on this host, a small ARM64 executable traps in Houdini but runs with Berberis.
+Houdini's exact failure cause remains unknown. Boot normally to switch back.
+The boot record names the selected native bridge, and a separate `crash.log*` retains fatal
+records independently of noisy desktop logs.
+
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
 `1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
 Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm

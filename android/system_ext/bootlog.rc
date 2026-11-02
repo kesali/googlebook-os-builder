@@ -13,6 +13,7 @@ on property:sys.dali.bootlog.ready=1
     start dali_kernel_log
     start dali_android_log
     start dali_android_boot_log
+    start dali_crash_log
 
 service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare.sh /metadata/dali-bootlog /proc/sys/kernel/random/boot_id
     user logd
@@ -53,6 +54,14 @@ service dali_android_log /system/bin/logcat -b main,system,crash,events -v long 
 # Startup alone overflows android.log's 2 MiB (QEMU writes about 3.5 MB before boot completes),
 # so this copy gets 8 MiB and stops at boot completion. A stuck boot keeps its newest 8 MiB.
 service dali_android_boot_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 1024 -n 7 -f /metadata/dali-bootlog/current/android-boot.log
+    user logd
+    group log
+    seclabel u:r:dali_bootlog:s0
+    disabled
+    stdio_to_kmsg
+
+# Keep fatal records independently: game-session transition spam can roll android.log in seconds.
+service dali_crash_log /system/bin/logcat -b crash -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/crash.log
     user logd
     group log
     seclabel u:r:dali_bootlog:s0
