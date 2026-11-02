@@ -1,10 +1,12 @@
 # Laptop hardware
 
-**Status:** partial — the laptop shows the setup screen with the touchpad; Wi-Fi, sound and DPI are missing.
-**Last verified:** 2026-11-02 — the owner booted the USB's normal entry: the setup screen
-appeared and the touchpad worked. The UI was oversized (Google's density 240; Churro uses 180),
-no sound was heard and Wi-Fi did not work, so setup could not be completed. Keyboard and GPU
-acceleration were not checked.
+**Status:** partial — the laptop completes setup over Wi-Fi with a working touchpad; sound and
+screen brightness do not work.
+**Last verified:** 2026-11-02 — with the Wi-Fi/density build (`ab9d9c5`) the owner booted the
+normal entry, joined Wi-Fi and completed initial setup; the touchpad works. The owner finds app
+launches and graphics faster than Churro and gbos-x86 (impression, not measured). Sound and the
+brightness setting do not work. Density 180 and the keyboard were not explicitly confirmed.
+Earlier that day the handoff build showed setup with an oversized UI and no Wi-Fi.
 Earlier that day: the new kernel hands simpledrm card0 to virtio in an offline
 disposable UEFI boot; [setup](../../out/fb2/android-uefi-console-g0b93ipe/before-input.png)
 responded to a [mouse click](../../out/fb2/android-uefi-console-g0b93ipe/after-input.png).

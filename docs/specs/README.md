@@ -10,12 +10,12 @@ The component specs track the details; the plan keeps the overall direction in o
 | Spec | Status | Next action |
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial | Build the MT7922 Wi-Fi modules |
-| [Boot chain](boot.md) | partial | Confirm the MT7922 CLC workaround on the laptop |
+| [Boot chain](boot.md) | partial | — (laptop boots and joins Wi-Fi with the CLC workaround) |
 | [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Confirm the laptop renders on the AMD GPU |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Test the built Wi-Fi (MT7922) and density 180 on the laptop, then audio |
+| [Laptop hardware](laptop-hardware.md) | partial | Audio (ALC256) and screen brightness |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
