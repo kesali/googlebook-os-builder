@@ -2,8 +2,9 @@
 #   make unpack RECOVERY_IMAGE=~/Downloads/android-desktop_signed_recovery_image.bin
 
 # Google's official Googlebook recovery image (the unzipped .bin, about 19 GB).
-# Only ever read, never modified. Where to get it: README.md, "Input".
+# Only ever read, never modified. If you use another image, set its verified SHA-256 too.
 RECOVERY_IMAGE ?= reference/project-churro-msi-modern-15-B7M/android-desktop_signed_recovery_image.bin
+RECOVERY_IMAGE_SHA256 ?= 805de2e7251b2ec0c2089af0fe8f0547c386a58e8c5e24614d506697456837db
 
 # Generated files and editable downloaded source. Preserve source edits before deleting.
 OUT ?= out

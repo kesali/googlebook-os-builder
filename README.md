@@ -144,10 +144,12 @@ make unpack
 less out/google/inventory.txt
 ```
 
-[scripts/unpack.sh](scripts/unpack.sh) extracts boot images, logical partitions, properties and
-kernel identity. Set `RECOVERY_IMAGE` in [config.mk](config.mk), or on the command line. This
-inspection step is independent of the diagnostic build: the USB **does not yet contain or start
-Android**. Recovery models are listed at <https://aluminium-os.com/googlebookos/>.
+[scripts/unpack.sh](scripts/unpack.sh) verifies the image's pinned SHA-256 before extracting boot
+images, logical partitions, properties and kernel identity. The default image and its hash are in
+[config.mk](config.mk); when using another recovery image, set both `RECOVERY_IMAGE` and
+`RECOVERY_IMAGE_SHA256`. This inspection step is independent of the diagnostic build: the USB
+**does not yet contain or start Android**. Recovery models are listed at
+<https://aluminium-os.com/googlebookos/>.
 
 The inspected Lenovo Googlebook 15 (`ruby`) image contains Android 17 and kernel
 `6.18.21-android17-5-g3938c8d97142-ab16302624`. Our diagnostic build uses that kernel's source

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Unpack Google's recovery image into plain files the rest of the build reads.
 #
-#   scripts/unpack.sh <recovery.bin> <out-dir>
+#   scripts/unpack.sh <recovery.bin> <out-dir> <expected-sha256>
 #
 # Reads : the official Googlebook recovery image (never modified).
 # Writes: <out-dir>/
@@ -21,9 +21,21 @@ set -euo pipefail
 
 recovery=$1
 out=$2
+expected_sha256=$3
 tools=$(cd "$(dirname "$0")/../tools" && pwd)
 
 log() { echo ">> $*"; }
+
+if [[ ! "$expected_sha256" =~ ^[[:xdigit:]]{64}$ ]]; then
+    echo "expected SHA-256 must contain exactly 64 hexadecimal characters" >&2
+    exit 1
+fi
+
+recovery_sha256=$(sha256sum < "$recovery" | cut -d' ' -f1)
+if [ "$recovery_sha256" != "$expected_sha256" ]; then
+    echo "SHA-256 mismatch for $recovery: expected $expected_sha256, got $recovery_sha256" >&2
+    exit 1
+fi
 
 # partition_field <name> <start|size>: where a GPT partition is, in 512-byte sectors.
 partition_field() {
@@ -116,8 +128,7 @@ vendor_dlkm_a   /etc/build.prop
 system_dlkm_a   /etc/build.prop
 EOF
 
-log "Checksums (input image is about 19 GB, this takes a minute)"
-recovery_sha256=$(sha256sum < "$recovery" | cut -d' ' -f1)
+log "Checksums"
 (cd "$out" && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum) > "$out/SHA256SUMS"
 
 write_inventory > "$out/inventory.txt.partial"

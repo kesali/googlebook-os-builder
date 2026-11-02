@@ -72,7 +72,7 @@ The pieces, with the files that implement them:
 | Disk | Reflinked copy of Google's disk; userdata moved to the end and grown; blank `KERN-A` merged into a 576 MiB FAT32 `DALI-BOOT`. Created once and never recreated automatically. | [scripts/android-disk.sh](../scripts/android-disk.sh) |
 | Sync | Copy only changed partitions into the disk, then read them back. Refuses while QEMU holds the disk. | [tools/android_sync.py](../tools/android_sync.py) |
 | Boot files | Kernel, initrd, GRUB and menu; written into the ESP with mtools (no mounts, no root). | [scripts/android-boot.sh](../scripts/android-boot.sh), [tools/deploy.py](../tools/deploy.py), [boot/android-menu.cfg](../boot/android-menu.cfg) |
-| Checks | `make test` (104 unit tests), `make qemu-check` (bounded graphical boot), `make android-uefi-check` (UEFI/GRUB boot from a temporary USB image next to a decoy NVMe). | [tests/](../tests), [tools/android_smoke.py](../tools/android_smoke.py), [tools/android_uefi_test.py](../tools/android_uefi_test.py) |
+| Checks | `make test` (106 unit tests), `make qemu-check` (bounded graphical boot), `make android-uefi-check` (UEFI/GRUB boot from a temporary USB image next to a decoy NVMe). | [tests/](../tests), [tools/android_smoke.py](../tools/android_smoke.py), [tools/android_uefi_test.py](../tools/android_uefi_test.py) |
 
 **Build speed:**
 
@@ -323,7 +323,7 @@ safer to run.
 |---|---|---|---|
 | Entry point | `sudo churro.sh` | `build.sh` + Docker | `make` + Debian container |
 | Needs root to build | yes (loop mounts) | partly (Docker) | no (fakeroot, mtools) |
-| Download pinning | versions; some SHA-1, some unchecked | recovery SHA-256, commits | everything SHA-256 or commit, in one file |
+| Download pinning | versions; some SHA-1, some unchecked | recovery SHA-256, commits | sources SHA-256/commit; local recovery image SHA-256 in `config.mk` |
 | Incremental build | cache keys; full repack | super/partition reuse | per-partition Make dependencies; no-op build writes nothing |
 | Google's image changed by | shell scripts using `sed` per feature | runtime bind mounts + byte patches | remove/install lists + `diff -u` patches |
 | Binary edits | none | yes, hash-gated | none |
@@ -335,7 +335,7 @@ safer to run.
 | MSI backlight | not specific | ACPI generic | DMI-limited kernel rename; works |
 | Root | no | KernelSU | no (out of scope) |
 | Installer | `dd` whole disk | full installer, dual boot | none; boots from USB |
-| Tests | QEMU, GBM, vexemu | QEMU, installer, patchers | 104 unit tests, QEMU, UEFI/USB check |
+| Tests | QEMU, GBM, vexemu | QEMU, installer, patchers | 106 unit tests, QEMU, UEFI/USB check |
 
 ### Where we are better
 
@@ -369,20 +369,17 @@ safer to run.
 | Installer, internal-disk boot | both | Out of scope for now; the USB works. |
 | Root (KernelSU) | gbos-x86 | Out of scope unless you ask. |
 | Software Gatekeeper on unsupported Google builds | gbos-x86 `soft_gk` | Not needed: the emulator's Gatekeeper works. |
-| Pinned Google recovery input | gbos-x86 pins the zip SHA-256 | We read a local image. Pinning its hash in [config.mk](../config.mk) would be a cheap improvement. |
 | Hardware detection report | gbos-x86 `hwdetect.sh` | Our post-boot snapshot covers the useful part for one laptop. |
 
 ### Ideas worth considering (not approved; each needs your agreement)
 
-1. Pin the recovery image's SHA-256 next to `RECOVERY_IMAGE` so a different Google build fails
-   early with a clear message.
-2. Test Vulkan HWUI with the saved RADV two-queue draft, behind a GRUB option, and compare the
+1. Test Vulkan HWUI with the saved RADV two-queue draft, behind a GRUB option, and compare the
    frame rate with the current GL HWUI.
-3. Add AMD ACP DMIC and HDMI audio routes, following the measured-control approach used for
+2. Add AMD ACP DMIC and HDMI audio routes, following the measured-control approach used for
    ALC256.
-4. Count the remaining instruction traps on the laptop by instruction and by binary. Fix them only
+3. Count the remaining instruction traps on the laptop by instruction and by binary. Fix them only
    if they cost real time.
-5. Send the amdgpu fast-flip fix and the Google lights-HAL backlight finding upstream.
+4. Send the amdgpu fast-flip fix and the Google lights-HAL backlight finding upstream.
 
 ## 11. Next steps
 

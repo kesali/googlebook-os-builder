@@ -5,7 +5,8 @@
 system_ext and vendor_dlkm; every replaced Google file passed
 [check-replacements.sh](../../scripts/check-replacements.sh) and the full metadata comparison;
 the updater wrote only OS partitions. A repeat build took 16 s and left `disk.img` unmodified.
-103 unit tests pass; `make qemu-check` reaches setup ([screen](../../out/qemu/screen.png), inspected).
+`make test` passes 106 unit tests; `make qemu-check` reaches setup
+([screen](../../out/qemu/screen.png), inspected).
 Earlier: all 52,168,658,944 bytes outside the updated partitions matched a preserved baseline,
 including userdata, metadata and GPT/liblp
 ([comparison](../../out/hardware-fixes-validation/preservation-final.txt)).
@@ -30,6 +31,8 @@ the OS partitions named above; Android userdata, metadata and layout were preser
 QEMU test used a reflinked copy, and this candidate has not been transferred to the physical USB.
 
 ## Decisions
+- Pin the local Google recovery image by SHA-256 in [config.mk](../../config.mk). Verify it before
+  clearing or extracting `out/google`; alternate images must supply their own verified hash.
 - Change Google's files only through the change directory of each partition,
   `android/<partition>/`, applied by [scripts/android-overlay.sh](../../scripts/android-overlay.sh):
   `remove.list` (each path must exist), `install.list` (path, mode, owner, SELinux type, source),
@@ -84,9 +87,12 @@ QEMU test used a reflinked copy, and this candidate has not been transferred to 
 - [scripts/android-boot.sh](../../scripts/android-boot.sh), [tests/test_android_boot.py](../../tests/test_android_boot.py) — boot files into the FAT32 partition; its refusals, no-op and repair on a synthetic disk.
 - [tools/android_sync.py](../../tools/android_sync.py), [tools/lp.py](../../tools/lp.py) — partition updates.
 - [scripts/unpack.sh](../../scripts/unpack.sh) — Google image inventory (`out/google/inventory.txt`).
+- [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py) — mismatch and early-failure safety.
 
 ## Verify
-`make test` (sync, lock and overlay tests in [tests/test_overlay.py](../../tests/test_overlay.py);
+`make test` (including recovery-image hash refusal in
+[tests/test_unpack_hash.py](../../tests/test_unpack_hash.py), sync, lock and overlay tests in
+[tests/test_overlay.py](../../tests/test_overlay.py);
 disk layout in [tests/test_android_disk.py](../../tests/test_android_disk.py); boot files in
 [tests/test_android_boot.py](../../tests/test_android_boot.py)),
 then `make android-image JOBS=12`. A second run
@@ -108,6 +114,8 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Pin and verify the recovery image's SHA-256 before unpacking; a
+  mismatch is rejected before existing extracted files are removed. `make test`: 106 tests pass.
 - 2026-11-02 (this commit) — Generic bionic/runtime APEX/libz from the emulator image, with a
   drop-in check. QEMU traps 15.3 M → 44,644; boot animation 110 s → 66 s; setup inspected.
   Hardware not yet tested: the runtime APEX's signing key differs from Google's (Churro boots it).

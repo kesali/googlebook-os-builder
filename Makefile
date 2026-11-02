@@ -73,8 +73,9 @@ $(BUILD_READY): docker/Dockerfile
 	@mkdir -p $(@D) && touch $@
 
 unpack: $(GOOGLE)/inventory.txt ## Inspect Google's read-only recovery image
-$(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) scripts/unpack.sh tools/lp.py tools/kernel_info.py | $(BUILD_READY)
-	$(BUILDER) scripts/unpack.sh $(RECOVERY_IMAGE) $(GOOGLE)
+$(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) config.mk scripts/unpack.sh \
+		tools/lp.py tools/kernel_info.py | $(BUILD_READY)
+	$(BUILDER) scripts/unpack.sh $(RECOVERY_IMAGE) $(GOOGLE) $(RECOVERY_IMAGE_SHA256)
 
 # A download's name contains its SHA-256: a new pin is a new file, and a file that exists
 # is never checked or fetched again.
