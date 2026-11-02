@@ -1,7 +1,10 @@
 # Boot chain
 
-**Status:** partial — the laptop completed setup; the latest physical snapshot still needs retrieval.
-**Last verified:** 2026-11-02 — readiness-gated snapshot recovered from a disposable enforcing
+**Status:** partial — the laptop completed setup; its boot logs and snapshot are retrieved after each test.
+**Last verified:** 2026-11-02 — the owner retrieved the laptop's `/dali-bootlog/current/` from
+its `95b3bf6` boot ([snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt)): it
+records the eDP `backlight` device and labels, ALC256 on card1 and the loaded HDA modules.
+Before that, a readiness-gated snapshot was recovered from a disposable enforcing
 QEMU boot ([snapshot](../../out/hardware-fixes-validation/final-production-hardware.txt)).
 It exits successfully and does not run before boot-log preparation succeeds.
 Earlier, `make test` passed 87 tests; `make android-image JOBS=12` rebuilt
@@ -151,11 +154,14 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   these collectors do not guarantee every final byte survives a hang or power cut.
 
 ## Actions
-- [ ] Collect the hardware snapshot from the updated laptop — done when its backlight and ALSA
-  device details are reviewed from `/metadata/dali-bootlog/current/hardware.txt`.
+- [ ] After each laptop retest, retrieve `/dali-bootlog/current/` from the metadata partition —
+  done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
-- 2026-11-02 (this commit) — Snapshot waits for successful log preparation, rejects directory
+- 2026-11-02 (this commit) — Reviewed the owner's laptop snapshot and logs from `95b3bf6`
+  (backlight, ALSA, battery, power HAL writes, a 10 s TPM wait). The snapshot still lacks DRM
+  connector and cpufreq details.
+- 2026-11-02 `95b3bf6` — Snapshot waits for successful log preparation, rejects directory
   outputs and records backlight labels. Focused failures/gates and enforcing QEMU recovery pass.
   Latest physical logs remain unavailable; owner retrieval is still needed.
 - 2026-11-02 `uncommitted` — 87 tests pass; image build and no-op repeat pass. QEMU on a reflinked

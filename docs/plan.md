@@ -1,6 +1,7 @@
 # Project plan
 
-Updated: 2026-11-02. Current focus: the first Android boot on the laptop; QEMU polish is parked.
+Updated: 2026-11-02. Current focus: daily use on the laptop — performance and the remaining
+hardware; QEMU is the regression check.
 
 ## Priorities
 
@@ -21,58 +22,55 @@ removable once upstream covers it.
 
 ## Where we are
 
-- The source-built kernel, Mesa softpipe and software security services reach the QEMU setup
-  screen with working input. Softpipe is a slow correctness baseline, not the performance goal.
-- Image changes are readable lists and patches. Incremental updates preserve Android data.
-  QEMU kernel drivers and existing laptop helpers are Google's prebuilts; we build the kernel
-  and only the four missing AMD-related modules.
-- Repeat builds of `make android-image`: about 16 s when nothing changed; no published output
-  timestamps or partitions change. Before the AMD additions, about 17 s rebuilt `system`
-  and 8 s rebuilt `vendor`. A kernel
-  config or `gki-kernel.sh` edit relinks in about 75 s; a new kernel or Mesa source tree rebuilds
-  it fully (kernel about an hour, Mesa about a minute).
-- Setup completion, usable Internet access and Android on the physical laptop remain unverified.
-- The owner confirmed the diagnostic USB (`make usb`) booted and shut down on the laptop.
-  Its saved logs show passing instruction tests and ELAN touchpad registration; pointer
-  motion/gestures remain untested. See [USB diagnostics](specs/usb-diagnostic.md).
-- The owner agreed the first laptop boot plan (M1, below). QEMU already boots to the setup screen,
-  which is enough for now. So far: the kernel built-ins, the disk's FAT32 boot partition and the
-  boot files in it (`make android-boot`). UEFI/GRUB USB checks now pass with an unchanged NVMe
-  decoy: the standard check tests firmware log and UI separately.
-  The owner then requested an overnight Android UI candidate: the image now includes signed
-  AMD modules, official firmware and RADV/Zink/minigbm, with QEMU softpipe still verified.
-  A checked Android USB transfer is recorded in the laptop spec. The owner still reports a
-  hang after the GPU-label fix; usable AMD display/input remain unverified. A later offline check
-  verified firmware-to-virtio handoff, setup and a mouse click in one boot. The owner installed
-  the guarded handoff kernel on the USB; read-back passed and the owner reports a no-op repeat.
-  The BUP Slim linked at USB 2.0 (about 39 MB/s); use USB 3 before judging Android's speed.
-- Agent guidance now favors readable changes, quick iteration and focused verification.
+- The laptop boots from the USB, completed setup over Wi-Fi, and has keyboard, touchpad and
+  sound. The owner finds apps and graphics faster than in Churro and gbos-x86 (an impression,
+  not a benchmark); Chrome's logs show ANGLE on RADV, the AMD GPU. Brightness, HDMI frame rate,
+  Bluetooth, microphones and suspend are open: see [laptop hardware](specs/laptop-hardware.md).
+- Built since the owner's last boot, verified in QEMU only: fast page flips with HDMI connected,
+  the emulator's generic bionic/libz (Google's builds caused about 74% of the laptop's sampled
+  instruction traps), no 10 s TPM wait (`boot_completed` 59.7 s → 49.9 s in QEMU), no
+  per-frame/per-second log and polling noise, and the power HAL no longer confining apps to 8 of
+  the 12 CPUs.
+- Image changes are readable lists and patches; updates preserve Android data. We build the
+  kernel, Mesa/minigbm and the missing AMD/MediaTek modules; everything else is Google's or the
+  emulator's unchanged prebuilts.
+- An unchanged `make android-image` takes about 16 s and writes nothing. A changed partition is
+  rebuilt in under a minute; a kernel config edit relinks in about 75 s; a new kernel source tree
+  takes about an hour.
+- QEMU reaches the setup screen with software rendering; setup there is not finished (parked).
 
 Detailed status, evidence and handoffs live in the [component specs](specs/README.md).
 This plan orders the work; it does not replace those records.
+
+## Compared with the references
+
+Both reference ports boot this laptop. This project follows Churro's working baseline, with:
+
+- **Better here:** Google's image changes only through `remove.list`, `install.list` and `diff -u`
+  patches with a reason each — no binary edits; emulator replacements are checked as drop-ins;
+  incremental, data-preserving updates and no-op builds; one spec per component. Fixes neither
+  reference has: the 10 s TPM wait at boot (Churro blacklists the TPM but keeps the waiting
+  service), the power HAL's 8-CPU masks, system_server polling the removed face HAL, composer
+  gamma log spam (Churro sets a property name the composer does not read) and HDMI page flips.
+  gbos-x86 also removes `udsattestation`.
+- **Behind:** Bluetooth (gbos-x86 builds btusb/btmtk for the MT7922), internal microphone and
+  HDMI audio, suspend, Vulkan HWUI. Several fixes still lack a laptop test. Remaining traps are in
+  signed ART and Rust code that cannot be swapped. The snapshot lacks DRM connector and cpufreq details.
 
 ## Proposed order
 
 This is a flexible order, not a commitment to do every item.
 
-1. **First Android boot on the laptop — current.**
-   Immediate repair: diagnostics recovered the owner's boot logs; the reference-based framebuffer
-   handoff now passes QEMU and needs a laptop retest. Keep the existing build
-   and reference ports as evidence rather than starting a wholesale rewrite.
-   Milestone M1 (agreed): the QEMU disk's partition layout on the USB, our GKI kernel and Android
-   initrd loaded by GRUB, and the keyboard, touchpad and kernel log on the laptop's screen. The
-   original M1 did not expect Android UI; the overnight candidate now includes the AMD stack.
-   Kernel and initrd updates can reach the USB through its mounted
-   boot partition, without sudo; OS partitions are rewritten with sudo and the owner's approval.
-   The same USB image is booted in QEMU through UEFI first. See
-   [laptop hardware](specs/laptop-hardware.md). The existing diagnostic USB is a separate system:
-   see [USB diagnostics](specs/usb-diagnostic.md).
+1. **Laptop retest of the latest build — next.**
+   The owner updates both the boot files (`make deploy-android`) and the OS partitions
+   (`update-os.sh`), then checks HDMI frame rate, the brightness slider and boot/app speed.
+   The boot snapshot and logs are retrieved either way. See [laptop hardware](specs/laptop-hardware.md).
 
-2. **Laptop graphics and drivers — candidate built, physical test next.**
-   AMD modules/firmware (M2) and the UI stack (M3) are packaged, not hardware-verified.
-   Wi-Fi, Bluetooth, audio and power (M4) remain later work, one device at a time.
+2. **Remaining laptop hardware — one device at a time.**
+   Done: AMD display, keyboard/touchpad, Wi-Fi, ALC256 speakers. Next candidates: brightness
+   (if the retest fails), Bluetooth, internal microphone, HDMI audio, suspend.
 
-3. **Improve performance — once the desktop runs on the laptop.**
+3. **Improve performance — current.**
    Measure build time, startup time and UI responsiveness separately. Identify the main bottleneck
    and compare simple options before changing the graphics path. See [graphics](specs/graphics.md).
 

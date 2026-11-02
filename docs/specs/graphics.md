@@ -1,8 +1,10 @@
 # Graphics
 
-**Status:** partial — QEMU softpipe works; the laptop shows the setup screen on AMD.
-**Last verified:** 2026-11-02 — the owner booted the USB with the handoff kernel on the laptop
-and saw the setup screen; the touchpad works. Rendering acceleration was not checked. Earlier,
+**Status:** partial — QEMU softpipe works; the laptop's desktop runs on AMD, with apps on RADV.
+**Last verified:** 2026-11-02 — the owner completed setup on the laptop and finds apps and
+graphics fast. That boot's log ([android.log](../../out/laptop-boot-2026-11-02-hdmi/current/))
+shows Chrome's ANGLE on `Vulkan 1.1.363 (AMD Radeon Graphics (RADV RENOIR) (0x000015E7))`;
+SurfaceFlinger and HWUI do not log their renderer. Earlier,
 an offline disposable UEFI boot handed simpledrm card0 to
 virtio-gpu; the [setup screen](../../out/fb2/android-uefi-console-g0b93ipe/before-input.png)
 and [mouse-opened dialog](../../out/fb2/android-uefi-console-g0b93ipe/after-input.png) were
@@ -20,8 +22,8 @@ and mapper on virtio-gpu. RADV/Zink and the AMD allocator backend build; all 49 
 exports used by Google's clients are present. The prior laptop kernel loaded amdgpu as DRM minor 1,
 but SurfaceFlinger repeatedly reported invalid present fences. The
 [source-level handoff](../../kernel/drm-firmware-handoff.patch) gives virtio card0 in QEMU and a
-visible setup screen on the laptop. Whether the laptop renders on the GPU (RADV/ANGLE) and its
-performance remain unverified. QEMU is still CPU-rendered.
+visible setup screen on the laptop. On the laptop, Chrome renders through ANGLE on RADV; which
+renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. QEMU is still CPU-rendered.
 
 ## Decisions
 - Owner's overnight request authorizes an AMD test candidate, retaining softpipe as the verified fallback.
@@ -83,8 +85,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 
 ## Actions
 - [x] Validate the handoff on the laptop — the owner saw the setup screen and used the touchpad.
-- [ ] Confirm laptop GPU rendering — done when SurfaceFlinger/HWUI logs from a laptop boot name
-  the AMD renderer rather than a software one.
+- [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
+  output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
   options, trade-offs and a recommendation are agreed with the user. Not approved to implement.
 
@@ -93,7 +95,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - Vulkan HWUI with Churro's RADV two-queue patch, if GL HWUI proves slow on the laptop.
 
 ## Handoff log
-- 2026-11-02 (this commit) — Composer log-gamma property corrected; built vendor `build.prop`
+- 2026-11-02 (this commit) — Laptop log reviewed: Chrome's ANGLE runs on RADV RENOIR. Setup
+  completed there; SurfaceFlinger/HWUI renderer still to confirm (`dumpsys SurfaceFlinger`).
+- 2026-11-02 `2ee6da9` — Composer log-gamma property corrected; built vendor `build.prop`
   checked. With the color pipeline off this only removes the per-frame log; laptop log not yet rechecked.
 - 2026-11-02 `uncommitted` — Laptop USB boot shows the setup screen with the touchpad working.
   A Vulkan HWUI draft was shelved (owner's choice) because GL HWUI already displays.
