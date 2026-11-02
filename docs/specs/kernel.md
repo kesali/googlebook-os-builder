@@ -68,7 +68,8 @@ functionality; generic ACP migration and other machines remain untested.
   (`CONFIG_TRIM_UNUSED_KSYMS`). Laptop drivers are modules too, except the few built-ins agreed for
   the first laptop boot ([laptop-hardware.md](laptop-hardware.md)); `make gki` must still show
   Google's exports and CRCs.
-- Churro's `vex-emulate.patch` (downloaded, SHA-pinned) emulates VEX GFNI/AVX-VNNI — Googlebook
+- Churro's [vex-emulate.patch](../../kernel/vex-emulate.patch) (vendored unchanged, content-hashed)
+  emulates VEX GFNI/AVX-VNNI — Googlebook
   userspace is built for Intel Panther Lake; this Zen 3 CPU lacks those instructions.
 - The source-level framebuffer handoff follows Churro's PCI display approach; errors are
   reported and abort DRM initialization. Touchpad settings and security safeguards are unchanged.
@@ -137,6 +138,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-03 (this commit) — Vendored the exact cached Churro emulator patch after its source
+  repository was deleted. All 16 `test_kernel_source` tests pass in the builder;
+  `make -n sources JOBS=12` is a no-op, and bytes match the pinned SHA. No build, boot or USB write.
 - 2026-11-02 `uncommitted` — Owner confirms microphone works after the Renoir buffer update.
   Driver, named InternalMic route and isolated buffer patch now have owner hardware confirmation;
   no new capture logs or recording-quality measurements supplied.

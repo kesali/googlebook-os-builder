@@ -9,7 +9,10 @@ endif
 
 GOOGLE := $(OUT)/google
 DL := $(OUT)/downloads
-EMU_PATCH := $(DL)/emulator-$(EMU_SHA).patch
+# Unchanged Project Churro patch from commit 488dab956808916100eca141ee251a5a5773eeba.
+# Keep its separate content hash so existing editable kernel trees remain reusable.
+EMU_PATCH := kernel/vex-emulate.patch
+EMU_SHA := $(shell sha256sum $(EMU_PATCH) | cut -d' ' -f1)
 BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
 KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
 # Our kernel source patches, applied in this order after the emulator patch.
@@ -90,12 +93,11 @@ $(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) config.mk scripts/unpack.sh \
 
 # A download's name contains its SHA-256: a new pin is a new file, and a file that exists
 # is never checked or fetched again.
-$(EMU_PATCH): | $(BUILD_READY)
-	$(BUILDER) bash scripts/fetch.sh "$(EMU_URL)" "$(EMU_SHA)" "$@"
 $(BUSYBOX): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
 
-$(KERNEL_SRC)/.ready: $(EMU_PATCH) $(KERNEL_PATCHES) | $(BUILD_READY)
+# The emulator's bytes select KERNEL_SRC; its timestamp must not recreate that tree.
+$(KERNEL_SRC)/.ready: $(KERNEL_PATCHES) | $(EMU_PATCH) $(BUILD_READY)
 	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_TAG)" "$(KERNEL_REV)" \
 		"$(KERNEL_CACHE)" "$(KERNEL_SRC)" "$(EMU_PATCH)" $(KERNEL_PATCHES)
 

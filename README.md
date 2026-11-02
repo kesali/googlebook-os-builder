@@ -476,10 +476,12 @@ use `make deploy`, **not** another whole-stick flash.
 - Development security HALs: unmodified binaries from Google's pinned Android 17 emulator
   image. Googlebook userspace remains proprietary recovery-image content, not a source rebuild
   or a claim of redistribution permission.
-- Instruction-emulation source patch: [Project Churro, pinned revision](https://github.com/kesali/project-churro-msi-modern-15-B7M/blob/488dab956808916100eca141ee251a5a5773eeba/kmod/patches/vex-emulate.patch).
-  Downloaded, checksum-verified and applied to kernel **source**, with the user's approval.
+- Instruction-emulation source patch: [kernel/vex-emulate.patch](kernel/vex-emulate.patch),
+  preserved unchanged from Project Churro commit `488dab956808916100eca141ee251a5a5773eeba`.
+  Vendored, content-hashed and applied to kernel **source**, with the user's approval.
   The reference repository has no top-level licence; resolve redistribution permissions before
-  publishing its patch or resulting images. This build does not vendor its implementation.
+  publishing its patch or resulting images. The project's MIT license does not relicense this
+  third-party patch.
 
 The two original working ports remain under ignored `reference/` for comparison. Their build
 scripts and prebuilt kernels are not used. None of this pipeline edits executable bytes.

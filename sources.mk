@@ -9,11 +9,6 @@ KERNEL_TAG := android17-6.18-2026-06_r52
 KERNEL_REV := 3938c8d97142d5cf31543aa96f864a2cf832dda0
 KERNEL_URL := https://android.googlesource.com/kernel/common
 
-# Project Churro's userspace instruction emulator, applied to kernel source.
-EMU_REV := 488dab956808916100eca141ee251a5a5773eeba
-EMU_URL := https://raw.githubusercontent.com/kesali/project-churro-msi-modern-15-B7M/$(EMU_REV)/kmod/patches/vex-emulate.patch
-EMU_SHA := d8decdcffc7a87aea0386ec3ca8476e607f5a26f0ef127e4f051f65ab84e8e0f
-
 # The diagnostic USB's shell: BusyBox's official static binary, unchanged. 1.35.0 is the newest
 # one busybox.net publishes, and it has every tool boot/init uses. busybox.net publishes no
 # checksum; the SHA-256 was calculated from the HTTPS download.
