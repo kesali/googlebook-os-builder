@@ -1,5 +1,8 @@
 Select graphics at early init: QEMU's Mesa softpipe fallback or the laptop's ANGLE/RADV
 profile. Keep SDR and GL app UI for both. Drop when Google's image supports these GPUs.
+The composer looks for xe's LOG_GAMMA_LUT on every frame when use_log_gamma_lut is set; other
+drivers lack it, so it logged a fallback each frame. With the color pipeline off it only clears
+GAMMA_LUT either way.
 
 --- a/build.prop
 +++ b/build.prop
@@ -29,7 +32,7 @@ profile. Keep SDR and GL app UI for both. Drop when Google's image supports thes
  debug.sf.renderengine_gpu_stats=true
  dalvik.vm.heapstartsize=16m
  dalvik.vm.heapgrowthlimit=192m
-@@ -133,17 +132,16 @@
+@@ -133,17 +132,15 @@
  dalvik.vm.heapmaxfree=8m
  ro.boot.hypervisor.vm.supported=1
  ro.boot.hypervisor.protected_vm.supported=1
@@ -45,15 +48,15 @@ profile. Keep SDR and GL app UI for both. Drop when Google's image supports thes
 -vendor.hwc.drm.enable_color_pipeline=true
 -vendor.hwc.drm.force_color_mode=13
 -vendor.hwc.drm.persistent_hdr=true
+-vendor.hwc.use_log_gamma_lut=true
 +vendor.hwc.drm.enable_color_pipeline=false
 +vendor.hwc.drm.force_color_mode=7
 +vendor.hwc.drm.persistent_hdr=false
- vendor.hwc.use_log_gamma_lut=true
-+vendor.hwc.drm.use_log_gamma_lut=false
++vendor.hwc.use_log_gamma_lut=false
  vendor.hwc.drm.skip_plane_damage_clips=true
  ro.soc.manufacturer=Intel
  ro.sf.lcd_density=240
-@@ -182,4 +180,3 @@
+@@ -182,4 +179,3 @@
  dalvik.vm.jitmaxsize=256m
  dalvik.vm.jitthreshold=5000
  # end of file

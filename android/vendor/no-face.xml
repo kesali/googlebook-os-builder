@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google's product partition declares a face sensor. Neither QEMU nor the MSI has one, and
+     vendor/remove.list removes Google's face HAL. Without a HAL, FaceService waits forever for
+     the virtual test HAL, asking servicemanager to start it once a second. -->
+<permissions>
+    <unavailable-feature name="android.hardware.biometrics.face" />
+</permissions>

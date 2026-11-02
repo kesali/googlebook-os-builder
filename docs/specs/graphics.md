@@ -68,6 +68,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - libdrm reads the GPU's `uevent`, `vendor`, `device` and `subsystem_*` sysfs files and skips the
   GPU if any read is denied. Then Mesa logs `Failed to open any DRM device`, SurfaceFlinger aborts
   (`Failed to create a valid texture`) and init restarts it in a loop. Label all of them.
+- drm_hwcomposer reads `vendor.hwc.use_log_gamma_lut`, not a `vendor.hwc.drm.` name. Google sets
+  it for xe; on amdgpu the composer then logged a missing `LOG_GAMMA_LUT` every frame (58 lines/s
+  on the laptop, filling the persistent log in under a minute). The build-prop patch turns it off.
 - Mesa uses `meson.options`, not `meson_options.txt`.
 - `--wrap-mode=nofallback` stops Meson silently using Mesa's bundled older Expat.
 - Editing a Mesa/minigbm patch or the source-extraction script changes the source directory name,
@@ -90,6 +93,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - Vulkan HWUI with Churro's RADV two-queue patch, if GL HWUI proves slow on the laptop.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Composer log-gamma property corrected; built vendor `build.prop`
+  checked. With the color pipeline off this only removes the per-frame log; laptop log not yet rechecked.
 - 2026-11-02 `uncommitted` — Laptop USB boot shows the setup screen with the touchpad working.
   A Vulkan HWUI draft was shelved (owner's choice) because GL HWUI already displays.
 - 2026-11-02 `uncommitted` — Offline QEMU handoff, setup and mouse click pass with enforcing

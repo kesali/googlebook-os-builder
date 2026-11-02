@@ -13,3 +13,11 @@ service android.system.desktop.security.gscd /system/bin/gscd
     user hsm
     group hsm
     disabled
+# Waits for gscd's IGsc forever, asking servicemanager to start it once a second.
+service android.system.desktop.security.udsattestation /system/bin/udsattestation
+    override
+    class main
+    oneshot
+    user hsm
+    group hsm inet
+    disabled

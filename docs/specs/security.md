@@ -18,8 +18,12 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
 - Emulator binaries are pinned by SHA-256 and copied **unmodified** with their missing library
   dependencies; Gatekeeper's executable is renamed to the standard service name, bytes unchanged.
 - Donor and target are both API 37; [scripts/emulator.sh](../../scripts/emulator.sh) refuses a mismatch.
-- Trusty security VM, remote key provisioning, Google security-chip daemon (gscd) and StrongBox
-  are disabled; their HAL declarations are removed. Unrelated declarations stay.
+- Trusty security VM, remote key provisioning, Google security-chip daemon (gscd), its UDS
+  attestation client and StrongBox are disabled; their HAL declarations are removed. Unrelated
+  declarations stay. The attestation client otherwise asked for gscd once a second forever.
+- No face sensor: Google's face HAL APEX is removed and
+  [no-face.xml](../../android/vendor/no-face.xml) marks the feature unavailable, so FaceService
+  does not start and poll for its virtual test HAL once a second.
 - Firmware updaters and OTA are removed. The only firmware command left is a source-built
   `crossystem` stand-in that accepts the boot HAL's success values and rejects everything else.
 - No SELinux permissive domains or broad policy changes.
@@ -47,6 +51,8 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Disabled `udsattestation` and the face feature. QEMU kernel log:
+  IGsc start requests 389 → 0, face IVirtualHal 356 → 0; KeyMint/Gatekeeper PIDs stable, enforcing.
 - 2026-11-01 (this commit) — Common security settings moved to `dali.rc`; graphics profiles are
   separate. The AMD-candidate image still has stable KeyMint/Gatekeeper PIDs and enforcing
   SELinux in the UEFI graphical check; no new policy permissions.
