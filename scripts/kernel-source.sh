@@ -2,11 +2,16 @@
 # Read: Android release tag, expected commit, source patches and an optional existing checkout.
 # Write: a new editable Git checkout; never modify the existing checkout.
 #
-#   kernel-source.sh <url> <tag> <revision> <emulator patch> <handoff patch> <backlight patch> <cache> <destination>
-# Gitiles-generated tarballs need not have stable archive checksums; Git verifies the objects.
+#   kernel-source.sh <url> <tag> <revision> <cache> <destination> <patch>...
+# Patches apply in the given order. Gitiles-generated tarballs need not have stable archive
+# checksums; Git verifies the objects.
 set -euo pipefail
-url=$1 tag=$2 revision=$3 emulator_patch=$(realpath "$4") handoff_patch=$(realpath "$5")
-backlight_patch=$(realpath "$6") cache=$(realpath -m "$7") destination=$8
+url=$1 tag=$2 revision=$3 cache=$(realpath -m "$4") destination=$5
+shift 5
+patches=()
+for patch_file in "$@"; do
+    patches+=("$(realpath "$patch_file")")
+done
 mkdir -p "$(dirname "$destination")"
 if [ -e "$destination" ] || [ -L "$destination" ]; then
     echo "Refusing to replace $destination; preserve local source edits first." >&2
@@ -32,7 +37,7 @@ git -C "$temporary" checkout --quiet --detach FETCH_HEAD
     exit 1
 }
 git -C "$temporary" update-ref -d refs/cache/kernel
-for patch_file in "$emulator_patch" "$handoff_patch" "$backlight_patch"; do
+for patch_file in "${patches[@]}"; do
     patch --batch --fuzz=0 -d "$temporary" -p1 < "$patch_file"
 done
 touch "$temporary/.ready"

@@ -1,13 +1,12 @@
 # Kernel (GKI)
 
-**Status:** partial — laptop display/input/Wi-Fi work; the backlight candidate needs a physical test.
-**Last verified:** 2026-11-02 — `make android-image JOBS=12` rebuilt the patched kernel/modules:
-all 4501 Google exports/CRCs and all 5507 prior symbol-version records are unchanged
-([build log](../../out/hardware-fixes-validation/build.log),
-[previous symbols](../../out/hardware-fixes-validation/Module.symvers-before),
-[current symbols](../../out/gki/build/Module.symvers)). Enforcing QEMU reaches setup; a repeat
-build preserves published timestamps. The owner previously completed physical setup with input
-and Wi-Fi. The new AMD backlight name is not yet physically verified.
+**Status:** partial — laptop display/input/Wi-Fi/sound work; the HDMI fast-flip patch needs a physical test.
+**Last verified:** 2026-11-02 — `make gki JOBS=12` with the fast-flip patch: `kABI: 4501 Google
+exports, 0 missing, 0 changed`; `make qemu-check` reaches setup with enforcing SELinux
+([screen](../../out/qemu/screen.png), inspected). The owner's boot of `95b3bf6` had sound, and its
+snapshot shows the panel as `backlight` (`sysfs_leds`, 51750 of 62451, so the HAL wrote it);
+a visible brightness change was not reported. Earlier: all 5507 prior symbol versions unchanged
+([previous](../../out/hardware-fixes-validation/Module.symvers-before)).
 
 ## Goal
 Build Google's Googlebook kernel from source with the instruction emulator compiled in, identical
@@ -30,6 +29,8 @@ framebuffer before a PCI display driver takes a DRM minor. It works with virtio 
 based on the owner's working Churro setup; the owner subsequently reached physical setup.
 [msi-backlight.patch](../../kernel/msi-backlight.patch) changes only the first panel's registered
 name on the exact MSI model so Google's unchanged lights HAL can discover it.
+[amdgpu-fast-flips.patch](../../kernel/amdgpu-fast-flips.patch) keeps page flips on amdgpu's fast
+path when an HDMI monitor is connected (owner saw the frame rate halve); not yet tested on hardware.
 
 ## Decisions
 - Google's exact toolchain (clang r584948c, Rust 1.91.1.p3, bindgen 0.72.1, pahole 1.31 from
@@ -47,6 +48,10 @@ name on the exact MSI model so Google's unchanged lights HAL can discover it.
 - Only DMI vendor `Micro-Star International Co., Ltd.` / model `Modern 15 B7M`, first panel:
   name the AMD backlight `backlight`, which Google's lights HAL supports. Preserve all brightness
   calculations and other machines' names. Remove this patch when the HAL supports AMD discovery.
+- drm_hwcomposer allows a modeset on every commit; before DCN 3.2 amdgpu then resets all planes
+  and takes the global lock, so two displays wait on each other's flips. The patch keeps that
+  only when a CRTC really changes mode. Generic for DCN < 3.2 and small enough to upstream
+  (the `dm_test_reset_plane_pre_dcn32_modeset` KUnit would need the same condition).
 - Builds fail on unlisted config changes, a release-string mismatch, or any missing/changed
   Google export or CRC.
 - New modules use the build's signing key to access protected GKI exports. Do not remove
@@ -60,11 +65,12 @@ name on the exact MSI model so Google's unchanged lights HAL can discover it.
 - [tools/kconfig_check.py](../../tools/kconfig_check.py), [tools/kabi_check.py](../../tools/kabi_check.py),
   [tools/kernel_certs.py](../../tools/kernel_certs.py) — config, ABI and certificate checks.
 - [scripts/git-fetch.sh](../../scripts/git-fetch.sh), [scripts/pahole.sh](../../scripts/pahole.sh) — toolchain.
-- [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + emulator,
-  framebuffer handoff and backlight patches; a new patch hash creates a separate tree.
+- [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + the emulator patch
+  and the Makefile's `KERNEL_PATCHES`, in order; a new patch hash creates a separate tree.
 - [kernel/drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) — early PCI
   framebuffer handoff before DRM minor allocation.
 - [kernel/msi-backlight.patch](../../kernel/msi-backlight.patch) — exact-model panel naming.
+- [kernel/amdgpu-fast-flips.patch](../../kernel/amdgpu-fast-flips.patch) — no full update for plain flips on DCN < 3.2.
 - [tests/test_kernel_source.py](../../tests/test_kernel_source.py) — source preparation and patch checks.
 - [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [kernel/laptop-modules.list](../../kernel/laptop-modules.list) — explicit signed-module publication.
 
@@ -89,8 +95,10 @@ Inspect the screenshots; this does not verify AMD hardware.
   and relinks (about 50 s).
 
 ## Actions
-- [ ] Check backlight discovery on the laptop — done when the owner confirms the brightness
-  slider changes the panel and the snapshot shows the expected name/label.
+- [ ] Check HDMI frame rate on the laptop — done when the owner sees no frame-rate drop with an
+  HDMI monitor connected (needs both the boot files and the OS partitions updated).
+- [ ] Check the brightness slider — done when the owner confirms it changes the panel
+  (the snapshot already shows the expected `backlight` name and label).
 
 ### Ideas (not approved)
 - Extend instruction emulation to SSE GFNI if a userspace binary needs it (see gbos-x86 `isa_emu`).
@@ -99,7 +107,10 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
-- 2026-11-02 (this commit) — MSI-only backlight name patch built; 4501 Google exports and 5507
+- 2026-11-02 (this commit) — amdgpu fast flips with HDMI; `kernel-source.sh` takes a patch list.
+  kABI clean, 11 source tests (incl. a compiled model of the condition) and enforcing QEMU pass.
+  Next: owner retests HDMI frame rate on the laptop.
+- 2026-11-02 `95b3bf6` — MSI-only backlight name patch built; 4501 Google exports and 5507
   previous symbol versions unchanged. Exact DMI/first-panel naming tests and enforcing QEMU pass.
   Laptop handoff/Wi-Fi are owner-confirmed; new physical brightness behavior awaits retest.
 - 2026-11-02 `uncommitted` — Churro-based handoff passes ABI and offline QEMU checks; the owner

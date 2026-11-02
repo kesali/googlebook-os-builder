@@ -154,7 +154,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [sources.mk](sources.mk) | Source URLs, exact revisions and SHA-256 pins |
 | [docker/Dockerfile](docker/Dockerfile) | Debian build/test tools |
 | [scripts/fetch.sh](scripts/fetch.sh), [scripts/source.sh](scripts/source.sh) | Verified download and source extraction |
-| [scripts/kernel-source.sh](scripts/kernel-source.sh) | Checked kernel checkout with the emulator and [framebuffer handoff](kernel/drm-firmware-handoff.patch) source patches |
+| [scripts/kernel-source.sh](scripts/kernel-source.sh) | Checked kernel checkout with the emulator patch and our [kernel/](kernel/) source patches (`KERNEL_PATCHES` in the Makefile) |
 | [scripts/kernel.sh](scripts/kernel.sh) | Kbuild plus the diagnostic hardware config |
 | [kernel/msi-diagnostic.config](kernel/msi-diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
 | [boot/init](boot/init) | The complete runtime startup sequence |
