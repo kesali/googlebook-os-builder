@@ -74,7 +74,7 @@ class BootlogTests(unittest.TestCase):
     def test_two_boots_retained_and_all_archive_names_removed(self):
         self.assert_ready(self.prepare())
         current = self.logs / "current"
-        for stream in ("kernel", "android"):
+        for stream in ("kernel", "android", "android-boot"):
             for suffix in ("", ".1", ".2", ".3", ".4", ".5", ".6", ".7"):
                 (current / f"{stream}.log{suffix}").write_text("old\n")
         self.assert_ready(self.prepare(BOOT_TWO))
@@ -163,19 +163,35 @@ class BootlogTests(unittest.TestCase):
         self.assertIn("setprop ro.logd.kernel true", text)
         self.assertIn("on property:sys.dali.bootlog.ready=1", text)
         self.assertIn("on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1\n"
-                      "    start dali_hardware_snapshot", text)
+                      "    start dali_hardware_snapshot\n"
+                      "    stop dali_android_boot_log\n", text)
         self.assertIn("seclabel u:r:dali_hardware_diag:s0", text)
         commands = [line.split() for line in text.splitlines()
                     if line.startswith("service dali_") and "/system/bin/logcat" in line]
-        self.assertEqual(len(commands), 2)
+        self.assertEqual(len(commands), 3)
+        rotate_kib = {}
         for command in commands:
             self.assertEqual(command[2], "/system/bin/logcat")
             self.assertEqual(command[command.index("-v") + 1], "long")
-            self.assertEqual(int(command[command.index("-r") + 1]), 256)
             self.assertEqual(int(command[command.index("-n") + 1]), 7)
+            rotate_kib[command[1]] = int(command[command.index("-r") + 1])
+            # The live file plus seven archives must stay within 16 MiB per stream per boot.
+            self.assertLessEqual(rotate_kib[command[1]] * 8, 16 * 1024)
             self.assertTrue(command[-1].startswith("/metadata/dali-bootlog/current/"))
+        self.assertEqual(rotate_kib, {"dali_kernel_log": 256, "dali_android_log": 256,
+                                      "dali_android_boot_log": 1024})
         self.assertEqual(commands[0][commands[0].index("-b") + 1], "kernel")
         self.assertEqual(commands[1][commands[1].index("-b") + 1], "main,system,crash,events")
+        self.assertEqual(commands[2][1], "dali_android_boot_log")
+
+        def without_rotate_size(command):
+            index = command.index("-r")
+            return command[2:index] + command[index + 2:-1]
+
+        self.assertEqual(without_rotate_size(commands[2]), without_rotate_size(commands[1]))
+        self.assertEqual(commands[2][-1], "/metadata/dali-bootlog/current/android-boot.log")
+        for command in commands:
+            self.assertIn(f"    start {command[1]}\n", text)
 
     def test_policy_allows_rotation_only_in_our_directory_type(self):
         policy = (REPO / "android/system/bootlog-policy.patch").read_text()

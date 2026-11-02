@@ -30,7 +30,8 @@ removable once upstream covers it.
   the emulator's generic bionic/libz (Google's builds caused about 74% of the laptop's sampled
   instruction traps), no 10 s TPM wait (`boot_completed` 59.7 s → 49.9 s in QEMU), no
   per-frame/per-second log and polling noise, and the power HAL no longer confining apps to 8 of
-  the 12 CPUs.
+  the 12 CPUs. Boot logs now also keep the whole startup, and the snapshot records displays and
+  the CPU governor.
 - Image changes are readable lists and patches; updates preserve Android data. We build the
   kernel, Mesa/minigbm and the missing AMD/MediaTek modules; everything else is Google's or the
   emulator's unchanged prebuilts.
@@ -55,7 +56,7 @@ Both reference ports boot this laptop. This project follows Churro's working bas
   gbos-x86 also removes `udsattestation`.
 - **Behind:** Bluetooth (gbos-x86 builds btusb/btmtk for the MT7922), internal microphone and
   HDMI audio, suspend, Vulkan HWUI. Several fixes still lack a laptop test. Remaining traps are in
-  signed ART and Rust code that cannot be swapped. The snapshot lacks DRM connector and cpufreq details.
+  signed ART and Rust code that cannot be swapped.
 
 ## Proposed order
 

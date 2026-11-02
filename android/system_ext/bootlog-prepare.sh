@@ -31,7 +31,7 @@ if [ -n "$saved_id" ] && [ "$saved_id" != "$boot_id" ]; then
         test ! -L previous/hardware.txt
         test ! -L previous/hardware.txt.tmp
         rm -f previous/boot-id previous/boot.txt
-        for stream in kernel android; do
+        for stream in kernel android android-boot; do
             rm -f "previous/$stream.log"
             for index in 1 2 3 4 5 6 7; do
                 rm -f "previous/$stream.log.$index"

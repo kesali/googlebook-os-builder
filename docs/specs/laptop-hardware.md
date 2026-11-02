@@ -125,7 +125,8 @@ is currently partition 17; verify the layout. Mount it `ro,noload` or read it wi
 copy only `/dali-bootlog/current/` and `previous/` into a pre-created ignored evidence directory.
 The files are owned by logd, so retrieval may require the owner's locally authorized sudo.
 
-Each boot contains `boot-id`, `boot.txt`, rotated kernel/Android logs and `hardware.txt`.
+Each boot contains `boot-id`, `boot.txt`, rotated kernel/Android logs, `hardware.txt` and
+`android-boot.log*`, a copy of the Android log that stops at boot completion.
 The snapshot records backlight values/permissions/SELinux labels, ALSA IDs/codecs and modules.
 Keep app/account logs private; share only relevant filtered excerpts.
 
@@ -170,7 +171,7 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
-- 2026-11-02 (this commit) — Snapshot now records DRM connectors and cpufreq policies, so the next
+- 2026-11-02 `e51523d` — Snapshot now records DRM connectors and cpufreq policies, so the next
   retest shows HDMI state and the real governor/EPP. Verified in enforcing QEMU only.
 - 2026-11-02 `3f49946` — Power HAL CPU masks removed: with 12 vCPUs, QEMU cpusets went from
   0-7/4-7 to 0-11 everywhere and the 500 ms xe-IRQ write retries stopped; `qemu-check` passed.

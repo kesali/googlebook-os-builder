@@ -12,6 +12,7 @@ on post-fs
 on property:sys.dali.bootlog.ready=1
     start dali_kernel_log
     start dali_android_log
+    start dali_android_boot_log
 
 service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare.sh /metadata/dali-bootlog /proc/sys/kernel/random/boot_id
     user logd
@@ -23,6 +24,7 @@ service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare
 
 on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1
     start dali_hardware_snapshot
+    stop dali_android_boot_log
 
 service dali_hardware_snapshot /system/bin/sh /system_ext/etc/dali/hardware-snapshot.sh /metadata/dali-bootlog /sys /proc /dev
     user logd
@@ -42,6 +44,15 @@ service dali_kernel_log /system/bin/logcat -b kernel -v long -v year -r 256 -n 7
     stdio_to_kmsg
 
 service dali_android_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/android.log
+    user logd
+    group log
+    seclabel u:r:dali_bootlog:s0
+    disabled
+    stdio_to_kmsg
+
+# Startup alone overflows android.log's 2 MiB (QEMU writes about 3.5 MB before boot completes),
+# so this copy gets 8 MiB and stops at boot completion. A stuck boot keeps its newest 8 MiB.
+service dali_android_boot_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 1024 -n 7 -f /metadata/dali-bootlog/current/android-boot.log
     user logd
     group log
     seclabel u:r:dali_bootlog:s0

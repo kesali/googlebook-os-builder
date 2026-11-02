@@ -1,7 +1,12 @@
 # Boot chain
 
 **Status:** partial — the laptop completed setup; its boot logs and snapshot are retrieved after each test.
-**Last verified:** 2026-11-02 — the snapshot now also records display connectors and cpufreq
+**Last verified:** 2026-11-02 — an enforcing 12-vCPU QEMU boot kept the whole startup in
+`android-boot.log*`: 25,419 entries (4,010,284 bytes, no archive dropped) from logd's first
+entry to boot completion, after which the copy stopped; no `dali_*` denials
+([summary](../../out/boot-window-log-validation/summary.txt)). `make qemu-check JOBS=12` passed
+and its setup [screen](../../out/boot-window-log-validation/screen.png) was inspected.
+Before that, the snapshot gained display connectors and cpufreq
 policies. An enforcing 12-vCPU QEMU boot recorded the virtual connector's status and modes, the
 service exited 0 with no `dali_hardware_diag` denials, and QEMU correctly shows no cpufreq
 ([snapshot](../../out/snapshot-display-cpu-validation/hardware.txt),
@@ -70,6 +75,8 @@ the autonomous investigation. The snapshot now also reports backlight permission
 requires both boot completion and log-preparation readiness, and rejects directory/symlink outputs.
 It also records DRM connector status/modes and each cpufreq policy's driver, governor, EPP and
 limits; Google's base policy already lets every domain read the cpufreq files.
+`android.log` rolls within about a minute of boot, so a third collector writes
+`android-boot.log*` until boot completes; QEMU's startup took 4.0 MB of its 8 MiB.
 
 ## Decisions
 - Command line is Google's, minus Intel-only arguments, minus SPI-flash write enables,
@@ -95,6 +102,8 @@ limits; Google's base policy already lets every domain read the cpufreq files.
   Linux retrieval from unencrypted metadata. Only current/previous boot are retained.
   Each stream rotates at 256 KiB with seven archives, leaving headroom below the agreed
   16 MiB per stream per boot and space for other files on the 64 MiB metadata partition.
+  A third copy, `android-boot.log`, rotates at 1 MiB (8 MiB total) and stops at boot completion,
+  because startup alone overflows the 2 MiB `android.log`.
   Collection begins at `post-fs`, not first-stage init; an earlier hang still needs a photo.
 - A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.dali.bootlog.ready=1`
   may read backlight, ALSA and loaded-module metadata
@@ -166,7 +175,10 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
-- 2026-11-02 (this commit) — Snapshot adds display connectors and cpufreq policies (to answer the
+- 2026-11-02 (this commit) — `android-boot.log` keeps the whole startup: in enforcing QEMU it held
+  25,419 entries (4.0 MB, no rotation loss) from logd's first entry to boot completion, then
+  stopped. `android.log` alone had lost them within a minute.
+- 2026-11-02 `e51523d` — Snapshot adds display connectors and cpufreq policies (to answer the
   HDMI and governor/EPP questions). 104 tests, image rebuild (system_ext only) and enforcing QEMU
   pass; laptop output awaits the owner's next retest.
 - 2026-11-02 `0ff3e8a` — Reviewed the owner's laptop snapshot and logs from `95b3bf6`
