@@ -54,9 +54,10 @@ Both reference ports boot this laptop. This project follows Churro's working bas
   service), the power HAL's 8-CPU masks, system_server polling the removed face HAL, composer
   gamma log spam (Churro sets a property name the composer does not read) and HDMI page flips.
   gbos-x86 also removes `udsattestation`.
-- **Behind:** Bluetooth (gbos-x86 builds btusb/btmtk for the MT7922), internal microphone and
-  HDMI audio, suspend, Vulkan HWUI. Several fixes still lack a laptop test. Remaining traps are in
-  signed ART and Rust code that cannot be swapped.
+- **Behind:** Bluetooth (Google's btusb/btmtk already probe the MT7922; its missing firmware is
+  now installed but untested), internal microphone and HDMI audio, suspend, Vulkan HWUI.
+  Several fixes still lack a laptop test. Remaining traps are in signed ART and Rust code that
+  cannot be swapped.
 
 ## Proposed order
 
@@ -64,7 +65,8 @@ This is a flexible order, not a commitment to do every item.
 
 1. **Laptop retest of the latest build — next.**
    The owner updates both the boot files (`make deploy-android`) and the OS partitions
-   (`update-os.sh`), then checks HDMI frame rate, the brightness slider and boot/app speed.
+   (`update-os.sh`), then checks HDMI frame rate, the brightness slider, boot/app speed and
+   Bluetooth pairing.
    The boot snapshot and logs are retrieved either way. See [laptop hardware](specs/laptop-hardware.md).
 
 2. **Remaining laptop hardware — one device at a time.**

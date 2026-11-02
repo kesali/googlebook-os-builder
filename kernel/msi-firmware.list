@@ -25,3 +25,5 @@ amdgpu/green_sardine_vcn.bin
 # MT7922 Wi-Fi (mt7921e): RAM code and ROM patch.
 mediatek/WIFI_RAM_CODE_MT7922_1.bin
 mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin
+# MT7922 Bluetooth (Google's btusb/btmtk): without it hci0 fails setup with -2.
+mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin

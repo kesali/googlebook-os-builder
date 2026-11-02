@@ -18,6 +18,8 @@ Verified on the laptop: the normal framebuffer-handoff boot, setup over Wi-Fi, k
 touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86; this is an
 impression, not a benchmark. Density 160 replaces 180 in the AMD profile only; QEMU keeps 240.
 GPU acceleration, Bluetooth, microphones and suspend have not been independently verified.
+In the `95b3bf6` kernel log, Google's `btusb`/`btmtk` found the MT7922 Bluetooth but `hci0` setup
+failed: `mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin` was missing. The official file is now installed.
 
 Audio and backlight were designed from the references, Google's HALs and this laptop's
 **host Linux** hardware, read-only ([evidence](../../out/hardware-fixes-validation/host-hardware.txt)):
@@ -49,7 +51,7 @@ and data. This work updated only the regular image; no physical disk was written
 | Keyboard | i8042 AT keyboard | `atkbd`; works |
 | Touchpad | ELAN0307:00 [04f3:3282] | AMD I2C, `i2c_hid_acpi`, `hid-multitouch`; works |
 | Wi-Fi | MT7922 [14c3:0616] | `mt7921e`; setup completed over Wi-Fi |
-| Bluetooth | MediaTek USB [0e8d:0616] | Not verified |
+| Bluetooth | MediaTek USB [0e8d:0616] | Google's `btusb`/`btmtk`; firmware added, untested |
 | Audio | HDA [1022:15e3], HDMI [1002:1637], ACP [1022:15e2] | ALC256 sound works (owner report); mic, HDMI audio not done |
 | Camera / SD reader | USB [30c9:0042], [0bda:0129] | Later |
 | Storage | Samsung PM9C1a NVMe [144d:a80d] | Hidden from laptop Android; boot from USB |
@@ -157,13 +159,15 @@ metadata/logd starts still needs a screen photo.
   generic bionic. Retrieve the snapshot and logs either way; the snapshot now records the
   connected displays and their modes, and the CPU governor/EPP actually in effect.
 - [ ] Headphone output — done when the owner hears media through the headphone jack.
+- [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up
+  without firmware errors. Check Wi-Fi still works: both run on the same MT7922.
 - [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
 - [ ] Diagnose the old framebuffer-free hard lockup only with a safe, evidence-based test.
 - [ ] Establish whether the touchpad needs `X86_AMD_PLATFORM_DEVICE` through a separately
   agreed diagnostic A/B test; leave the working production input path unchanged.
 
 ### Ideas (not approved)
-- Bluetooth, internal ACP microphone, HDMI audio, battery/suspend bring-up.
+- Internal ACP microphone, HDMI audio, battery/suspend bring-up.
 - Generalize the local OS updater only if needed; no passwordless physical-write udev rule.
 - CPU frequency policy: Google's command line sets `cpufreq.default_governor=performance`; with
   amd-pstate in active mode that probably keeps the EPP at `performance` (fast, but costs battery).
@@ -171,6 +175,8 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Installed the official MT7922 Bluetooth RAM code the `95b3bf6` boot
+  lacked. Vendor image holds the archive's exact bytes; QEMU has no Bluetooth, so it is untested.
 - 2026-11-02 `e51523d` — Snapshot now records DRM connectors and cpufreq policies, so the next
   retest shows HDMI state and the real governor/EPP. Verified in enforcing QEMU only.
 - 2026-11-02 `3f49946` — Power HAL CPU masks removed: with 12 vCPUs, QEMU cpusets went from

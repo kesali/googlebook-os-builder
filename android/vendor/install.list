@@ -70,9 +70,10 @@ firmware/amdgpu/green_sardine_rlc.bin   0644 0:0 vendor_firmware_file firmware/a
 firmware/amdgpu/green_sardine_sdma.bin  0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_sdma.bin
 firmware/amdgpu/green_sardine_ta.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_ta.bin
 firmware/amdgpu/green_sardine_vcn.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_vcn.bin
-# MT7922 Wi-Fi; Google's firmware/mediatek/ already holds the MT7961 files.
+# MT7922 Wi-Fi and Bluetooth; Google's firmware/mediatek/ already holds the MT7961 files.
 firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin        0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin
 firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin 0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin
+firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin    0644 0:0 vendor_firmware_file firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin
 
 # No face sensor: stops system_server polling for a face HAL. See no-face.xml.
 etc/permissions/dali-no-face.xml                                         0644 0:0    vendor_configs_file         ./no-face.xml

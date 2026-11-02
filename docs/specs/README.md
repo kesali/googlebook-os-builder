@@ -15,7 +15,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Confirm SurfaceFlinger/HWUI on the laptop use ANGLE/RADV (Chrome does) |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Owner retest of the latest build: HDMI frame rate, brightness slider, speed |
+| [Laptop hardware](laptop-hardware.md) | partial | Owner retest of the latest build: HDMI frame rate, brightness slider, speed, Bluetooth |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
