@@ -158,7 +158,9 @@ metadata/logd starts still needs a screen photo.
   HDMI connected, the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before).
   Retrieve the snapshot and logs either way; the snapshot now records the
-  connected displays and their modes, and the CPU governor/EPP actually in effect.
+  connected displays and their modes, and the CPU governor/EPP actually in effect. In
+  `android-boot.log`, compare `boot_progress_enable_screen` with `sf_stop_bootanim`: a long gap
+  means WindowManager waited for windows or the boot animation (QEMU waited ~30 s before `7d8e51f`).
 - [ ] Headphone output — done when the owner hears media through the headphone jack.
 - [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up
   without firmware errors. Check Wi-Fi still works: both run on the same MT7922.
