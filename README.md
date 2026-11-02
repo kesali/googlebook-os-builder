@@ -4,6 +4,11 @@ A small, readable build for developing a Googlebook OS port on the **MSI Modern 
 Google's recovery image is a read-only input, not something we patch with byte offsets.
 Upstream code is used unchanged where possible; each carried patch is small and explains its purpose.
 
+**Personal project, not a general-purpose distribution.** This build targets my own
+MSI Modern 15 B7M. Other hardware is untested, and no ongoing support or updates are
+promised. Use at your own risk and back up your data. Useful findings and fixes will
+be shared upstream where practical.
+
 **The laptop boots and completes setup over Wi-Fi; input, speakers, the built-in
 microphone and the webcam work.**
 It uses the AMD graphics profile (Chrome's logs show ANGLE on RADV) and feels faster than the
