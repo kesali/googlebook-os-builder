@@ -91,6 +91,9 @@ The pieces, with the files that implement them:
 3. Run `sudo bash out/usb-flash-android/update-os.sh`. The script checks the approved USB's
    by-id identity and its layout, writes only the OS partitions that changed, and reads each one
    back. It never touches userdata or metadata.
+4. Optional, once: `sudo bash out/usb-flash-android/grow-data.sh --erase-data [GiB]` enlarges the
+   data partition into the free space on the stick. Android cannot resize its encrypted `/data`, so
+   this erases it and setup runs again; the script asks you to type `ERASE` first.
 
 ## 4. What we change in Google's image
 

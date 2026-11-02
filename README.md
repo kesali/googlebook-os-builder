@@ -86,6 +86,19 @@ for Linux retrieval. These are Android logs, separate from the optional diagnost
    This is a machine-specific helper under ignored `out/`, not a portable installer or part of
    the build. It never writes Android userdata or metadata. Do not adapt its device identity
    or partition ranges by guessing. There is deliberately no automatic physical-disk writer.
+4. Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so
+   the owner's local [grow-data.sh](out/usb-flash-android/grow-data.sh) enlarges the `userdata`
+   partition into the free space behind it and blanks its first MiB; Android then formats `/data`
+   at the new size on the next boot. **That erases Android's accounts, apps and files** and setup
+   runs again, so it needs `--erase-data` and a typed `ERASE` (a blank partition grows without
+   them). Run it right after a flash and nothing of yours is lost. It never shrinks the partition
+   and refuses any other layout, with the same identity checks as `update-os.sh`:
+
+   ```sh
+   sudo -- bash out/usb-flash-android/grow-data.sh --erase-data 128   # GiB; omit the size for all free space
+   ```
+
+   Later `update-os.sh` runs accept the larger partition; reflashing returns to `ANDROID_DATA_GIB`.
 
 An unchanged image build writes no partitions or boot files. A successful QEMU check is a useful
 regression test, not proof of working laptop audio, brightness or GPU acceleration.

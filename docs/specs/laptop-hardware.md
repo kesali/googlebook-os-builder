@@ -165,6 +165,9 @@ metadata/logd starts still needs a screen photo.
 - [ ] Deploy the zram-writeback change — done when, after `update-os.sh` (vendor only, no data
   loss), the owner sees about 8 GiB less used in `/data` and boot/app speed is unchanged. Swap now
   relies on zram alone; the laptop effect is not measured.
+- [ ] Grow `/data` (optional, erases it) — done when `grow-data.sh --erase-data` has run on the
+  stick, `/data` shows the larger size after the next boot and setup completes again. Note whether
+  factory-reset protection asks for the previous Google account.
 - [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up
   without firmware errors. Check Wi-Fi still works: both run on the same MT7922.
 - [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
@@ -181,6 +184,9 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Owner-run `grow-data.sh` can enlarge /data into the stick's free space
+  (userdata can reach about 215 GiB), erasing it ([os-image](os-image.md)). Tested on file copies
+  and in QEMU only; the owner decides whether to run it.
 - 2026-11-02 (this commit) — Disabled mmd's zram writeback in the vendor `build.prop` ([os-image](os-image.md)),
   which stops an 8 GiB file being created in /data each boot. QEMU-verified only; the owner
   deploys it with `update-os.sh` (vendor only).

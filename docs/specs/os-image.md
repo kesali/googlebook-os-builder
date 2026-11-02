@@ -2,8 +2,9 @@
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
 **Last verified:** 2026-11-02 — `make android-image JOBS=12` rebuilt only vendor (24 s) with zram
-writeback off; a QEMU boot of it reached setup with SELinux enforcing and no 8 GiB writeback
-device in the kernel log, where the previous vendor image had one
+writeback off. A QEMU boot of a copy with userdata grown to 64 GiB and its first MiB zeroed (what
+`grow-data.sh` leaves) formatted `/data` at 61 GiB, reached setup with SELinux enforcing and had no
+8 GiB writeback device in the kernel log, where the previous vendor image had one
 ([evidence](../../out/data-growth-validation/)); `make test` passes 113 tests. Earlier the same day:
 `make android-image JOBS=12` (54 s) rebuilt system, vendor, system_ext and vendor_dlkm; every
 replaced Google file passed
@@ -76,6 +77,14 @@ QEMU test used a reflinked copy, and this candidate has not been transferred to 
   they already match, nothing is written. Only these two trees are touched.
 - The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a`, `vbmeta_a` — never
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
+- `/data` cannot grow without being erased: its ext4 has no `resize_inode` and ends on a
+  group-descriptor boundary (no online `resize2fs`), and an offline resize needs the metadata
+  encryption key, which we never extract. Enlarging the partition alone changes nothing. The
+  owner-run, ignored `out/usb-flash-android/grow-data.sh` enlarges `userdata` and, if it holds data,
+  blanks its first MiB so fs_mgr formats `/data` at the new size. Apart from a full flash it is the
+  only helper that writes userdata, and it needs `--erase-data` plus a typed `ERASE` whenever data
+  would be lost. It never shrinks, and `update-os.sh` accepts a larger userdata (its other layout
+  checks are unchanged).
 - Dependencies are per partition: Mesa, minigbm, firmware, emulator and crossystem rebuild vendor
   only; system_ext changes rebuild system_ext; the signed module manifest rebuilds vendor_dlkm.
 - Google's `/system/build.prop` turns on mmd's zram writeback, so `mmd_setup` makes an 8 GiB file in
@@ -121,11 +130,18 @@ must print no partition or boot-file writes and leave output timestamps unchange
 - Non-`ro.` properties in `/vendor/build.prop` override `/system/build.prop`; init logs
   `Overriding previous property '…':'true' with new value 'false'`. The serial shell cannot read
   mmd's properties (`getprop` prints nothing), so check that kernel-log line and `df /data`.
+- `grow-data.sh`'s USB identity and mount guards cannot run without the physical stick. Its logic
+  runs on regular-file copies shaped like it ([script-test.sh](../../out/data-growth-validation/script-test.sh),
+  68 checks, about 10 s). After a wipe, factory-reset protection may ask for the previous Google
+  account (untested).
 
 ## Actions
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Added the owner-run `grow-data.sh` (ignored, under out/) to enlarge /data;
+  it erases /data because no resize is possible. `update-os.sh` accepts a larger userdata. Tested on
+  file copies (68 checks) and a 64 GiB QEMU boot; the physical stick and its guards are untested.
 - 2026-11-02 (this commit) — Turned off Google's mmd zram writeback (`build-prop.patch`): it made an
   8 GiB file in /data every boot. QEMU, previous vs new vendor: `loop45` of 16,777,216 sectors and
   `zram: setup backing device` vs neither; setup reached, enforcing. Laptop effect not measured.
