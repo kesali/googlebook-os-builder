@@ -1,7 +1,13 @@
 # Boot chain
 
 **Status:** partial — the laptop completed setup; its boot logs and snapshot are retrieved after each test.
-**Last verified:** 2026-11-02 — an enforcing 12-vCPU QEMU boot kept the whole startup in
+**Last verified:** 2026-11-02 — the laptop's `95b3bf6` kernel log shows `earlycon=efifb` drawing
+686 early lines at 89 ms each: 60.8 s of its 104 s to `boot_completed`
+([summary](../../out/earlycon-validation/summary.txt)). The normal entry now omits it;
+`make android-uefi-check JOBS=12` passed, the early [screen](../../out/earlycon-validation/uefi-early-screen.png)
+still shows the kernel's drm_log and the graphical run reached [setup](../../out/earlycon-validation/uefi-setup-screen.png).
+The laptop's shorter boot is not yet measured.
+Before that, an enforcing 12-vCPU QEMU boot kept the whole startup in
 `android-boot.log*`: 25,419 entries (4,010,284 bytes, no archive dropped) from logd's first
 entry to boot completion, after which the copy stopped; no `dali_*` denials
 ([summary](../../out/boot-window-log-validation/summary.txt)). `make qemu-check JOBS=12` passed
@@ -58,7 +64,9 @@ from Google's boot images plus a short, readable list of our changes.
 ## Current state
 Verified: initrd = Google platform ramdisk + Google module ramdisk extended with our virtio
 modules + Google generic ramdisk + bootconfig; slot A boots normally; first-stage mounts succeed.
-Also verified through OVMF/GRUB on disposable USB disks for both menu entries.
+Also verified through OVMF/GRUB on disposable USB disks for the normal and framebuffer-free
+entries. The early-console debug entry was not booted; it differs only by `earlycon=efifb`,
+which the normal entry used until this change.
 The normal physical boot completed setup on the AMD desktop with working Wi-Fi, keyboard and
 touchpad. Actual GPU acceleration remains unverified. The framebuffer-free test reached
 Android early-init and panicked; its metadata logs are from the earlier boot.
@@ -97,6 +105,8 @@ limits; Google's base policy already lets every domain read the cpufreq files.
   from the first-stage module ramdisk.
 - A separate, non-default GRUB entry tests `initcall_blacklist=sysfb_init` without removing the
   NVMe blacklist. It is an experiment, not a proven display fix.
+- `earlycon=efifb` is only in a separate debug entry, as in Churro: it prints synchronously and
+  cost the laptop a minute per boot. The normal entry's screen log starts with simpledrm.
 - Persistent diagnostics use Google's logcat and `ro.logd.kernel=true`, not a custom logger.
   The owner approved a dedicated enforcing domain, a small rotation/readiness helper and
   Linux retrieval from unencrypted metadata. Only current/previous boot are retained.
@@ -154,8 +164,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
 - The direct-kernel VM uses NVMe 0; USB boot finds its disk through EFI-SYSTEM's PARTUUID.
 - Google's built-in command line selects `console=ttynull`; the laptop menu must explicitly
   add `console=drm_log` or the screen log will not register.
-- Disposable UEFI checks add a serial console that disables EFI earlycon. The laptop test lacks
-  it and showed slow firmware logging, so the QEMU pass does not rule out a console-related stall.
+- `earlycon=efifb` draws and scrolls every early kernel line on the uncached firmware framebuffer
+  before the kernel continues (89 ms per line on the laptop). Disposable UEFI checks add a serial
+  console, which disables it, so QEMU never shows this cost.
 - A boot-file update saves the current menu as `grub.previous.cfg`, replacing any older backup.
   Inspect that backup before asking the owner to update the USB.
 - Ramdisk packing normalises timestamps so unchanged inputs give identical bytes.
@@ -175,7 +186,10 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
-- 2026-11-02 (this commit) — `android-boot.log` keeps the whole startup: in enforcing QEMU it held
+- 2026-11-02 (this commit) — Normal laptop entry drops `earlycon=efifb` (60.8 s of the `95b3bf6`
+  boot); it moved to a debug entry. 104 tests and both UEFI checks pass; the laptop's new boot
+  time awaits the owner's boot-file update.
+- 2026-11-02 `43b21ac` — `android-boot.log` keeps the whole startup: in enforcing QEMU it held
   25,419 entries (4.0 MB, no rotation loss) from logd's first entry to boot completion, then
   stopped. `android.log` alone had lost them within a minute.
 - 2026-11-02 `e51523d` — Snapshot adds display connectors and cpufreq policies (to answer the

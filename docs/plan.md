@@ -31,7 +31,8 @@ removable once upstream covers it.
   instruction traps), no 10 s TPM wait (`boot_completed` 59.7 s → 49.9 s in QEMU), no
   per-frame/per-second log and polling noise, and the power HAL no longer confining apps to 8 of
   the 12 CPUs. Boot logs now also keep the whole startup, and the snapshot records displays and
-  the CPU governor.
+  the CPU governor. The normal GRUB entry no longer draws early kernel messages through the
+  firmware console, which took 61 s of the laptop's 104 s boot.
 - Image changes are readable lists and patches; updates preserve Android data. We build the
   kernel, Mesa/minigbm and the missing AMD/MediaTek modules; everything else is Google's or the
   emulator's unchanged prebuilts.

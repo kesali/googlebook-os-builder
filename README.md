@@ -44,7 +44,8 @@ Use a **64 GB or larger USB**, preferably USB 3. Flash [out/android/disk.img](ou
 with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
 For an existing Android USB, **update instead of reflashing**: a full flash would erase its
 Android accounts and data. Use the normal GRUB entry. The old framebuffer-free experiment
-panicked; a saved previous menu may predate the EFI crash-logging safeguard.
+panicked; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
+shows the earliest kernel messages for a black screen but adds about a minute to the boot.
 
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
 `1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.

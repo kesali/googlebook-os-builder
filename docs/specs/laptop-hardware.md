@@ -156,7 +156,8 @@ metadata/logd starts still needs a screen photo.
 ## Actions
 - [ ] Physical retest of `2ee6da9` or later — done when the owner reports the frame rate with
   HDMI connected, the brightness slider visibly changing the panel, and boot/app speed with the
-  generic bionic. Retrieve the snapshot and logs either way; the snapshot now records the
+  generic bionic and without the firmware early console (104 s to `boot_completed` before).
+  Retrieve the snapshot and logs either way; the snapshot now records the
   connected displays and their modes, and the CPU governor/EPP actually in effect.
 - [ ] Headphone output — done when the owner hears media through the headphone jack.
 - [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up

@@ -181,15 +181,23 @@ class DeployTests(unittest.TestCase):
         )
         self.assertEqual(kernel_arguments[-1], "$1")
         self.assertNotIn("initcall_blacklist=sysfb_init", kernel_arguments)
+        # The firmware console drew each early line synchronously: 60 s of the laptop's boot.
+        self.assertNotIn("earlycon=efifb", kernel_arguments)
         normal_entry = 'menuentry "Googlebook OS" {\n    boot_android\n}'
         test_entry = (
             'menuentry "Googlebook OS (test: no firmware framebuffer)" {\n'
             '    boot_android initcall_blacklist=sysfb_init\n}'
         )
+        debug_entry = (
+            'menuentry "Googlebook OS (debug: slow early screen log, for black screens)" {\n'
+            '    boot_android earlycon=efifb\n}'
+        )
         self.assertIn("set default=0\n", menu)
         self.assertIn(normal_entry, menu)
         self.assertIn(test_entry, menu)
+        self.assertIn(debug_entry, menu)
         self.assertLess(menu.index(normal_entry), menu.index(test_entry))
+        self.assertLess(menu.index(normal_entry), menu.index(debug_entry))
         self.assertIn(
             'menuentry "Previous build (may write UEFI crash records)" {\n'
             '        configfile ($root)/dali/grub.previous.cfg\n    }',
