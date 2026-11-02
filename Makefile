@@ -186,8 +186,8 @@ $(EXPAT_SRC)/.ready: $(EXPAT_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
 $(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
 	$(BUILDER) bash scripts/ndk.sh "$<" "$(@D)"
-$(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh
-	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super/vendor_a.img" "$(@D)"
+$(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh tools/lp.py
+	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super" "$(@D)"
 
 mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Zink and AMD Vulkan from source
 $(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready scripts/mesa.sh
@@ -274,11 +274,12 @@ ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID) 
 	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules
 # $* is the partition name: system, vendor, system_ext or vendor_dlkm.
 $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vendor_dlkm_a.img: $(ANDROID)/%_a.img: \
-		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh tools/fs_metadata.py
+		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh \
+		scripts/check-replacements.sh tools/fs_metadata.py
 	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $* android/$* "$@" $(ANDROID_INPUTS)
 
 # The directories catch removed files; the wildcards catch edited ones.
-$(ANDROID)/system_a.img: android/system $(wildcard android/system/*)
+$(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready
 $(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*)
 $(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
 		$(ANDROID_EMU)/.ready $(MESA)/manifest $(MINIGBM)/manifest $(FIRMWARE)/manifest $(ANDROID)/crossystem

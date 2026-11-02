@@ -74,5 +74,8 @@ firmware/amdgpu/green_sardine_vcn.bin   0644 0:0 vendor_firmware_file firmware/a
 firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin        0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin
 firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin 0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin
 
+# Generic x86-64 libz from the emulator image; see remove.list.
+lib64/libz.so                                                            0644 0:0    same_process_hal_file       emulator/vendor/lib64/libz.so
+
 # Source-built crossystem stub from android/crossystem-qemu.c; keeps Google's metadata.
 bin/crossystem                                                           0755 0:2000 firmware_tool_exec          build/crossystem

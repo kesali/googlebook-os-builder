@@ -1,32 +1,14 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-02 — `make android-image JOBS=12` updated vendor, system_ext,
-vendor_dlkm and boot files for the hardware candidate. Full filesystem metadata and read-back
-checks pass. All 52,168,658,944 bytes outside those regions match the preserved baseline,
-including userdata, metadata, GPT/liblp and other partitions
+**Last verified:** 2026-11-02 — `make android-image JOBS=12` (54 s) rebuilt system, vendor,
+system_ext and vendor_dlkm; every replaced Google file passed
+[check-replacements.sh](../../scripts/check-replacements.sh) and the full metadata comparison;
+the updater wrote only OS partitions. A repeat build took 16 s and left `disk.img` unmodified.
+103 unit tests pass; `make qemu-check` reaches setup ([screen](../../out/qemu/screen.png), inspected).
+Earlier: all 52,168,658,944 bytes outside the updated partitions matched a preserved baseline,
+including userdata, metadata and GPT/liblp
 ([comparison](../../out/hardware-fixes-validation/preservation-final.txt)).
-All 100 unit tests pass. An idle no-op took 15.94 s, preserved all 23 checked published outputs
-and wrote no partitions or boot files
-([timestamps](../../out/hardware-fixes-validation/noop-final-timestamps.json)).
-Disposable enforcing QEMU boots reach setup; the saved disk's data was never booted or replaced.
-Earlier, the diagnostic image was rebuilt with full filesystem metadata checks;
-51,657,060,352 bytes outside system/vendor/system_ext are unchanged, including userdata,
-metadata, GPT/liblp and ESP ([comparison](../../out/bootlog-validation/preservation-final.txt)).
-A no-op takes 22.4 s, writes nothing and preserves nanosecond timestamps of nine published
-outputs ([log](../../out/bootlog-validation/noop-final.log),
-[timestamps](../../out/bootlog-validation/noop-timestamps.txt)).
-Earlier: AMD image rebuilt with full metadata checks; all 52,168,658,944
-bytes outside vendor, system_ext, vendor_dlkm and ESP match the baseline, including userdata,
-metadata and GPT/liblp tables. No-op build: 16 s, no writes, all 25 checked output timestamps
-unchanged ([evidence](../../out/overnight/preservation.log), [no-op](../../out/overnight/noop-final.log)).
-Earlier: `make test` (40 tests); a recreated `out/android/disk.img` differs from
-the previous disk's table only by the missing `KERN-A` and the larger EFI-SYSTEM; 25 partitions are
-byte-identical to Google's; with the boot files written, `fsck.vfat` is clean on the ESP, a second
-`make android-image` wrote nothing, the bytes outside the ESP were unchanged and `make qemu-check`
-passed (logs in `out/m1-validation/`).
-2026-10-31 — all three partitions rebuilt with LZ4HC level 9 and fit; repeat rebuilds
-byte-identical; a no-op build (about 10 s) preserved output timestamps and wrote no partitions.
 
 ## Goal
 Turn Google's read-only recovery image into a private QEMU disk with a short list of explicit
@@ -60,6 +42,15 @@ QEMU test used a reflinked copy, and this candidate has not been transferred to 
 - The overlay script only applies changes; checks live elsewhere. Vendor programs we install may
   link only to vendor `lib64` or the platform LLNDK
   ([scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh), run by the vendor build).
+- A file listed in both `remove.list` and `install.list` replaces one of Google's and must be a
+  drop-in ([scripts/check-replacements.sh](../../scripts/check-replacements.sh), every partition):
+  an ELF file keeps every export that some program on the partition imports; an APEX keeps
+  Google's name, version and file list, and its public files (those the partition symlinks to)
+  keep every export.
+- Google builds bionic and libz for Panther Lake (GFNI, AVX-VNNI); on the MSI's Zen 3 each such
+  instruction traps into the kernel emulator. The same files from the pinned Android 17 emulator
+  image (generic x86-64, same API) replace them, as Churro does. This removed about 99.7% of
+  traps in QEMU (15.3 M → 44,644) and the softpipe boot animation ended at 66 s instead of 110 s.
 - Rebuild without root: `fsck.erofs` extraction and `mkfs.erofs` under fakeroot; original UUID
   kept; output must not exceed the original partition size. LZ4HC level 9 with 256 KiB clusters:
   2–3x faster to build than level 12 and about 0.2% larger (system 1053 MB of 1134 MB).
@@ -86,6 +77,7 @@ QEMU test used a reflinked copy, and this candidate has not been transferred to 
 - [android/vendor_dlkm/](../../android/vendor_dlkm/), [tools/laptop_module_check.py](../../tools/laptop_module_check.py) — new signed modules, dependencies and laptop alias checks.
 - [scripts/android-overlay.sh](../../scripts/android-overlay.sh) — applies one change directory; format in its header.
 - [scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh) — library check for vendor programs we install.
+- [scripts/check-replacements.sh](../../scripts/check-replacements.sh) — drop-in check for replaced Google files.
 - [scripts/android-partition.sh](../../scripts/android-partition.sh), [tools/fs_metadata.py](../../tools/fs_metadata.py) — rebuild and full comparison.
 - [scripts/android-disk.sh](../../scripts/android-disk.sh) — create the private disk once: data partition, FAT32 boot partition.
 - [tests/test_android_disk.py](../../tests/test_android_disk.py) — its layout and refusals on a synthetic Google-shaped disk.
@@ -116,6 +108,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Generic bionic/runtime APEX/libz from the emulator image, with a
+  drop-in check. QEMU traps 15.3 M → 44,644; boot animation 110 s → 66 s; setup inspected.
+  Hardware not yet tested: the runtime APEX's signing key differs from Google's (Churro boots it).
 - 2026-11-02 (this commit) — Hardware candidate rebuilt with metadata/read-back checks; 100
   tests pass. 52,168,658,944 unaffected bytes preserved; idle no-op 15.94 s, all 23 timestamps
   unchanged. Disposable enforcing setup/input checked; physical USB update remains the owner's step.

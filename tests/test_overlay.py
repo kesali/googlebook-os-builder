@@ -5,10 +5,12 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import zipfile
 
 REPO = Path(__file__).resolve().parents[1]
 OVERLAY = REPO / "scripts/android-overlay.sh"
 VENDOR_LIBS = REPO / "scripts/check-vendor-libs.sh"
+REPLACEMENTS = REPO / "scripts/check-replacements.sh"
 
 
 def entries(path):
@@ -141,6 +143,124 @@ class OverlayTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("not an existing regular file", result.stderr)
         self.assertEqual(outside.read_text(), "a=1\n")
+
+
+class ReplacementTests(unittest.TestCase):
+    """A file listed in both remove.list and install.list must be a drop-in for Google's."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.work = Path(directory.name)
+        self.google = self.work / "google"
+        self.root = self.work / "root"
+        self.changes = self.work / "changes"
+        for path in (self.google / "lib64", self.google / "bin", self.google / "apex",
+                     self.root / "lib64", self.root / "bin", self.root / "apex", self.changes):
+            path.mkdir(parents=True)
+
+    def library(self, path, symbols):
+        source = self.work / "library.c"
+        source.write_text("".join(f"int {symbol}(void) {{ return 0; }}\n" for symbol in symbols))
+        subprocess.run(["cc", "-shared", "-fPIC", "-o", str(path), str(source)], check=True)
+
+    def program(self, path, library, symbol):
+        """A program that imports SYMBOL from LIBRARY, as Google's programs import from theirs."""
+        source = self.work / "program.c"
+        source.write_text(f"int {symbol}(void);\nint main(void) {{ return {symbol}(); }}\n")
+        subprocess.run(["cc", "-o", str(path), str(source), str(library)], check=True)
+
+    def apex(self, path, manifest, payload, filesystem):
+        image = self.work / f"{path.name}.payload"
+        if filesystem == "erofs":
+            subprocess.run(["mkfs.erofs", "--quiet", str(image), str(payload)], check=True)
+        else:
+            subprocess.run(["mke2fs", "-q", "-t", "ext4", "-O", "^has_journal", "-d", str(payload),
+                            str(image), "1M"], check=True)
+        with zipfile.ZipFile(path, "w") as apex:
+            apex.writestr("apex_manifest.pb", manifest)
+            apex.write(image, "apex_payload.img")
+
+    def check(self, *replaced):
+        """Replace the Google files at REPLACED paths and run the check against the root."""
+        (self.changes / "remove.list").write_text("".join(f"{path}\n" for path in replaced))
+        (self.changes / "install.list").write_text(
+            "".join(f"{path} 0644 0:0 - input/{path}\n" for path in replaced))
+        partition = self.work / "google.img"
+        partition.unlink(missing_ok=True)
+        subprocess.run(["mkfs.erofs", "--quiet", str(partition), str(self.google)], check=True)
+        return subprocess.run(["bash", str(REPLACEMENTS), str(partition), str(self.changes), str(self.root)],
+                              capture_output=True, text=True)
+
+    def test_library_must_keep_the_exports_programs_import(self):
+        self.library(self.google / "lib64/libx.so", ["used", "internal"])
+        self.program(self.root / "bin/program", self.google / "lib64/libx.so", "used")
+        self.library(self.root / "lib64/libx.so", ["used", "internal", "extra"])
+        result = self.check("lib64/libx.so")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("lib64/libx.so is a drop-in replacement", result.stdout)
+
+        # Our source builds may drop internal helpers that no program imports.
+        self.library(self.root / "lib64/libx.so", ["used"])
+        result = self.check("lib64/libx.so")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        self.library(self.root / "lib64/libx.so", ["internal"])
+        result = self.check("lib64/libx.so")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("lib64/libx.so: replacement lacks exports", result.stderr)
+        self.assertIn("used", result.stderr)
+
+        (self.root / "lib64/libx.so").write_text("not ELF\n")
+        result = self.check("lib64/libx.so")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("replacement is not an ELF file", result.stderr)
+
+    def test_apex_must_match_name_version_files_and_public_exports(self):
+        google, ours = self.work / "google-payload", self.work / "our-payload"
+        for payload in (google, ours):
+            (payload / "lib64").mkdir(parents=True)
+            (payload / "etc").mkdir()
+            (payload / "etc/config.txt").write_text(payload.name)
+        self.library(google / "lib64/libc.so", ["allocate", "internal"])
+        self.library(google / "lib64/libprivate.so", ["helper", "newer_helper"])
+        self.apex(self.google / "apex/runtime.apex", b"runtime 1", google, "erofs")
+        # The partition links to the APEX's public files through symlinks, as Google's
+        # system/lib64/libc.so does to the runtime APEX.
+        (self.root / "lib64/libc.so").symlink_to("/apex/runtime/lib64/libc.so")
+
+        cases = [
+            ("same", b"runtime 1", ["allocate", "internal", "extra"], None, None),
+            # Nothing in the partition imports "internal", but programs on every partition
+            # link to the APEX's public files, so they must export everything Google's do.
+            ("missing export", b"runtime 1", ["allocate"], None, "./lib64/libc.so: replacement lacks exports"),
+            ("other version", b"runtime 2", ["allocate", "internal"], None, "different name or version"),
+            ("extra file", b"runtime 1", ["allocate", "internal"], "etc/extra.txt", "different file list"),
+        ]
+        for name, manifest, symbols, extra, error in cases:
+            with self.subTest(case=name):
+                self.library(ours / "lib64/libc.so", symbols)
+                # Private files only serve the APEX's own build, which comes as a whole.
+                self.library(ours / "lib64/libprivate.so", ["helper"])
+                if extra:
+                    (ours / extra).write_text("extra")
+                self.apex(self.root / "apex/runtime.apex", manifest, ours, "ext4")
+                result = self.check("apex/runtime.apex")
+                if extra:
+                    (ours / extra).unlink()
+                if error is None:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("apex/runtime.apex is a drop-in replacement", result.stdout)
+                else:
+                    self.assertNotEqual(result.returncode, 0, result.stdout)
+                    self.assertIn(error, result.stderr)
+
+        self.library(ours / "lib64/libc.so", ["allocate", "internal"])
+        self.apex(self.root / "apex/runtime.apex", b"runtime 1", ours, "ext4")
+        (self.root / "lib64/libc.so").unlink()
+        result = self.check("apex/runtime.apex")
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("no symlink into /apex/runtime shows which of its files are public", result.stderr)
 
 
 class ChangeDataTests(unittest.TestCase):

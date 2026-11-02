@@ -38,6 +38,10 @@ usr/share/fwupd
 # Replaced by our source-built QEMU stub; see install.list.
 bin/crossystem
 
+# Google's Panther Lake libz traps on older CPUs; install.list uses the emulator image's
+# generic build. See android/system/remove.list.
+lib64/libz.so
+
 # Source-built allocator with the AMD Mesa backend; services and mapper remain Google's.
 lib64/libgbm.so
 lib64/libminigbm_gralloc.so

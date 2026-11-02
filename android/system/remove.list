@@ -6,3 +6,20 @@
 system/etc/init/update_engine.rc
 # Chrome OS EC log collection; the VM has no EC.
 system/etc/init/timberslide.rc
+
+# Google builds these for Panther Lake and uses GFNI and AVX-VNNI without asking the CPU. On
+# older CPUs every such instruction traps into the kernel's emulator; these files caused most
+# traps on the MSI (Ryzen 5 7530U). install.list puts back the emulator image's generic x86-64
+# builds of the same files from the same Android release; scripts/check-replacements.sh checks
+# they are drop-in replacements. Drop this group when the CPU has GFNI and AVX-VNNI.
+# libz: Adler-32 and inflate (APKs, PNGs, downloads).
+system/lib64/libz.so
+# bionic for init and the processes that start before APEXes are mounted.
+system/lib64/bootstrap/libc.so
+system/lib64/bootstrap/libm.so
+system/lib64/bootstrap/libdl.so
+system/lib64/bootstrap/libdl_android.so
+system/bin/bootstrap/linker64
+# bionic for everything else: the whole runtime APEX, with the same name, version and file list.
+# apexd trusts APEX files on /system; this module is not updated through the Play Store.
+system/apex/com.android.runtime.apex

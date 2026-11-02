@@ -174,6 +174,7 @@ use `make deploy`, **not** another whole-stick flash.
 | [android/system/](android/system/), [android/system_ext/](android/system_ext/), [android/vendor/](android/vendor/), [android/module_ramdisk/](android/module_ramdisk/) | Every change to Google's files: `remove.list`, `install.list` and `*.patch` per target |
 | [scripts/android-overlay.sh](scripts/android-overlay.sh) | Applies one change directory: removes, installs with owner/mode/label, patches in place |
 | [scripts/check-vendor-libs.sh](scripts/check-vendor-libs.sh) | Refuses vendor programs we install that link to libraries Android would not find |
+| [scripts/check-replacements.sh](scripts/check-replacements.sh) | Refuses replacements of Google's files that are not drop-in: missing imported exports, or an APEX with another name, version or file list |
 | [scripts/android-partition.sh](scripts/android-partition.sh), [tools/fs_metadata.py](tools/fs_metadata.py) | Rootless EROFS rebuilding and complete content/metadata comparison |
 | [tools/android_sync.py](tools/android_sync.py) | Named OS partition updates, preserving Android's data |
 | [tools/android_smoke.py](tools/android_smoke.py), [tools/android_console.py](tools/android_console.py) | Full-boot checks and framed serial-shell commands |
@@ -325,6 +326,11 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   composer from displaying anything. This is a small **source patch**, not a binary edit or
   added service privilege. [android/vendor/build-prop.patch](android/vendor/build-prop.patch)
   contains common graphics settings; [graphics profiles](android/system_ext/) select the renderer.
+- Google builds bionic (libc, linker and the runtime APEX) and libz for Intel Panther Lake. On
+  older CPUs their GFNI/AVX-VNNI instructions trap into the kernel's emulator thousands of times
+  a second. The same files from the pinned Android 17 emulator image, a generic x86-64 build,
+  replace them **unmodified**; [scripts/check-replacements.sh](scripts/check-replacements.sh)
+  checks each is a drop-in. Remaining traps are rare (Rust std, HWUI, ART).
 - Google firmware updaters, OTA and the absent EC logger are removed. The only replacement
   firmware command is [android/crossystem-qemu.c](android/crossystem-qemu.c), compiled from source:
   it accepts the boot HAL's success assignments for this VM, rejects everything else, and never

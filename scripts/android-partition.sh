@@ -15,6 +15,7 @@ trap 'rm -rf "$work"' EXIT
 source=$google/super/${partition}_a.img
 fsck.erofs --extract="$work/root" --xattrs --preserve "$source"
 bash "$scripts/android-overlay.sh" "$changes" "$work/root" "$@"
+bash "$scripts/check-replacements.sh" "$source" "$changes" "$work/root"
 if [ "$partition" = vendor ]; then
     dump.erofs --path=/system/etc/llndk.libraries.txt --cat "$google/super/system_a.img" > "$work/llndk.txt"
     bash "$scripts/check-vendor-libs.sh" "$changes/install.list" "$work/root" "$work/llndk.txt"

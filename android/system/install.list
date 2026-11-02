@@ -1,0 +1,13 @@
+# Files added to Google's system partition. See scripts/android-overlay.sh.
+# Sources: emulator/ is the pinned Android emulator image (scripts/emulator.sh).
+#
+# path                                        mode owner  selinux type              source
+
+# Generic x86-64 libz and bionic; see remove.list.
+system/lib64/libz.so                          0644 0:0    system_lib_file           emulator/system/system/lib64/libz.so
+system/lib64/bootstrap/libc.so                0644 0:0    system_bootstrap_lib_file emulator/system/system/lib64/bootstrap/libc.so
+system/lib64/bootstrap/libm.so                0644 0:0    system_bootstrap_lib_file emulator/system/system/lib64/bootstrap/libm.so
+system/lib64/bootstrap/libdl.so               0644 0:0    system_bootstrap_lib_file emulator/system/system/lib64/bootstrap/libdl.so
+system/lib64/bootstrap/libdl_android.so       0644 0:0    system_bootstrap_lib_file emulator/system/system/lib64/bootstrap/libdl_android.so
+system/bin/bootstrap/linker64                 0755 0:2000 system_linker_exec        emulator/system/system/bin/bootstrap/linker64
+system/apex/com.android.runtime.apex          0644 0:0    system_file               emulator/system/system/apex/com.android.runtime.apex
