@@ -4,9 +4,9 @@ A small, readable build for developing a Googlebook OS port on the **MSI Modern 
 Google's recovery image is a read-only input, not something we patch with byte offsets.
 Upstream code is used unchanged where possible; each carried patch is small and explains its purpose.
 
-**The laptop boots and completes setup over Wi-Fi:** keyboard and touchpad work.
-Sound and screen brightness are still being brought up. QEMU keeps a Mesa softpipe fallback;
-the laptop uses the AMD graphics profile, with acceleration not yet measured.
+**The laptop boots and completes setup over Wi-Fi; keyboard, touchpad and sound work.**
+It uses the AMD graphics profile (Chrome's logs show ANGLE on RADV) and feels faster than the
+two reference ports, though nothing is benchmarked yet. QEMU keeps a Mesa softpipe fallback.
 Software KeyMint/Gatekeeper come from Google's emulator. No KernelSU, dual-boot
 installer, host-GPU passthrough or raw physical-disk writes by the build. The separate USB diagnostic target is
 retained, but it does not run Android.
@@ -49,8 +49,9 @@ panicked; a saved previous menu may predate the EFI crash-logging safeguard.
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
 `1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
 Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm
-are included. The owner has completed setup and used Wi-Fi and input. Sound and brightness still
-need a physical retest after changes; Bluetooth, microphones and suspend are not verified.
+are included. The owner has completed setup and uses Wi-Fi, input and sound. The brightness
+slider, HDMI frame rate and Bluetooth await a retest of the latest build; microphones and
+suspend are not done.
 Details and evidence: [laptop hardware](docs/specs/laptop-hardware.md).
 Persistent kernel/Android diagnostics use native logcat and retain current/previous boot on metadata,
 with an explicitly approved scoped enforcing policy. See [boot](docs/specs/boot.md) for limits/coverage
@@ -85,65 +86,6 @@ for Linux retrieval. These are Android logs, separate from the optional diagnost
 
 An unchanged image build writes no partitions or boot files. A successful QEMU check is a useful
 regression test, not proof of working laptop audio, brightness or GPU acceleration.
-
-## Optional USB diagnostics (not Android)
-
-Needs Linux, Docker, GNU make, Python 3 and about 15 GB free. Compilation runs as your user in
-Debian, with four jobs by default (`JOBS=6` overrides it). The first run downloads source and
-builder packages. There is no root container, host package installation or loop-device setup.
-
-```sh
-make builder
-make usb                 # kernel from source + BusyBox + GRUB -> out/dali-usb.img
-make smoke               # boot a disposable copy through UEFI in QEMU
-make test                # focused deployment and safety tests
-```
-
-Flash `out/dali-usb.img` with your preferred USB imaging tool, carefully selecting the USB.
-**Flashing erases that USB.** `make usb` itself only creates a 514 MiB regular image file;
-it never chooses or writes a physical disk. Disable Secure Boot and boot the USB's UEFI entry.
-The shell uses the laptop screen and keyboard. An external USB keyboard is a fallback while
-the laptop's input devices are being brought up.
-
-The root filesystem is temporary RAM. `/boot` is this USB's FAT filesystem, selected by the
-UUID passed from GRUB, not by scanning internal disks for a label. The kernel has internal
-NVMe/SATA/MMC, SPI flash, TPM and EFI capsule writing disabled. No Google firmware updater or
-installer is included. Logs are `/boot/logs/kernel.log`, `kernel.previous.log`, and `hardware.txt`
-(PCI and USB devices with the driver each one got, input devices, I2C devices, partitions, CPU).
-Use `umount /boot && poweroff -f` to shut down cleanly before removing the USB.
-
-## The fast development loop
-
-Back in Linux, mount the USB's **DALI-BOOT** partition through your file manager. Then:
-
-```sh
-# Edit boot/init, then:
-make deploy USB=/run/media/$USER/DALI-BOOT
-```
-
-This invokes the upstream incremental builds, but only changed outputs are published:
-
-| Changed input | Rebuilt | Written to USB |
-|---|---|---|
-| `boot/init` | initramfs | new initramfs + boot menu |
-| kernel source or `kernel/msi-diagnostic.config` | kernel via Kbuild | new kernel + boot menu |
-| `boot/menu.cfg` | boot menu | boot menu only |
-| nothing | nothing | **no files** |
-
-Deployment refuses raw devices, non-mountpoints, internal disks, read-only/non-FAT filesystems,
-symlinks and USBs without the Dali marker. It verifies bundle hashes, checks the actual destination
-contents, writes and reads back new files, then changes the menu last. Logs, other user files and
-other partitions are not touched. A failed transfer before that switch leaves the old menu.
-The previous menu is available in GRUB.
-
-Old content-addressed kernel/initramfs files are deliberately retained; they are not automatically
-deleted. If space runs out, deployment fails explicitly. Remove obsolete `dali/kernel-<hash>` and
-`dali/initramfs-<hash>` files only after checking that **neither** `dali/grub.cfg` **nor**
-`dali/grub.previous.cfg` references them. Do not unplug during an update: FAT is not journalled,
-and rename/fsync are not a guarantee against power loss or a USB controller lying about flushes.
-
-`make image` / `make usb` assembles a fresh image when its bundle changes. For rapid iterations
-use `make deploy`, **not** another whole-stick flash.
 
 ## Where to read the code
 
@@ -365,25 +307,52 @@ incrementally. Downloads are kept by SHA-256 and never refetched; Meson configur
 its settings change. Only affected EROFS filesystems are rebuilt, and only changed OS partitions
 are copied into the existing disk. An unchanged build writes no disk partitions.
 
-## Hardware scope and next steps
+## Hardware status
 
-| Part | First diagnostic image | Android bring-up later |
-|---|---|---|
-| Ryzen 5 7530U | Source-based VEX GFNI/AVX-VNNI emulation + small boot self-test | Broader emulator correctness/performance testing |
-| USB xHCI/storage/HID | Built into kernel | More device coverage |
-| UEFI display | Firmware framebuffer console | AMD candidate built; physical rendering unverified |
-| ELAN0307 touchpad (AMD I2C, GPIO, I2C HID, multitouch) | Registered on the laptop; motion/gestures untested | Same drivers in the Android kernel |
-| MT7922 Wi-Fi / Bluetooth | Not enabled yet | `mt7921e`, `btusb`/`btmtk`, firmware |
-| Audio | HDA probes; audio not validated | HDA + AMD ACP |
-| Internal NVMe | Deliberately disabled | Explicit dev partition support later |
-
-The diagnostic column describes the older diagnostic USB. The Android image now includes the AMD
-graphics candidate, but physical rendering, input, Wi-Fi and audio remain unverified; no installer is added.
+Device-by-device status, evidence and next steps for the laptop are in
+[laptop hardware](docs/specs/laptop-hardware.md); the overall order of work is in the
+[project plan](docs/plan.md).
 
 **Known emulator limitation:** the imported patch handles VEX GFNI, not legacy SSE-encoded
 GFNI (the initial boot test confirmed that the latter raises SIGILL). The positive self-test
 checks VEX `vgf2p8mulb` and `vpdpbusd` results, not every instruction/encoding or full Android
 compatibility. Keep that distinction when evaluating new userspace binaries.
+
+## Optional USB diagnostics (parked, not Android)
+
+Needs Linux, Docker, GNU make, Python 3 and about 15 GB free. Compilation runs as your user in
+Debian, with four jobs by default (`JOBS=6` overrides it). The first run downloads source and
+builder packages. There is no root container, host package installation or loop-device setup.
+
+```sh
+make builder
+make usb                 # kernel from source + BusyBox + GRUB -> out/dali-usb.img
+make smoke               # boot a disposable copy through UEFI in QEMU
+make test                # focused deployment and safety tests
+```
+
+Flash `out/dali-usb.img` with your preferred USB imaging tool, carefully selecting the USB.
+**Flashing erases that USB.** `make usb` itself only creates a 514 MiB regular image file;
+it never chooses or writes a physical disk. Disable Secure Boot and boot the USB's UEFI entry.
+The shell uses the laptop screen and keyboard. An external USB keyboard is a fallback while
+the laptop's input devices are being brought up.
+
+The root filesystem is temporary RAM. `/boot` is this USB's FAT filesystem, selected by the
+UUID passed from GRUB, not by scanning internal disks for a label. The kernel has internal
+NVMe/SATA/MMC, SPI flash, TPM and EFI capsule writing disabled. No Google firmware updater or
+installer is included. Logs are `/boot/logs/kernel.log`, `kernel.previous.log`, and `hardware.txt`
+(PCI and USB devices with the driver each one got, input devices, I2C devices, partitions, CPU).
+Use `umount /boot && poweroff -f` to shut down cleanly before removing the USB.
+
+| Part | Diagnostic image |
+|---|---|
+| Ryzen 5 7530U | Source-based VEX GFNI/AVX-VNNI emulation + small boot self-test |
+| USB xHCI/storage/HID | Built into kernel |
+| UEFI display | Firmware framebuffer console |
+| ELAN0307 touchpad (AMD I2C, GPIO, I2C HID, multitouch) | Registered on the laptop; motion/gestures untested |
+| MT7922 Wi-Fi / Bluetooth | Not enabled |
+| Audio | HDA probes; audio not validated |
+| Internal NVMe | Deliberately disabled |
 
 Validated locally: nine deployment/safety tests; UEFI QEMU boot through GRUB and the
 source-built kernel; both supported instruction tests trapping into the emulator; saved USB logs;
@@ -391,8 +360,40 @@ clean poweroff; unchanged output timestamps on a no-op build; and no kernel/load
 for an initramfs-only change. Physical USB flashing, read-back comparison and filesystem checks
 are verified. The owner confirmed the first laptop diagnostic boot and shutdown; saved logs
 show passing instruction tests, keyboard/touchpad registration and no internal NVMe block
-device. Touchpad motion/gestures and Android on the laptop remain untested. See
-[USB diagnostics](docs/specs/usb-diagnostic.md) for the evidence and remaining warnings.
+device. See [USB diagnostics](docs/specs/usb-diagnostic.md) for the evidence and remaining warnings.
+
+### Updating the diagnostic USB
+
+Back in Linux, mount the USB's **DALI-BOOT** partition through your file manager. Then:
+
+```sh
+# Edit boot/init, then:
+make deploy USB=/run/media/$USER/DALI-BOOT
+```
+
+This invokes the upstream incremental builds, but only changed outputs are published:
+
+| Changed input | Rebuilt | Written to USB |
+|---|---|---|
+| `boot/init` | initramfs | new initramfs + boot menu |
+| kernel source or `kernel/msi-diagnostic.config` | kernel via Kbuild | new kernel + boot menu |
+| `boot/menu.cfg` | boot menu | boot menu only |
+| nothing | nothing | **no files** |
+
+Deployment refuses raw devices, non-mountpoints, internal disks, read-only/non-FAT filesystems,
+symlinks and USBs without the Dali marker. It verifies bundle hashes, checks the actual destination
+contents, writes and reads back new files, then changes the menu last. Logs, other user files and
+other partitions are not touched. A failed transfer before that switch leaves the old menu.
+The previous menu is available in GRUB.
+
+Old content-addressed kernel/initramfs files are deliberately retained; they are not automatically
+deleted. If space runs out, deployment fails explicitly. Remove obsolete `dali/kernel-<hash>` and
+`dali/initramfs-<hash>` files only after checking that **neither** `dali/grub.cfg` **nor**
+`dali/grub.previous.cfg` references them. Do not unplug during an update: FAT is not journalled,
+and rename/fsync are not a guarantee against power loss or a USB controller lying about flushes.
+
+`make image` / `make usb` assembles a fresh image when its bundle changes. For rapid iterations
+use `make deploy`, **not** another whole-stick flash.
 
 ## Source attribution
 
