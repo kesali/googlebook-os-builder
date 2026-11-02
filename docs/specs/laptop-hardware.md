@@ -1,8 +1,29 @@
 # Laptop hardware
 
-**Status:** partial — two laptop boots reached Android userspace, then SurfaceFlinger crash-looped
-on missing GPU sysfs labels. Fixed and verified in QEMU; the fix is on the USB, awaiting the owner's retest.
-**Last verified:** 2026-11-01 — the stick's `/metadata`, read-only after the laptop boots
+**Status:** partial — the laptop shows the setup screen with the touchpad; Wi-Fi, sound and DPI are missing.
+**Last verified:** 2026-11-02 — the owner booted the USB's normal entry: the setup screen
+appeared and the touchpad worked. The UI was oversized (Google's density 240; Churro uses 180),
+no sound was heard and Wi-Fi did not work, so setup could not be completed. Keyboard and GPU
+acceleration were not checked.
+Earlier that day: the new kernel hands simpledrm card0 to virtio in an offline
+disposable UEFI boot; [setup](../../out/fb2/android-uefi-console-g0b93ipe/before-input.png)
+responded to a [mouse click](../../out/fb2/android-uefi-console-g0b93ipe/after-input.png).
+EFI pstore was disabled and the NVMe decoy stayed unchanged. The owner updated the USB boot
+files; [read-back matched](../../out/framebuffer-handoff-evidence/usb-update-readback.txt)
+and the owner reported that a repeat update wrote nothing.
+2026-11-01 — the owner's framebuffer-free test hard-locked. EFI crash records
+show an RCU stall before a duplicate `i2c_hid_acpi` load failed; the cause remains unknown.
+The panic wrote 21 EFI crash records.
+Earlier, the owner's USB retest left kernel logs on screen. Recovered
+[kernel logs](../../out/laptop-boot-2026-11-01/physical-boot-logs/recovered/kernel.log.2)
+show amdgpu on minor 1; [Android logs](../../out/laptop-boot-2026-11-01/physical-boot-logs/recovered/android.log.7)
+show repeated invalid present fences. The framebuffer-free GRUB entry passed a disposable QEMU
+shell check and was verified on the updated USB before the laptop test.
+Earlier, 19 focused tests and three disposable UEFI boots verified the diagnostic candidate:
+enforcing native collectors, real logs and two-boot retention
+([results](../../out/bootlog-validation/persistence-checked.log),
+[setup screenshot](../../out/bootlog-validation/rotation-checked/boot-3/screen.png) inspected).
+Before that: the stick's `/metadata`, read-only after the laptop boots
 ([evidence](../../out/laptop-boot-2026-11-01/metadata-evidence.txt)), shows Android's init, apexd
 and aconfigd ran. A QEMU VM with its GPU at the laptop's PCI path reproduced the loop and reaches
 setup with the fix ([before/after](../../out/laptop-boot-2026-11-01/qemu-repro/)). `make test` and
@@ -31,42 +52,54 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), adding drivers one at a t
 updating the USB incrementally instead of reflashing.
 
 ## Current state
-The laptop candidate is [out/android/disk.img](../../out/android/disk.img), 53,430,190,080 B
+The base image is [out/android/disk.img](../../out/android/disk.img), 53,430,190,080 B
 (49.8 GiB; use a 64 GB or larger USB). It is not the 514 MiB diagnostic image.
-It contains the shared kernel/OS, UEFI boot files, signed AMD modules, 23 official runtime firmware
+It contains the previous kernel/OS, UEFI boot files, signed AMD modules, 23 official runtime firmware
 blobs and the RADV/Zink/minigbm graphics stack. On 2026-11-01 it was written unchanged to the
 BUP Slim by a one-time checked sudo script ([flash.sh](../../out/usb-flash-android/flash.sh)):
 35 MB/s write, then a full read-back that matched. Then `sfdisk --relocate gpt-bak-std` moved the
-backup GPT to the disk end; the partition table (same PARTUUIDs), GPT entries and ESP bytes still
-match and `fsck.fat` is clean. The stick also carries the disk's QEMU userdata (6.2 GiB in use).
+backup GPT to the disk end; at that point the partition table (same PARTUUIDs), GPT entries and
+ESP bytes matched and `fsck.fat` was clean. The stick also carries the disk's QEMU userdata
+(6.2 GiB in use).
 The owner booted it twice: the screen slowly repeated the same init lines. Google labels the GPU's
 sysfs identification files (`vendor`, `device`, …) only at Intel's `00:02.0`; our patch labelled
 only `uevent` at the laptop's `00:08.1/03:00.0`. libdrm skipped the GPU, Mesa found no DRM device
 and SurfaceFlinger aborted; in QEMU at the same path init restarted it, and killed zygote, 118
 times in 10 minutes. [file-contexts.patch](../../android/vendor/file-contexts.patch) now labels
 Google's full set; [update-os.sh](../../out/usb-flash-android/update-os.sh) put it on the stick.
+The owner then updated the OS partitions and retested: Android reached boot-complete, but the
+screen stayed on the kernel log. Simpledrm took minor 0 before amdgpu registered as minor 1.
+The composer may have missed the GPU if card0 was absent; its startup messages rotated out, so
+this remains a hypothesis. The owner confirmed that their Churro build booted this laptop with
+AMD and touchpad working; its framebuffer handoff is now built and QEMU-verified, not yet tested
+on the laptop.
+The opt-in GRUB entry tests the hypothesis without changing the normal default;
+the owner updated the USB menu, and read-back confirmed the new menu and original backup. That
+test later hard-locked during early-init; no usable display or new metadata logs were recovered.
 The first diagnostic boot passed both instruction-emulation tests and registered the internal
 keyboard and ELAN0307 touchpad with `hid-multitouch`. Pointer motion/gestures were not tested.
 The same boot drew the screen through simpledrm at 0.50 s (`simple-framebuffer.0`, 128x48 text).
 The Android kernel has the touchpad/simpledrm/drm_log built-ins and modular amdgpu
 ([gki.config](../../kernel/gki.config)). All 4501 Google exports keep their CRCs, and Google's ABI
-whitelist and helper modules remain unchanged. No physical-laptop driver is verified.
+whitelist and helper modules remain unchanged. AMD module initialization is verified, but a
+usable display and the other laptop devices remain unverified.
 The USB for Android is the BUP Slim (232.9 GiB). It linked at USB 2.0 (480 Mb/s, 39 MB/s
 sequential, 0.34 ms random reads); Linux calls it rotational, but the media type is unknown.
 `out/android/disk.img` has the USB's layout: Google's all-zero EFI-SYSTEM (64 MiB) and `KERN-A`
 (512 MiB) are one 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`, same PARTUUID; see [os-image.md](os-image.md)).
 `make android-boot` fills it with the laptop's boot files: GRUB, the GKI kernel, the initrd and a
 menu ([android-menu.cfg](../../boot/android-menu.cfg)) holding Android's command line plus
-`panic=0 earlycon=efifb printk.devkmsg=on console=drm_log initcall_blacklist=nvme_init`. The files match the build's
-hashes and `fsck.vfat` is clean. QEMU's direct-kernel boot ignores the partition and still reaches
-the setup welcome page.
+`panic=0 earlycon=efifb printk.devkmsg=on console=drm_log initcall_blacklist=nvme_init`.
+The prior image's boot files matched their build hashes and passed `fsck.vfat`. QEMU's
+direct-kernel boot ignores the partition and still reaches the setup welcome page.
 OVMF reads the ESP and GRUB loads the GKI kernel and initrd from it. Android mounts the USB's
 partitions (`sda`, EFI-SYSTEM at `sda12`) with SELinux enforcing; `nvme_init` hides the decoy.
 The test uses `virtio-vga` to verify simpledrm/drm_log, and `virtio-gpu-pci` without a firmware
-framebuffer to verify the setup UI. With both simpledrm and virtio active, the visible virtio
-screen had only the status bar, not a usable setup UI; the two-pass check does not fix that.
-Not verified: AMD device binding/rendering, a framebuffer-to-GPU handoff, UAS boot, physical input
-or a usable Android screen on the laptop. Wi-Fi, Bluetooth, audio and suspend have not been brought up.
+framebuffer to verify the setup UI. Before the new handoff, both active together showed only a
+status bar. The new kernel's combined offline QEMU boot reaches setup and accepts a mouse click.
+The USB now has the new kernel; the original disk retains the previous kernel. Not verified: AMD
+handoff/rendering, UAS boot, physical input or a usable Android screen on the laptop. Wi-Fi,
+Bluetooth, audio and suspend have not been brought up.
 The devices below were read from this laptop running a desktop Linux (`lspci -nnk`, `lsusb`,
 `/proc/bus/input/devices`).
 
@@ -109,7 +142,10 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
   uses an NVMe disk and keeps it. The UEFI test must show a decoy NVMe disk is never enumerated
   and stays byte-identical (owner agreed, 2026-11-01).
 - Explicitly select `console=drm_log`: Google's built-in `console=ttynull` otherwise suppresses
-  the screen log even when simpledrm registers. No kernel patch or policy change is needed.
+  the screen log even when simpledrm registers. This console setting needs no policy change;
+  the separate source patch handles the proposed framebuffer handoff.
+- Use the Churro-based PCI framebuffer handoff without changing touchpad drivers, the NVMe
+  blacklist or the EFI safeguard; validate it before an owner-approved USB update and laptop boot.
 - Updates: boot files go to the mounted ESP without sudo. OS partitions are raw writes to the
   stick, only with the owner's explicit approval, a checked by-id USB target and a sudo
   password typed locally (VS Code task). No udev rule.
@@ -119,6 +155,12 @@ The devices below were read from this laptop running a desktop Linux (`lspci -nn
   code needs no exports, so Google's ABI list and CRCs should stay intact (`make gki` checks).
   Larger drivers (`amdgpu`, Wi-Fi, audio) stay modules (see [kernel.md](kernel.md)).
 - Firmware is never written: SPI-flash and TPM drivers stay blacklisted.
+- Wi-Fi: only the mt76/MT7921E chain is built and signed; Google's cfg80211 and mac80211
+  stay (they export everything mt76 needs). `laptop-modules.sh` runs `depmod -e -E` against Google's real
+  vendor_dlkm/system_dlkm modules, so a missing export or CRC mismatch fails the build. MT7922
+  firmware comes from the pinned linux-firmware; the laptop menu adds `mt7921_common.disable_clc=1`.
+- Density 180 on the laptop only: the AMD profile sets `qemu.sf.lcd_density`, which Google's
+  SurfaceFlinger and zygote read before `ro.sf.lcd_density` (240, kept for QEMU).
 
 ## Files
 - [kernel/gki.config](../../kernel/gki.config) — where the M1 built-ins and later driver modules are listed.
@@ -147,8 +189,36 @@ M1, in this order:
    hashes. Run on 2026-11-01; inspect the screenshots linked above. Not a graphics-handoff test.
 3. Write the USB with the owner's approval; read it back and check the ESP files read-only.
    Run on 2026-11-01: passes ([flash log](../../out/usb-flash-android/flash.log)).
-4. Boot the laptop. Evidence: a photo of the screen showing the kernel log, saved in `out/`.
-   M1 does not claim "boots": that needs a usable Android screen. Not run yet.
+4. Boot the laptop. Earlier attempts reached userspace but failed; the post-fix retest still
+   hangs according to the owner. New evidence needs saved logs and a screen photo in `out/`.
+   A kernel log does not prove "boots": that requires a usable Android screen and input.
+
+### Recovering the new boot logs
+
+The candidate passed review and QEMU validation. The owner updates and boots the USB,
+then returns to Linux. Diagnostics change `system_a`, `vendor_a` and `system_ext_a`;
+a boot-file-only or vendor-only update is insufficient. The existing one-time
+[OS updater](../../out/usb-flash-android/update-os.sh) covers these ranges, checks layout and
+read-back, and preserves data; running it remains an owner-authorized physical write,
+not an assistant action. Do not reflash the entire image over existing Android data.
+
+Mount **that USB's metadata partition** read-only with
+`ro,noload`, using its checked USB by-id path, not an ambiguous partition label. It is currently
+partition 17; verify the actual layout rather than guessing `/dev/sdX`.
+Copy only `dali-bootlog/current/` and `previous/` into an ignored laptop evidence directory;
+their logd ownership means the copy may need locally authorized sudo. If an unclean shutdown
+leaves stale inodes, ask the owner before making a private temporary RAM copy of metadata
+(which contains unrelated security state). Replay the journal on that regular copy only,
+extract the logs and remove the copy; never run recovery on the USB. Check that swap is not
+disk-backed before using tmpfs.
+
+Each directory contains `boot-id`, `boot.txt`, `kernel.log` and `android.log`, plus up to
+seven numbered archives per stream (largest archive number is oldest).
+Logs can contain private app/account information: inspect locally and share only the relevant
+filtered excerpts. Preparation/collector errors are reported to the kernel log; a hang before
+metadata/logd becomes available may leave no saved files, so also photograph the screen.
+The assistant never writes physical devices; image transfer and laptop boot are owner steps.
+The physical retest required journal replay on an owner-approved RAM copy before extraction.
 
 ## Pitfalls
 - Googlebook userspace uses instructions this CPU lacks; the kernel's emulator patch is required (see [kernel.md](kernel.md)).
@@ -186,13 +256,16 @@ M1, in this order:
 
 ## Actions
 Next, with this spec updated after the physical test:
-- [ ] Boot-file updates on the mounted stick — `make android-deploy USB=…` using
-  [deploy.py](../../tools/deploy.py)'s `android` kind — done when a changed kernel reaches the
-  stick without sudo, the previous build stays selectable in the menu, and a no-op writes nothing.
+- [x] Validate the framebuffer handoff on the laptop — setup screen and touchpad confirmed by the owner.
+- [ ] Wi-Fi (MT7922) so setup can finish — done when the laptop joins a network in setup.
+- [ ] Laptop density 180 (owner's Churro setting), QEMU unchanged — done when the owner confirms
+  normal-sized UI on the laptop.
+- [ ] Audio (ALC256 over HDA) — after Wi-Fi; done when the owner hears sound.
 - [ ] First laptop Android boot — done when an inspected photo shows usable setup and the
-  keyboard/touchpad work. If it stops, capture the last log screen rather than claiming success.
-  Keep the internal NVMe hidden and Secure Boot disabled; use a SuperSpeed USB port/cable.
-  The first two boots crash-looped (fixed above); the stick now has the fix.
+  keyboard/touchpad work. Setup and touchpad are confirmed; keyboard not yet checked.
+- [ ] Diagnose the framebuffer-free hard lockup — done when the cause and a safe next test are
+  established. Keep NVMe hidden and networking, audio and speculative performance changes out
+  of this repair.
 - [ ] Find out if the touchpad needs `X86_AMD_PLATFORM_DEVICE` — done when the diagnostic USB
   has been booted with and without it (`make deploy` after removing it from
   [msi-diagnostic.config](../../kernel/msi-diagnostic.config)) and the touchpad result is recorded here.
@@ -205,6 +278,25 @@ Next, with this spec updated after the physical test:
   OS ranges that differ, after checking the stick's GPT and super metadata match the image.
 
 ## Handoff log
+- 2026-11-02 `uncommitted` — Vulkan HWUI draft reverted (GL HWUI kept). Wi-Fi and density 180
+  built: `make test` passed, `make gki` kABI clean, laptop-module check passed against Google's
+  mac80211 (`mt7921-common` also needs `hwmon`, added to `modules.patch`), MT7922 firmware and
+  the density setprop are in the image, and `make qemu-check` passed with the setup screen
+  inspected. Not yet tested on the laptop: Wi-Fi, density 180. Next: owner updates the USB.
+- 2026-11-02 `uncommitted` — Owner's laptop boot shows setup with a working touchpad; UI too
+  large, no sound, no Wi-Fi. Owner chose Wi-Fi and laptop-only density 180 next, audio after.
+  MT7922 modules/firmware/CLC workaround and the density setting are drafted but not built or
+  tested; the build may show Google's trimmed mac80211 lacks exports mt76 needs.
+- 2026-11-02 `uncommitted` — Owner installed the guarded handoff on USB; boot files read back
+  correctly and the owner reports a no-op repeat. Laptop AMD and input remain unverified.
+- 2026-11-02 `uncommitted` — EFI pstore safeguard passes offline UEFI control and both entries.
+  The saved previous build may remain unsafe.
+- 2026-11-01 `uncommitted` — The owner's retest reached boot-complete but stayed on logs.
+  Recovered logs show amdgpu minor 1 and invalid present fences. The framebuffer-free GRUB
+  experiment passes the QEMU shell check and USB read-back; laptop test panicked.
+- 2026-11-01 `uncommitted` — Owner reports the laptop still hangs after the GPU-label fix.
+  Native diagnostics pass 19 focused tests and three UEFI boots, with inspected setup and
+  Linux-readable logs. Next: owner updates OS partitions and returns new laptop logs/photo.
 - 2026-11-01 (this commit) — Laptop boots crash-looped SurfaceFlinger (GPU sysfs files unlabelled);
   reproduced and fixed in QEMU at the laptop's PCI path. With the owner's sudo, only `vendor_a`
   was rewritten on the stick (read-back matches). Next: the owner's retest, photo of the result.

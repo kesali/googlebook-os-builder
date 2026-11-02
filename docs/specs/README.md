@@ -9,13 +9,13 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | working | Validate signed AMD modules on hardware |
-| [Boot chain](boot.md) | working | Physical UEFI boot (tracked in Laptop hardware) |
+| [Kernel (GKI)](kernel.md) | partial | Build the MT7922 Wi-Fi modules |
+| [Boot chain](boot.md) | partial | Confirm the MT7922 CLC workaround on the laptop |
 | [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial | Validate the built AMD stack; QEMU softpipe still works |
+| [Graphics](graphics.md) | partial | Confirm the laptop renders on the AMD GPU |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Owner retests the USB with the GPU sysfs-label fix; physical graphics/input unverified |
+| [Laptop hardware](laptop-hardware.md) | partial | Test the built Wi-Fi (MT7922) and density 180 on the laptop, then audio |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·

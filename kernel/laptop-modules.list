@@ -4,3 +4,9 @@ drivers/gpu/drm/amd/amdgpu/amdgpu.ko
 drivers/gpu/drm/amd/amdxcp/amdxcp.ko
 drivers/gpu/drm/drm_panel_backlight_quirks.ko
 drivers/hwmon/hwmon.ko
+# MT7922 Wi-Fi; cfg80211 and mac80211 are Google's.
+drivers/net/wireless/mediatek/mt76/mt76.ko
+drivers/net/wireless/mediatek/mt76/mt76-connac-lib.ko
+drivers/net/wireless/mediatek/mt76/mt792x-lib.ko
+drivers/net/wireless/mediatek/mt76/mt7921/mt7921-common.ko
+drivers/net/wireless/mediatek/mt76/mt7921/mt7921e.ko

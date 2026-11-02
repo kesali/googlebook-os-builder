@@ -173,6 +173,8 @@ class DeployTests(unittest.TestCase):
         self.assertIn("root=/dev/ram0", kernel_arguments)
         # Android must never probe the internal NVMe, which holds another system.
         self.assertIn("initcall_blacklist=nvme_init", kernel_arguments)
+        # Churro's MT7922 workaround: the CLC download panicked this laptop.
+        self.assertIn("mt7921_common.disable_clc=1", kernel_arguments)
         self.assertEqual(
             [argument for argument in kernel_arguments if argument.startswith("efi_pstore.pstore_disable=")],
             ["efi_pstore.pstore_disable=1"],

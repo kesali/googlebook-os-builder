@@ -161,9 +161,10 @@ $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/invento
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
 		"$(GKI_SYMVERS)" "$(GKI_ABI_LIST)" kernel/gki.config
 
-$(GKI)/modules/manifest: FORCE $(GKI)/bzImage scripts/laptop-modules.sh kernel/laptop-modules.list
+$(GKI)/modules/manifest: FORCE $(GKI)/bzImage $(GOOGLE)/inventory.txt scripts/laptop-modules.sh \
+		kernel/laptop-modules.list
 	$(BUILDER) bash scripts/laptop-modules.sh "$(GKI)/build" "$(TOOLCHAIN)" \
-		kernel/laptop-modules.list "$(GKI)/modules"
+		kernel/laptop-modules.list "$(GOOGLE)" "$(GKI)/modules"
 
 # Android's QEMU userspace: pinned source graphics + unmodified software security HALs.
 $(MESA_TAR): | $(BUILD_READY)

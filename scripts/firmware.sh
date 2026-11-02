@@ -10,16 +10,16 @@ trap 'rm -rf "$work"' EXIT
 mkdir "$work/files"
 while read -r path; do
     [[ -z "$path" || "$path" == \#* ]] && continue
-    [[ "$path" == amdgpu/*.bin && "$path" != *..* ]] || {
+    [[ ( "$path" == amdgpu/*.bin || "$path" == mediatek/*.bin ) && "$path" != *..* ]] || {
         echo "Invalid runtime firmware path: $path" >&2; exit 1;
     }
     printf 'linux-firmware-%s/%s\n' "$release" "$path" >> "$work/members"
 done < "$list"
 tar -xf "$archive" --strip-components=1 -C "$work/files" -T "$work/members"
-mkdir -p "$output/amdgpu"
 while read -r path; do
     [[ -z "$path" || "$path" == \#* ]] && continue
     test -s "$work/files/$path"
+    mkdir -p "$output/$(dirname "$path")"
     if ! cmp -s "$work/files/$path" "$output/$path"; then
         cp -L "$work/files/$path" "$output/$path.partial"
         mv "$output/$path.partial" "$output/$path"

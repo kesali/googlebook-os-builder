@@ -4,3 +4,8 @@ lib/modules/amdgpu.ko                  0644 0:0   vendor_kernel_modules gki/amdg
 lib/modules/amdxcp.ko                  0644 0:0   vendor_kernel_modules gki/amdxcp.ko
 lib/modules/drm_panel_backlight_quirks.ko 0644 0:0 vendor_kernel_modules gki/drm_panel_backlight_quirks.ko
 lib/modules/hwmon.ko                   0644 0:0   vendor_kernel_modules gki/hwmon.ko
+lib/modules/mt76.ko                    0644 0:0   vendor_kernel_modules gki/mt76.ko
+lib/modules/mt76-connac-lib.ko         0644 0:0   vendor_kernel_modules gki/mt76-connac-lib.ko
+lib/modules/mt792x-lib.ko              0644 0:0   vendor_kernel_modules gki/mt792x-lib.ko
+lib/modules/mt7921-common.ko           0644 0:0   vendor_kernel_modules gki/mt7921-common.ko
+lib/modules/mt7921e.ko                 0644 0:0   vendor_kernel_modules gki/mt7921e.ko

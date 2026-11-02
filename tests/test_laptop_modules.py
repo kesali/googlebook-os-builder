@@ -20,6 +20,15 @@ class LaptopModuleTests(unittest.TestCase):
     def test_empty_dependencies_need_no_extra_modules(self):
         self.assertEqual(dependency_closure([], {}), set())
 
+    def test_system_dlkm_modules_are_leaves(self):
+        graph = {"mac80211.ko": ["cfg80211.ko", "rfkill.ko"], "cfg80211.ko": ["rfkill.ko"]}
+        self.assertEqual(dependency_closure(["mac80211.ko"], graph, {"rfkill.ko"}),
+                         {"mac80211.ko", "cfg80211.ko", "rfkill.ko"})
+
+    def test_vendor_modules_still_need_an_entry(self):
+        with self.assertRaisesRegex(ValueError, "missing.ko"):
+            dependency_closure(["video.ko"], {"video.ko": ["missing.ko"]}, {"rfkill.ko"})
+
 
 if __name__ == "__main__":
     unittest.main()

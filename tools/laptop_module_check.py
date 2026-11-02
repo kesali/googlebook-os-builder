@@ -6,12 +6,16 @@ from pathlib import Path
 import subprocess
 
 
-def dependency_closure(direct, dependencies):
+def dependency_closure(direct, dependencies, system_modules=frozenset()):
+    """Modules in system_modules come from system_dlkm, which has its own modules.dep."""
     result = set()
     pending = list(direct)
     while pending:
         name = pending.pop()
         if name in result:
+            continue
+        if name in system_modules and name not in dependencies:
+            result.add(name)
             continue
         if name not in dependencies:
             raise ValueError(f"No modules.dep entry for {name}")
@@ -20,19 +24,29 @@ def dependency_closure(direct, dependencies):
     return result
 
 
+# The MSI's devices; only these aliases are added for our modules.
+LAPTOP_ALIASES = {
+    "amdgpu": "pci:v00001002d000015E7sv*sd*bc*sc*i*",
+    "mt7921e": "pci:v000014C3d00000616sv*sd*bc*sc*i*",
+}
+
+
 def check(root, install_list):
     modules = root / "lib/modules"
     dependencies = {}
+    system_modules = set()
     for line in (modules / "modules.dep").read_text().splitlines():
         name, values = line.split(":", 1)
         dependencies[Path(name).name] = [Path(value).name for value in values.split()]
+        system_modules.update(Path(value).name for value in values.split()
+                              if value.startswith("/system/lib/modules/"))
     for line in install_list.read_text().splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         path = root / line.split()[0]
         direct = subprocess.check_output(["modinfo", "-F", "depends", str(path)], text=True).strip()
         direct = [name + ".ko" for name in direct.split(",") if name]
-        expected = dependency_closure(direct, dependencies)
+        expected = dependency_closure(direct, dependencies, system_modules)
         actual = set(dependencies.get(path.name, []))
         if path.name not in dependencies or actual != expected:
             raise ValueError(f"{path.name}: modules.dep differs from compiled dependencies: "
@@ -40,12 +54,13 @@ def check(root, install_list):
         signer = subprocess.check_output(["modinfo", "-F", "signer", str(path)], text=True).strip()
         if not signer:
             raise ValueError(f"{path.name} is unsigned")
-    aliases = subprocess.check_output(
-        ["modinfo", "-F", "alias", str(modules / "amdgpu.ko")], text=True).splitlines()
-    laptop = "pci:v00001002d000015E7sv*sd*bc*sc*i*"
-    if laptop not in aliases or f"alias {laptop} amdgpu" not in (modules / "modules.alias").read_text().splitlines():
-        raise ValueError("The kernel or installed aliases do not match the MSI's AMD GPU")
-    print("Laptop module signatures, dependency metadata and GPU alias verified")
+    installed_aliases = (modules / "modules.alias").read_text().splitlines()
+    for module, alias in LAPTOP_ALIASES.items():
+        aliases = subprocess.check_output(
+            ["modinfo", "-F", "alias", str(modules / f"{module}.ko")], text=True).splitlines()
+        if alias not in aliases or f"alias {alias} {module}" not in installed_aliases:
+            raise ValueError(f"The kernel or installed aliases do not match the MSI's {module} device")
+    print("Laptop module signatures, dependency metadata and device aliases verified")
 
 
 def main():
