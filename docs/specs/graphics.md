@@ -130,8 +130,8 @@ spoofed linear path with width aligned only to 32 (640-byte pitch at 640x480); R
 check, minigbm ABI gate, 30 s image build (only `vendor_a` written), 17 s no-write repeat and
 enforcing QEMU (77 s, screen inspected, VM exited) pass. [Evidence](../../out/camera-pitch/).
 Owner confirms the camera works (boot `7e418353-cba2-48a6-8994-c7f60114b837`): logs show clean
-640x480 YUYV and 1280x720 MJPG (VA JPEG) sessions with no import errors. The activation
-indicator flashes; logs show no reopen loop, so the cause is not yet known.
+640x480 YUYV and 1280x720 MJPG (VA JPEG) sessions with no import errors. The webcam LED
+flashes, as it also does under Linux (firmware behavior, not a stream restart).
 
 ## Decisions
 - Expose native RADV Vulkan capabilities with upstream `android-strict=false`: Google's camera
@@ -235,8 +235,7 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 
 ## Handoff log
 - 2026-11-02 — Camera works on the laptop: native RADV capabilities for effects, VA JPEG
-  decode and 256-byte NV12/NV21 pitches. Indicator flashing and broad app-rendering regression
-  checks remain open.
+  decode and 256-byte NV12/NV21 pitches. Broad app-rendering regression checks remain open.
 - 2026-11-02 `uncommitted` — Physical camera now initializes VA; effects fail Vulkan dependencies
   under RADV's strict-mode 1.1 cap. Native-capability option passes 22 tests, image checks,
   no-write repeat and enforcing QEMU (screen inspected); physical rendering/capture pending.

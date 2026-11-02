@@ -106,8 +106,8 @@ Audio and backlight were designed from the references, Google's HALs and this la
   Next retest (`df0b9859-30cd-4454-8299-cd2bddbcff5b`): white activation indicator, RADV 1.4
   effects context, 640x480 YUYV streaming; frames fail Vulkan import because NV12 pitch is 640,
   not a multiple of 256. With NV12/NV21 pitch alignment the owner confirms the camera works
-  (boot `7e418353-cba2-48a6-8994-c7f60114b837`); the white activation indicator flashes, with no
-  camera reopen loop in the logs
+  (boot `7e418353-cba2-48a6-8994-c7f60114b837`); its LED flashes, as it also does under Linux
+  (webcam firmware); the logs show steady streaming without USB resets
   ([details](graphics.md), [logs](../../out/laptop-logs/20261102-225836-66p3d2f6/current/)).
 - Native panel backlight is under the GPU's `cardN-eDP-1`, with `max_brightness=65535`.
   Google's lights HAL accepts `backlight`, but not `amdgpu_blN`. The source patch gives only
@@ -255,8 +255,8 @@ metadata/logd starts still needs a screen photo.
 
 ## Actions
 - [x] Camera — owner confirms the integrated webcam works in the Camera app.
-- [ ] Camera activation indicator flashes during use — done when the cause is known (the logs
-  show steady streaming without reopen) and fixed or accepted as Google's behavior.
+- [x] Camera LED flashing — webcam firmware behavior: it also flashes under Linux, and Android
+  logs show one steady stream with no USB resets. No change needed.
 - [ ] Remaining physical checks — done when the owner reports
   the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before). The
@@ -306,7 +306,7 @@ metadata/logd starts still needs a screen photo.
 
 ## Handoff log
 - 2026-11-02 — Camera works (owner-confirmed): front-facing entry, VA JPEG decode, native RADV
-  for effects and 256-byte NV12/NV21 pitches. Activation indicator flashing remains open.
+  for effects and 256-byte NV12/NV21 pitches. LED flashing matches Linux (firmware).
 - 2026-11-02 `uncommitted` — Camera VA initialization succeeds on laptop; effects now reject
   Vulkan dependencies under the 1.1 cap. Native-capability setting passes 22 tests, image checks,
   no-write repeat and enforcing QEMU; physical rendering/preview/capture pending, SELinux unchanged.
