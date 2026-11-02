@@ -9,6 +9,14 @@ KERNEL_TAG := android17-6.18-2026-06_r52
 KERNEL_REV := 3938c8d97142d5cf31543aa96f864a2cf832dda0
 KERNEL_URL := https://android.googlesource.com/kernel/common
 
+# AOSP's lpmake for disposable super-layout experiments. No suitable official standalone
+# host prebuilt found. Android 16's liblp format supports this recovery image's metadata;
+# commits peeled from android-16.0.0_r1. Build unchanged source with Debian host libraries.
+LP_CORE_REV := 68be0c2c0006a0740d0b1809abe4717308f90d15
+LP_CORE_URL := https://android.googlesource.com/platform/system/core
+LP_EXTRAS_REV := 5578b78e335df1e6d19ddb5bdb26639d383cfdfb
+LP_EXTRAS_URL := https://android.googlesource.com/platform/system/extras
+
 # The diagnostic USB's shell: BusyBox's official static binary, unchanged. 1.35.0 is the newest
 # one busybox.net publishes, and it has every tool boot/init uses. busybox.net publishes no
 # checksum; the SHA-256 was calculated from the HTTPS download.

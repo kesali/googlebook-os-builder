@@ -37,3 +37,10 @@ RUN apt-get update \
         meson ninja-build python3-mako python3-yaml python3-ply python3-packaging \
         unzip e2fsprogs fakeroot attr glslang-tools \
     && rm -rf /var/lib/apt/lists/*
+
+# Native upstream liblp/lpmake for disposable dynamic-partition layout experiments.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        android-libbase-dev android-liblog-dev android-libsparse-dev \
+        android-libext4-utils-dev android-libcutils-dev \
+    && rm -rf /var/lib/apt/lists/*

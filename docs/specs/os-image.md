@@ -49,6 +49,18 @@ Turn Google's read-only recovery image into a private QEMU disk with a short lis
 changes, and update only the changed OS partitions without touching Android's data.
 
 ## Current state
+Disposable Intel-layout experiment (2026-11-03): upstream `lpmake` generates a separate
+12 GiB super image with `vendor_dlkm_a` enlarged to 32 MiB and every logical B entry retained
+but empty. The Zstd-9 i915 candidate is 19,636,224 B; all 513 entries pass metadata checks.
+Geometry, group limits, six primary/backup metadata copies and every supplied A payload/padding
+are verified by [super_candidate.py](../../tools/super_candidate.py). Six focused safety tests
+pass; a second generated super matches every byte, and an unchanged `make lp-tools` preserves
+the tool/build metadata timestamps. The working disk/USB and their layouts remain unchanged.
+This candidate is not boot-tested and is not accepted by the existing updater; no migration
+is implemented.
+Build the host tool with `make lp-tools JOBS=12`; the candidate builder's `--help` documents
+its explicit inputs. [Evidence](../../out/intel-bringup/super-32m.log).
+
 Verified: `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a` rebuilt as EROFS with every file's bytes,
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
 `out/android/disk.img` with a 32 GiB sparse userdata and a 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`,
@@ -185,6 +197,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Pinned upstream lpmake and guarded disposable 32 MiB vendor_dlkm
+  experiment; six tests, 513-entry image metadata/fit, liblp/payload checks and byte-identical
+  repeat pass. Working disk/USB untouched; candidate boot and layout migration unimplemented.
 - 2026-11-03 (this commit) — Shared local/USB extent and GPT checks without changing the
   extractor; 28 focused tests, cached image build and no-write repeat pass. Physical USB untested.
 - 2026-11-02 (this commit) — Compared local and USB extent guards; the current private disk

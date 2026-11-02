@@ -26,6 +26,8 @@ GKI_ABI_LIST := $(DL)/abi_symbollist-$(GKI_BUILD)-$(GKI_ABI_SHA).raw
 GKI_VIRT := $(DL)/virt-initramfs-$(GKI_BUILD)-$(GKI_VIRT_SHA).img
 TOOLCHAIN := $(OUT)/toolchain
 GKI := $(OUT)/gki
+LP_CORE := $(OUT)/src/lp-core-$(LP_CORE_REV)
+LP_EXTRAS := $(OUT)/src/lp-extras-$(LP_EXTRAS_REV)
 ANDROID := $(OUT)/android
 MESA := $(OUT)/mesa
 MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
@@ -68,7 +70,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
-.PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki laptop-logs \
+.PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki laptop-logs lp-tools \
 	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console update-usb FORCE
 
 help: ## Show this list
@@ -102,6 +104,14 @@ $(KERNEL_SRC)/.ready: $(KERNEL_PATCHES) | $(EMU_PATCH) $(BUILD_READY)
 		"$(KERNEL_CACHE)" "$(KERNEL_SRC)" "$(EMU_PATCH)" $(KERNEL_PATCHES)
 
 sources: $(KERNEL_SRC)/.ready ## Fetch the pinned kernel source tree (editable under out/src/)
+
+$(LP_CORE)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh "$(LP_CORE_URL)" "$(LP_CORE_REV)" "$(@D)" fs_mgr/liblp
+$(LP_EXTRAS)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh "$(LP_EXTRAS_URL)" "$(LP_EXTRAS_REV)" "$(@D)" partition_tools/lpmake.cc
+$(OUT)/lp-tools/lpmake: FORCE $(LP_CORE)/.ready $(LP_EXTRAS)/.ready scripts/lpmake.sh tools/lpmake/CMakeLists.txt $(BUILD_READY)
+	$(BUILDER) bash scripts/lpmake.sh "$(LP_CORE)" "$(LP_EXTRAS)" "$(OUT)/lp-tools"
+lp-tools: $(OUT)/lp-tools/lpmake ## Build upstream lpmake for disposable super-layout experiments
 
 # FORCE lets the upstream build systems see source edits. Published files keep
 # their timestamps when their contents do not change, so downstream steps skip.
