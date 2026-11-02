@@ -54,7 +54,8 @@ OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make androi
 byte-identical. The owner later completed physical setup with Wi-Fi and input on an earlier image.
 The stick holds that image and a 215 GiB userdata partition and has since been booted
 ([laptop-hardware.md](laptop-hardware.md)); the owner confirms the codec/YV12 update fixes video.
-The optional native-bridge diagnostics are built locally and await deployment.
+The owner deployed the optional native-bridge diagnostics and confirmed previously failing apps
+work with Berberis ([boot](boot.md)).
 The system/system_ext logging changes and removal of vendor's precompiled policy are built
 and verified through the QEMU smoke test ([boot.md](boot.md)). The image updater changed only
 the OS partitions named above; Android userdata, metadata and layout were preserved. That
@@ -153,6 +154,10 @@ must print no partition or boot-file writes and leave output timestamps unchange
 - fakeroot does keep ownership and xattrs, but only because the comparison checks every entry;
   never weaken [tools/fs_metadata.py](../../tools/fs_metadata.py) to make a build pass.
 - Logical partitions can span several extents; the updater handles multi-extent copies (tested).
+- The USB updater rejects logical extents inside liblp metadata or overlapping another extent;
+  [android_sync.py](../../tools/android_sync.py) currently checks only the `super` boundary.
+  A read-only check of `out/android/disk.img` with the USB updater's guard passed. Local sync
+  does not reject those conflicts even when liblp checksums are valid.
 - An interrupted update is fixed by rerunning `make android-image`, not by deleting the disk.
 - Generate patches against Google's pristine file, not a previous build:
   `fsck.erofs --extract=DIR --xattrs out/google/super/<p>_a.img`, edit a copy, then
@@ -175,6 +180,8 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Compared local and USB extent guards; the current private disk
+  passes the stronger USB check, but local-sync metadata/overlap validation remains a gap.
 - 2026-11-02 (this commit) — Replaced serial retyping with default-no `y`/`yes` confirmation
   after selection and the update summary; device identity/layout/read-back safeguards unchanged.
   All 15 focused updater tests pass using regular-file fixtures; no physical disk writes.

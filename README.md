@@ -4,7 +4,8 @@ A small, readable build for developing a Googlebook OS port on the **MSI Modern 
 Google's recovery image is a read-only input, not something we patch with byte offsets.
 Upstream code is used unchanged where possible; each carried patch is small and explains its purpose.
 
-**The laptop boots and completes setup over Wi-Fi; keyboard, touchpad and sound work.**
+**The laptop boots and completes setup over Wi-Fi; input, speakers, the built-in
+microphone and the webcam work.**
 It uses the AMD graphics profile (Chrome's logs show ANGLE on RADV) and feels faster than the
 two reference ports, though nothing is benchmarked yet. QEMU keeps a Mesa softpipe fallback.
 Software KeyMint/Gatekeeper come from Google's emulator. No KernelSU, dual-boot
@@ -60,9 +61,10 @@ records independently of noisy desktop logs.
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
 `1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
 Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm
-are included. The owner has completed setup and uses Wi-Fi, input and sound. The brightness
-slider, HDMI frame rate and Bluetooth await a retest of the latest build; microphones and
-suspend are not done.
+are included. The owner has confirmed the built-in microphone, camera preview and video recording.
+HDMI display performance feels fine, though its frame rate has not been measured. The brightness
+slider, Bluetooth pairing, headphone output and suspend remain unverified; HDMI audio is not
+implemented.
 Details and evidence: [laptop hardware](docs/specs/laptop-hardware.md).
 Persistent kernel/Android diagnostics use native logcat and retain current/previous boot on metadata,
 with an explicitly approved scoped enforcing policy. See [boot](docs/specs/boot.md) for limits/coverage

@@ -1,7 +1,9 @@
 # Graphics
 
-**Status:** partial — QEMU softpipe works; the laptop's desktop runs on AMD, with apps on RADV.
-**Last verified:** 2026-11-02 — `make test` (113 tests), `make mesa JOBS=12`,
+**Status:** partial — QEMU softpipe works; the laptop desktop and camera work, and Chrome uses RADV.
+**Last verified:** 2026-11-02 — the owner reports working camera preview and recording
+([logs](../../out/laptop-logs/20261102-231851-2bm_5yev/current/)). Earlier,
+`make test` (113 tests), `make mesa JOBS=12`,
 `make android-image JOBS=12` and `make qemu-check JOBS=12` pass; the inspected QEMU screenshot
 shows the setup screen. The owner completed setup on the laptop and finds apps and graphics fast.
 That boot's log ([android.log](../../out/laptop-boot-2026-11-02-hdmi/current/)) shows Chrome's
@@ -83,9 +85,9 @@ and core libdrm, plus all seven rendering libraries, remain byte-identical to th
 The 21.0 s repeat preserves 39 published sizes/timestamps and writes no partitions or boot files.
 Bounded QEMU passes in 79.0 s with enforcing SELinux, stable services and softpipe; setup
 screenshot inspected and VM exit confirmed. Input was not retested.
-[Evidence](../../out/camera-vaapi/). Not verified: camera-HAL namespace loading, AMD JPEG
-profiles/decoding or preview/capture. QEMU has no AMD webcam decode path; Google's NPU-oriented
-camera effects may be a subsequent issue.
+[Evidence](../../out/camera-vaapi/). At this build stage, camera-HAL namespace loading, AMD JPEG
+profiles/decoding and preview/capture were not verified. QEMU has no AMD webcam decode path;
+subsequent laptop retests are below.
 
 Owner retest: preview is still black. Boot `e42498e7-47ba-451f-b88a-cf9eeb462511`
 loads the VA entry point in the media capability probe, but driver initialization returns 2.
@@ -123,15 +125,17 @@ desktop/app regression or camera preview/capture. QEMU softpipe cannot prove tho
 
 Owner retest (`df0b9859-30cd-4454-8299-cd2bddbcff5b`): the activation indicator appears and
 effects create a RADV Vulkan 1.4 context, but every frame fails AHWB import with
-`ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT`. Camera NV12 buffers use minigbm's
-spoofed linear path with width aligned only to 32 (640-byte pitch at 640x480); RADV requires
-256-byte linear pitches on GFX9. [minigbm-yuv-pitch.patch](../../android/minigbm-yuv-pitch.patch)
+`ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT`. The allocator's spoofed NV12 path aligns
+width only to 32, suggesting a 640-byte pitch at 640x480; the actual AHWB plane layout was not
+logged. RADV requires 256-byte linear pitches on GFX9.
+[minigbm-yuv-pitch.patch](../../android/minigbm-yuv-pitch.patch)
 (renamed from the YV12 patch) also aligns NV12/NV21 widths to 256. 19 focused tests, GBM wrapper
 check, minigbm ABI gate, 30 s image build (only `vendor_a` written), 17 s no-write repeat and
 enforcing QEMU (77 s, screen inspected, VM exited) pass. [Evidence](../../out/camera-pitch/).
-Owner confirms the camera works (boot `7e418353-cba2-48a6-8994-c7f60114b837`): logs show clean
-640x480 YUYV and 1280x720 MJPG (VA JPEG) sessions with no import errors. The webcam LED
-flashes, as it also does under Linux (firmware behavior, not a stream restart).
+The owner confirms camera preview and video recording work. In boot
+`7e418353-cba2-48a6-8994-c7f60114b837`, VA initializes, the logs show 640x480 YUYV and 1280x720
+MJPG sessions with none of the earlier import errors. The logs do not independently establish
+which decoder processed the frames. The webcam LED also flashes under Linux; its cause is unknown.
 
 ## Decisions
 - Expose native RADV Vulkan capabilities with upstream `android-strict=false`: Google's camera
@@ -150,8 +154,9 @@ flashes, as it also does under Linux (firmware behavior, not a stream restart).
 - The laptop menu selects AMD only for PCI `1002:15e7`; otherwise softpipe is the default.
   [graphics-amd.rc](../../android/system_ext/graphics-amd.rc) selects Google's ANGLE GLES,
   RADV Vulkan RenderEngine and Mesa GBM/Zink, with GL HWUI like QEMU. The AMD-only Vulkan HWUI
-  entry is opt-in; its RADV queue patch serializes logical queues sharing a hardware ring. Keep GL
-  as the default until the laptop test confirms setup and app rendering.
+  entry is opt-in. The RADV queue patch is compiled into the driver used by both AMD profiles;
+  it maps logical queues onto hardware rings and serializes submissions per context. Keep GL as
+  the default; the owner saw no noticeable improvement with the optional profile.
 - LineageOS minigbm's Mesa backend needs the small AMD/FD/mapping fixes in
   [minigbm-amd.patch](../../android/minigbm-amd.patch). Its C++ interface links to Google's actual
   platform libraries, not NDK libc++; an ABI gate checks Google's clients whenever either image or library changes.
@@ -217,14 +222,10 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - RADV on GFX9 rejects linear AHWB planes whose pitch is not a multiple of 256 bytes
   (`INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT`). Spoofed YUV allocations in minigbm must align
   NV12/NV21 widths to 256 and YV12 luma to 512.
-- `drm.debug=0x1 ignore_loglevel` on the command line shows DRM open/master events — remove after diagnosing.
 - Meson strips even skipped install targets. Install into the build cache, then publish only changed
   bytes; otherwise an unchanged build rewrites library timestamps.
 
 ## Actions
-- [x] Test the RadeonSI JPEG candidate on the laptop — owner confirms the camera works; MJPG
-  1280x720 sessions decode through VA without errors.
-- [x] Validate the handoff on the laptop — the owner saw the setup screen and used the touchpad.
 - [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
   output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
@@ -234,15 +235,17 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
-- 2026-11-02 — Camera works on the laptop: native RADV capabilities for effects, VA JPEG
-  decode and 256-byte NV12/NV21 pitches. Broad app-rendering regression checks remain open.
-- 2026-11-02 `uncommitted` — Physical camera now initializes VA; effects fail Vulkan dependencies
+- 2026-11-02 (this commit) — Corrected camera evidence and RADV patch scope; broad app-rendering
+  regression checks and the webcam LED's cause remain unverified.
+- 2026-11-02 `a5befdb` — Owner confirms the camera works with native RADV capabilities for
+  effects, VA initialization and 256-byte NV12/NV21 pitches.
+- 2026-11-02 `a5befdb` — Physical camera now initializes VA; effects fail Vulkan dependencies
   under RADV's strict-mode 1.1 cap. Native-capability option passes 22 tests, image checks,
   no-write repeat and enforcing QEMU (screen inspected); physical rendering/capture pending.
-- 2026-11-02 `uncommitted` — Black preview persists; inherited Zink conflicts with JPEG-only
+- 2026-11-02 `a5befdb` — Black preview persists; inherited Zink conflicts with JPEG-only
   RadeonSI. Service-only clearing passes 21 tests, image read-back/no-write repeat and enforcing
   QEMU (screen inspected). Physical retest pending.
-- 2026-11-02 `uncommitted` — Separate JPEG-only RadeonSI and shared AMD DRM helper build;
+- 2026-11-02 `a5befdb` — Separate JPEG-only RadeonSI and shared AMD DRM helper build;
   20 tests, shipping ELF imports/bytes, image metadata/fit, no-write repeat and enforcing QEMU
   pass (screen inspected). Google runtimes/rendering unchanged; laptop preview/capture pending.
 - 2026-11-02 (this commit) — Owner confirms video fixed after the YV12 update, then the previously

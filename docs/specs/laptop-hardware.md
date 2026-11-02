@@ -1,9 +1,11 @@
 # Laptop hardware
 
-**Status:** partial — setup over Wi-Fi, input and sound work; owner reports HDMI performance is
-now fine. Video and tested games work after the YV12 fixes and optional Berberis selection;
-the built-in microphone now works (owner report); the brightness slider is unconfirmed.
-**Last verified:** 2026-11-02 — owner confirms microphone works after the Renoir buffer update.
+**Status:** partial — Wi-Fi, input, speakers, built-in microphone, camera and video work by owner
+report. HDMI display performance feels fine; the brightness slider is unconfirmed.
+**Last verified:** 2026-11-02 — owner confirms camera preview and video recording work after the
+NV12 pitch update. Its LED also flashes under Linux; the cause is unknown
+([logs](../../out/laptop-logs/20261102-231851-2bm_5yev/current/)).
+Earlier, the owner confirmed the microphone works after the Renoir buffer update.
 The driver, InternalMic route and buffer patch pass focused tests, ABI/image checks, no-write
 repeat and enforcing QEMU ([evidence](../../out/renoir-buffer/)). No fresh capture logs or
 recording-quality measurements were supplied with the owner report.
@@ -31,7 +33,8 @@ impression, not a benchmark. Density 160 replaces 180 in the AMD profile only; Q
 Video works after the source-level YV12 fixes. The owner reports the previously failing game,
 another native app and Hearthstone work with Berberis; normal boot still selects Houdini.
 See [boot](boot.md) for the translator comparison and its limits.
-GPU acceleration, Bluetooth, headset microphone and suspend have not been independently verified.
+Chrome logs show ANGLE on RADV; SurfaceFlinger/HWUI, Bluetooth, headset microphone and suspend
+have not been independently verified.
 In the `95b3bf6` kernel log, Google's `btusb`/`btmtk` found the MT7922 Bluetooth but `hci0` setup
 failed: `mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin` was missing. The official file is now installed.
 
@@ -104,11 +107,13 @@ Audio and backlight were designed from the references, Google's HALs and this la
   desktop/app regression and camera preview/capture remain pending
   ([details](graphics.md), [logs](../../out/laptop-logs/20261102-224045-sm_8d1oi/current/)).
   Next retest (`df0b9859-30cd-4454-8299-cd2bddbcff5b`): white activation indicator, RADV 1.4
-  effects context, 640x480 YUYV streaming; frames fail Vulkan import because NV12 pitch is 640,
-  not a multiple of 256. With NV12/NV21 pitch alignment the owner confirms the camera works
-  (boot `7e418353-cba2-48a6-8994-c7f60114b837`); its LED flashes, as it also does under Linux
-  (webcam firmware); the logs show steady streaming without USB resets
-  ([details](graphics.md), [logs](../../out/laptop-logs/20261102-225836-66p3d2f6/current/)).
+  effects context, 640x480 YUYV streaming and Vulkan import errors. A 640-byte NV12 pitch was
+  inferred from the allocator but not logged
+  ([logs](../../out/laptop-logs/20261102-225836-66p3d2f6/current/)).
+  With NV12/NV21 pitch alignment the owner confirms preview and recording work (boot
+  `7e418353-cba2-48a6-8994-c7f60114b837`). The LED also flashes under Linux; no USB reset or
+  camera reopen loop was logged, but its cause is unknown
+  ([details](graphics.md), [logs](../../out/laptop-logs/20261102-231851-2bm_5yev/current/)).
 - Native panel backlight is under the GPU's `cardN-eDP-1`, with `max_brightness=65535`.
   Google's lights HAL accepts `backlight`, but not `amdgpu_blN`. The source patch gives only
   this model's first AMD panel that supported name; the driver/scaling algorithm is unchanged.
@@ -133,13 +138,13 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 
 | Part | Device [ID] | Driver / status |
 |---|---|---|
-| Display / GPU | Radeon Barcelo [1002:15e7] | `amdgpu`; usable desktop; HDMI frame-rate fix untested |
+| Display / GPU | Radeon Barcelo [1002:15e7] | `amdgpu`; usable desktop; HDMI performance reported fine, not measured |
 | Keyboard | i8042 AT keyboard | `atkbd`; works |
 | Touchpad | ELAN0307:00 [04f3:3282] | AMD I2C, `i2c_hid_acpi`, `hid-multitouch`; works |
 | Wi-Fi | MT7922 [14c3:0616] | `mt7921e`; setup completed over Wi-Fi |
 | Bluetooth | MediaTek USB [0e8d:0616] | Google's `btusb`/`btmtk`; firmware added, untested |
-| Audio | HDA [1022:15e3], HDMI [1002:1637], ACP [1022:15e2] | ALC256 sound works (owner report); mic, HDMI audio not done |
-| Camera / SD reader | USB [30c9:0042], [0bda:0129] | Later |
+| Audio | HDA [1022:15e3], HDMI [1002:1637], ACP [1022:15e2] | Speakers and built-in mic work (owner report); HDMI audio not done |
+| Camera / SD reader | USB [30c9:0042], [0bda:0129] | Camera works (owner report); SD reader untested |
 | Storage | Samsung PM9C1a NVMe [144d:a80d] | Hidden from laptop Android; boot from USB |
 
 ## Decisions
@@ -254,16 +259,12 @@ metadata/logd starts still needs a screen photo.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
-- [x] Camera — owner confirms the integrated webcam works in the Camera app.
-- [x] Camera LED flashing — webcam firmware behavior: it also flashes under Linux, and Android
-  logs show one steady stream with no USB resets. No change needed.
 - [ ] Remaining physical checks — done when the owner reports
   the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before). The
-  first boot must also format `/data` (Settings → Storage shows roughly 215 GiB less filesystem
-  overhead instead of 32 GiB, with no 8 GiB jump in used space after a few minutes) and setup must
-  complete again; note whether factory-reset protection asks for the previous Google account. Swap
-  now relies on zram alone; its laptop effect is not measured.
+  storage check is that Settings → Storage shows roughly 215 GiB less filesystem overhead, with
+  no 8 GiB jump in used space after a few minutes; no further reset is needed for this check.
+  Factory-reset protection is untested; the laptop effect of RAM-only zram is unmeasured.
   Video playback is now confirmed by the owner; details are in [graphics](graphics.md).
   Retrieve the snapshot and logs either way; the snapshot now records the
   connected displays and their modes, and the CPU governor/EPP actually in effect. In
@@ -305,24 +306,26 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
-- 2026-11-02 — Camera works (owner-confirmed): front-facing entry, VA JPEG decode, native RADV
-  for effects and 256-byte NV12/NV21 pitches. LED flashing matches Linux (firmware).
-- 2026-11-02 `uncommitted` — Camera VA initialization succeeds on laptop; effects now reject
+- 2026-11-02 (this commit) — Corrected current hardware status and separated the observed LED
+  behavior from its unknown cause. Camera preview and recording are owner-confirmed.
+- 2026-11-02 `a5befdb` — Camera works (owner-confirmed): front-facing entry, VA initialization,
+  native RADV for effects and 256-byte NV12/NV21 pitches. LED also flashes under Linux.
+- 2026-11-02 `a5befdb` — Camera VA initialization succeeds on laptop; effects now reject
   Vulkan dependencies under the 1.1 cap. Native-capability setting passes 22 tests, image checks,
   no-write repeat and enforcing QEMU; physical rendering/preview/capture pending, SELinux unchanged.
-- 2026-11-02 `uncommitted` — VA preview still black; source trace suggests inherited Zink override.
+- 2026-11-02 `a5befdb` — VA preview still black; source trace suggests inherited Zink override.
   Approved camera-service-only clearing passes 21 tests, image/read-back/no-write repeat and
   enforcing QEMU (screen inspected); physical preview/capture remains pending.
-- 2026-11-02 `uncommitted` — RadeonSI JPEG-only driver and shared AMD helper built; 20 tests,
+- 2026-11-02 `a5befdb` — RadeonSI JPEG-only driver and shared AMD helper built; 20 tests,
   shipping ELF/image checks, no-write repeat and enforcing QEMU pass (screen inspected).
   No camera-HAL loading or physical preview/capture result yet; owner update/retest next.
-- 2026-11-02 `uncommitted` — Owner confirms front-camera discovery, but preview is black.
+- 2026-11-02 `a5befdb` — Owner confirms front-camera discovery, but preview is black.
   Fresh logs prove USB HAL aborts in VA JPEG initialization with the AMD video driver absent.
   Approved RadeonSI VA build candidate added; validation and physical capture pending.
-- 2026-11-02 `uncommitted` — Fresh logs show camera ID 2 advertised as external, not missing
+- 2026-11-02 `a5befdb` — Fresh logs show camera ID 2 advertised as external, not missing
   UVC support. Scoped front-facing candidate passes 13 tests, image metadata/read-back/fit,
   no-write repeat and enforcing QEMU; physical HAL acceptance/visibility/preview/capture pending.
-- 2026-11-02 `uncommitted` — Owner confirms microphone works after the Renoir buffer update.
+- 2026-11-02 `a8c655f` — Owner confirms microphone works after the Renoir buffer update.
   Closed the built-in capture task; no new capture logs, quality measurements or separate
   speaker/headset regression result supplied. HDMI audio and camera remain separate work.
 - 2026-11-02 (this commit) — Renoir-specific buffer candidate passes 44 tests, ABI/image checks,

@@ -22,17 +22,17 @@ removable once upstream covers it.
 
 ## Where we are
 
-- The laptop boots from the USB, completed setup over Wi-Fi, and has keyboard, touchpad and
-  sound. The owner finds apps and graphics faster than in Churro and gbos-x86 (an impression,
-  not a benchmark); Chrome's logs show ANGLE on RADV, the AMD GPU. Brightness, HDMI frame rate,
-  Bluetooth, microphones and suspend are open: see [laptop hardware](specs/laptop-hardware.md).
-- Built since the owner's last boot, verified in QEMU only: fast page flips with HDMI connected,
-  the emulator's generic bionic/libz (Google's builds caused about 74% of the laptop's sampled
-  instruction traps), no 10 s TPM wait (`boot_completed` 59.7 s → 49.9 s in QEMU), no
-  per-frame/per-second log and polling noise, and the power HAL no longer confining apps to 8 of
-  the 12 CPUs. Boot logs now also keep the whole startup, and the snapshot records displays and
-  the CPU governor. The normal GRUB entry no longer draws early kernel messages through the
-  firmware console, which took 61 s of the laptop's 104 s boot.
+- The laptop boots from USB, completed setup over Wi-Fi, and has working input, speakers,
+  built-in microphone, camera preview and video recording. The owner finds apps and graphics
+  faster than in Churro and gbos-x86 (an impression, not a benchmark); Chrome's logs show ANGLE
+  on RADV. The owner reports HDMI display performance is fine, without a frame-rate measurement.
+  Brightness, Bluetooth pairing, HDMI audio and suspend remain open:
+  [laptop hardware](specs/laptop-hardware.md).
+- The laptop has received the fast page flips, generic bionic/libz, TPM-wait and logging fixes,
+  and power HAL changes; their individual runtime effects have not all been measured on the laptop.
+  Boot logs retain the startup, and the snapshot records displays and the CPU governor. The normal
+  GRUB entry no longer draws early messages through the firmware console, which took 61 s of the
+  earlier 104 s boot.
 - Image changes are readable lists and patches; updates preserve Android data. We build the
   kernel, Mesa/minigbm and the missing AMD/MediaTek modules; everything else is Google's or the
   emulator's unchanged prebuilts.
@@ -55,24 +55,23 @@ Both reference ports boot this laptop. This project follows Churro's working bas
   service), the power HAL's 8-CPU masks, system_server polling the removed face HAL, composer
   gamma log spam (Churro sets a property name the composer does not read) and HDMI page flips.
   gbos-x86 also removes `udsattestation`.
-- **Behind:** Bluetooth (Google's btusb/btmtk already probe the MT7922; its missing firmware is
-  now installed but untested), internal microphone and HDMI audio, suspend, Vulkan HWUI.
-  Several fixes still lack a laptop test. Remaining traps are in signed ART and Rust code that
-  cannot be swapped.
+- **Still open:** Bluetooth pairing (the missing MT7922 firmware is installed), HDMI audio,
+  headphone output, brightness and suspend. The optional Vulkan HWUI profile showed no noticeable
+  improvement in the owner's test; broader app regression testing remains. Remaining traps are in
+  signed ART and Rust code that cannot be swapped.
 
 ## Proposed order
 
 This is a flexible order, not a commitment to do every item.
 
-1. **Laptop retest of the latest build — next.**
-   The owner updates both the boot files (`make deploy-android`) and the OS partitions
-   (`update-os.sh`), then checks HDMI frame rate, the brightness slider, boot/app speed and
-   Bluetooth pairing.
-   The boot snapshot and logs are retrieved either way. See [laptop hardware](specs/laptop-hardware.md).
+1. **Remaining laptop checks — next.**
+   Check the brightness slider, Bluetooth pairing and broader app rendering. For a new build, the
+   owner updates OS and boot files together with `make update-usb JOBS=12`, then retrieves the
+   snapshot and logs if needed. See [laptop hardware](specs/laptop-hardware.md).
 
 2. **Remaining laptop hardware — one device at a time.**
-   Done: AMD display, keyboard/touchpad, Wi-Fi, ALC256 speakers. Next candidates: brightness
-   (if the retest fails), Bluetooth, internal microphone, HDMI audio, suspend.
+   Done: AMD display, keyboard/touchpad, Wi-Fi, speakers, built-in microphone and camera.
+   Next candidates: brightness, Bluetooth, headphone output, HDMI audio and suspend.
 
 3. **Improve performance — current.**
    Measure build time, startup time and UI responsiveness separately. Identify the main bottleneck

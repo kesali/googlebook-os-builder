@@ -3,20 +3,21 @@
 Written 2026-11-02 at commit `e7f7865`, after the owner confirmed that the laptop boots quickly
 with the important hardware working. The details are in the component specs
 ([specs/README.md](specs/README.md)) and the code; this document explains how they fit together.
-Microphone status updated later on 2026-11-02 from the owner's laptop retest.
+Status updated later on 2026-11-02 from the owner's microphone and camera retests.
 
 ## 1. Status
 
-**Working on the MSI Modern 15 B7M** (owner report): fast boot, setup completed, Wi-Fi, keyboard,
-touchpad, speaker sound (ALC256), built-in microphone (ACP DMIC), screen brightness,
-AMD-accelerated desktop. App launches feel
-faster than Churro and gbos-x86, but no benchmark has measured this.
+**Working on the MSI Modern 15 B7M** (owner report): setup, Wi-Fi, keyboard, touchpad, speaker
+sound (ALC256), built-in microphone (ACP DMIC), camera preview and video recording. App launches
+feel faster than Churro and gbos-x86, but no benchmark has measured this. The owner says HDMI
+display performance is fine; its frame rate was not measured.
 
-**Built but not confirmed on hardware:** Bluetooth (official MT7922 firmware added after the
-log showed it was missing) and the HDMI frame-rate fix.
+**Not confirmed on hardware:** Bluetooth pairing (official MT7922 firmware was added after the
+log showed it was missing), the brightness slider, headphone output, SD reader and suspend/resume.
 
-**Not done:** HDMI audio, suspend/resume, Vulkan app UI (HWUI),
-camera, SD reader, and the remaining instruction traps in Google's signed ART/Rust code.
+**Not done:** HDMI audio and the remaining instruction traps in Google's signed ART/Rust code.
+The owner tried the opt-in Vulkan app UI (HWUI) and noticed no performance difference; GL remains
+the default and broader app regression testing is still needed.
 
 **QEMU:** the regression check reaches the setup screen. `sys.boot_completed` takes about 20 s
 on a repeat boot.
@@ -73,8 +74,8 @@ The pieces, with the files that implement them:
 | Disk | Reflinked copy of Google's disk; userdata moved to the end and grown; blank `KERN-A` merged into a 576 MiB FAT32 `DALI-BOOT`. Created once and never recreated automatically. | [scripts/android-disk.sh](../scripts/android-disk.sh) |
 | Sync | Copy only changed partitions into the disk, then read them back. Refuses while QEMU holds the disk. | [tools/android_sync.py](../tools/android_sync.py) |
 | Boot files | Kernel, initrd, GRUB and menu; written into the ESP with mtools (no mounts, no root). | [scripts/android-boot.sh](../scripts/android-boot.sh), [tools/deploy.py](../tools/deploy.py), [boot/android-menu.cfg](../boot/android-menu.cfg) |
-| USB update | List USB disks, select and confirm by serial; verify the existing layout, copy changed OS ranges, then install boot files menu-last via a private mount. No formatting or data writes. | [tools/update_usb.py](../tools/update_usb.py), [tools/deploy.py](../tools/deploy.py) |
-| Checks | `make test` (106 unit tests), `make qemu-check` (bounded graphical boot), `make android-uefi-check` (UEFI/GRUB boot from a temporary USB image next to a decoy NVMe). | [tests/](../tests), [tools/android_smoke.py](../tools/android_smoke.py), [tools/android_uefi_test.py](../tools/android_uefi_test.py) |
+| USB update | List USB disks, select by model/capacity/serial and confirm; verify the existing layout, copy changed OS ranges, then install boot files menu-last via a private mount. No formatting or data writes. | [tools/update_usb.py](../tools/update_usb.py), [tools/deploy.py](../tools/deploy.py) |
+| Checks | `make test`, `make qemu-check` (bounded graphical boot), `make android-uefi-check` (UEFI/GRUB boot from a temporary USB image next to a decoy NVMe). | [tests/](../tests), [tools/android_smoke.py](../tools/android_smoke.py), [tools/android_uefi_test.py](../tools/android_uefi_test.py) |
 
 **Build speed:**
 
@@ -89,7 +90,7 @@ The pieces, with the files that implement them:
 
 1. Stop QEMU, connect the USB and unmount its partitions.
 2. Run `make update-usb JOBS=12` as your normal user. It builds first, then asks for sudo.
-3. Select the USB by model/capacity/serial, review the plan and type `UPDATE <serial>`.
+3. Select the USB by model/capacity/serial, review the plan and type `y` or `yes`.
    The tracked updater verifies the layout, writes only changed OS partitions and boot files,
    and checks read-back. It preserves userdata and metadata, including a larger data partition.
    The manual boot-only `make deploy-android USB=...` remains available.
@@ -181,12 +182,14 @@ Intel instructions that Zen 3 lacks.
 
 GRUB detects the Barcelo GPU (PCI `1002:15e7`) and passes `androidboot.dali.graphics=amd`.
 Without that GPU it selects softpipe.
+The table describes the configured profiles; Chrome logs confirm ANGLE/RADV, but the
+SurfaceFlinger and HWUI renderers have not been independently measured on the laptop.
 
 | | AMD laptop | QEMU |
 |---|---|---|
-| App UI (HWUI) | Skia GL on ANGLE → Zink → RADV | Skia GL, Mesa softpipe |
+| App UI (HWUI) | Skia GL → ANGLE → RADV | Skia GL, Mesa softpipe |
 | SurfaceFlinger | Skia Vulkan (threaded) on RADV | GL, softpipe |
-| Buffers | minigbm + Mesa GBM (Zink) | same |
+| Buffers | minigbm + Mesa GBM (Zink) | minigbm virtio backend |
 | Density | 160 | 240 |
 | Boot animation, shader priming | Google's | skipped (saves about 27 s of software rendering) |
 
@@ -196,10 +199,10 @@ Without that GPU it selects softpipe.
   the composer can drive the display.
 - **minigbm:** LineageOS minigbm with [minigbm-amd.patch](../android/minigbm-amd.patch). An ABI
   gate ([minigbm_abi.py](../tools/minigbm_abi.py)) checks it.
-- **Vulkan HWUI is an opt-in test only.** An AMD-only GRUB entry selects a RADV two-queue patch and
-  a separate `skiavk` profile; the patch and Android image build, while the normal GL profile stays
-  the default. QEMU exercises only the unchanged softpipe fallback. Laptop Vulkan rendering and
-  performance are not yet verified.
+- **Vulkan HWUI is an opt-in test only.** An AMD-only GRUB entry selects the `skiavk` profile;
+  the RADV two-queue patch is compiled into the driver used by both AMD profiles. The owner saw
+  no noticeable performance difference; GL remains the default. QEMU exercises only softpipe,
+  and broader laptop app regression testing is still needed.
 
 ## 7. Security model
 
@@ -240,7 +243,7 @@ Without that GPU it selects softpipe.
 | `gscutil.rc` removed | −10 s TPM wait on every boot | [security.md](specs/security.md) |
 | Generic bionic/libz | 99.7% fewer instruction traps (QEMU) | [os-image.md](specs/os-image.md) |
 | Power HAL CPU masks dropped | Apps get all 12 CPUs, not 0–7; media is no longer stuck on 4–7 | [laptop-hardware.md](specs/laptop-hardware.md) |
-| amdgpu fast flips | Fixes the halved frame rate with HDMI (hardware confirmation pending) | [kernel.md](specs/kernel.md) |
+| amdgpu fast flips | Owner reports HDMI performance is fine; frame rate not measured | [kernel.md](specs/kernel.md) |
 | Face polling, udsattestation, gamma log | Remove once-a-second wakeups and log spam | [security.md](specs/security.md) |
 | QEMU: no boot animation or shader priming | `boot_completed` 49 s → 20–22 s | [qemu.md](specs/qemu.md) |
 | Incremental build | Unchanged rebuild about 16 s, zero writes | [os-image.md](specs/os-image.md) |
@@ -339,16 +342,16 @@ safer to run.
 | Hardware scope | broad (Intel/AMD/NVIDIA) | broad (Intel, Surface, HP; AMD experimental) | this laptop + QEMU |
 | MSI graphics | ANGLE/Zink/RADV | SwiftShader or experimental RADV | ANGLE/Zink/RADV (Churro's profile) + HDMI flip fix |
 | MSI audio | generic generated configs | generic HDA configs | Google's HAL + ALC256 XML from measured controls |
-| MSI backlight | not specific | ACPI generic | DMI-limited kernel rename; works |
+| MSI backlight | not specific | ACPI generic | DMI-limited kernel rename; visible slider change unconfirmed |
 | Root | no | KernelSU | no (out of scope) |
 | Installer | `dd` whole disk | full installer, dual boot | none; boots from USB |
-| Tests | QEMU, GBM, vexemu | QEMU, installer, patchers | 106 unit tests, QEMU, UEFI/USB check |
+| Tests | QEMU, GBM, vexemu | QEMU, installer, patchers | Unit tests, QEMU, UEFI/USB checks |
 
 ### Where we are better
 
 1. **Readable change record.** Every change to Google's image is a list entry or a `diff -u`
-   with a header that says why. There is no `sed` in scripts and no byte patching. A reviewer can
-   read [android/](../android) and know exactly what differs from Google.
+   with a header that says why. Google's text files are not changed by `sed` scripts or byte
+   patches. A reviewer can read [android/](../android) and know what differs from Google.
 2. **Safer to build and deploy.**
    - The build needs no root, no loop devices and no raw disk writes.
    - The USB update writes only changed OS ranges, checks the device identity and reads back.
@@ -370,7 +373,7 @@ safer to run.
 
 | Gap | Who has it | Comment |
 |---|---|---|
-| Vulkan HWUI | Churro had a RADV two-queue patch | An opt-in candidate now builds; laptop testing and comparison remain. |
+| Vulkan HWUI | Churro had a RADV two-queue patch | The owner noticed no performance difference with the opt-in profile; GL remains the default. |
 | HDMI audio | Churro generates HDMI routes | Still pending; built-in ACP microphone now owner-confirmed. |
 | Fewer instruction traps | gbos-x86 redirects SHA-NI/Adler in libcrypto/libz | Only with binary patches, which we refuse; our generic-library swap covers libz/bionic. Measure the remaining traps first. |
 | Installer, internal-disk boot | both | Out of scope for now; the USB works. |
@@ -391,11 +394,11 @@ safer to run.
 ## 11. Next steps
 
 1. **On the laptop:**
-   - Boot the optional Vulkan HWUI entry and compare setup/app rendering with the normal GL entry;
-     report whether setup and apps remain usable.
-   - Confirm Bluetooth pairing and the HDMI frame rate.
+   - Confirm Bluetooth pairing and the brightness slider; check broader GPU app rendering.
+   - Measure the HDMI frame rate if its performance becomes a concern again.
    - Compare the AMD boot-animation time (`boot_progress_enable_screen` vs `sf_stop_bootanim` in
      the saved logs).
 2. **Then:** HDMI audio and suspend, one at a time, each tracked in
    [specs/laptop-hardware.md](specs/laptop-hardware.md).
-3. **Keep the baseline safe:** always run `make test` and `make qemu-check` before updating the USB.
+3. **Keep the baseline safe:** choose checks proportional to each change; preserve Android data
+   and leave physical USB updates to the owner.
