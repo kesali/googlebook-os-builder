@@ -15,7 +15,8 @@ from pathlib import Path
 import stat
 import subprocess
 
-from lp import LP_TARGET_TYPE_LINEAR, read_partitions
+from android_layout import validate_gpt_table, validate_super_extents
+from lp import read_partitions
 
 CHUNK = 4 << 20
 
@@ -60,14 +61,16 @@ def sync(image, artifacts):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             raise ValueError("Stop QEMU before updating its disk") from error
-        table = json.loads(subprocess.check_output(["sfdisk", "--json", str(image)]))["partitiontable"]
-        if table["label"] != "gpt" or table["sectorsize"] != 512:
-            raise ValueError("Expected a 512-byte-sector GPT Android disk")
+        table = validate_gpt_table(json.loads(
+            subprocess.check_output(["sfdisk", "--json", str(image)])
+        )["partitiontable"])
+        subprocess.run(["sfdisk", "--verify", str(image)], check=True)
         physical = {p["name"]: p for p in table["partitions"]}
         super_start = physical["super"]["start"] * 512
         super_end = super_start + physical["super"]["size"] * 512
         with image.open("r+b") as disk:
-            logical = {p.name: p for p in read_partitions(disk, super_start)}
+            partitions = read_partitions(disk, super_start)
+            logical, _ = validate_super_extents(disk, super_start, super_end, partitions)
             updates = []
             for name in ("system_a", "vendor_a", "system_ext_a", "vendor_dlkm_a", "vbmeta_a"):
                 source = artifacts / f"{name}.img"
@@ -75,15 +78,7 @@ def sync(image, artifacts):
                     p = physical[name]
                     extents = [(p["start"] * 512, p["size"] * 512)]
                 else:
-                    extents = []
-                    for extent in logical[name].extents:
-                        if extent.target_type != LP_TARGET_TYPE_LINEAR or extent.target_source != 0:
-                            raise ValueError(f"Unsupported extent in {name}")
-                        offset = super_start + extent.target_data * 512
-                        length = extent.num_sectors * 512
-                        if offset < super_start or offset + length > super_end:
-                            raise ValueError(f"Extent outside super: {name}")
-                        extents.append((offset, length))
+                    extents = logical[name]
                 size = source.stat().st_size
                 if not size or size > sum(length for _, length in extents):
                     raise ValueError(f"{source} does not fit {name}")

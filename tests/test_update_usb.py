@@ -119,6 +119,14 @@ class USBUpdateTests(unittest.TestCase):
                     self.image.open("rb") as source, self.assertRaises(ValueError):
                 update_usb.os_extents(source, self.layout)
 
+    def test_duplicate_logical_partition_names_are_rejected(self):
+        logical = copy.deepcopy(self.logical)
+        logical.append(Partition(logical[0].name, "default", [Extent(1, 0, 45, 0)]))
+        with patch.object(update_usb, "read_partitions", return_value=logical), \
+                self.image.open("rb") as source, \
+                self.assertRaisesRegex(ValueError, "Duplicate liblp partition"):
+            update_usb.os_extents(source, self.layout)
+
     def test_changed_metadata_refuses_before_writing(self):
         before = self.target.read_bytes()
         with self.image.open("rb") as source, self.target.open("rb") as target:
@@ -194,6 +202,12 @@ class USBUpdateTests(unittest.TestCase):
                 return_value=json.dumps({"partitiontable": {**layout, key: value}}),
             ), self.assertRaises(ValueError):
                 update_usb.table(self.image)
+        duplicate = copy.deepcopy(layout)
+        duplicate["partitions"].append(copy.deepcopy(duplicate["partitions"][0]))
+        with patch.object(
+            update_usb, "run", return_value=json.dumps({"partitiontable": duplicate}),
+        ), self.assertRaisesRegex(ValueError, "Duplicate GPT partition names"):
+            update_usb.table(self.image)
 
     def test_source_symlink_and_device_are_rejected_before_selection(self):
         link = self.root / "link"

@@ -17,12 +17,10 @@ import stat
 import subprocess
 import tempfile
 
+from android_layout import validate_gpt_table, validate_super_extents
 from android_sync import CHUNK, disk_hash
 from deploy import FORMATS, install, read_bundle
-from lp import (
-    LP_METADATA_GEOMETRY_SIZE, LP_PARTITION_RESERVED_BYTES, LP_TARGET_TYPE_LINEAR,
-    LpMetadataGeometry, read_at, read_partitions,
-)
+from lp import read_partitions
 
 OS_PARTITIONS = ("system_a", "vendor_a", "system_ext_a", "vendor_dlkm_a", "vbmeta_a")
 BLKSSZGET = 0x1268
@@ -73,15 +71,7 @@ def check_identity(selected, stream):
 
 
 def table(path):
-    result = json.loads(run("sfdisk", "--json", str(path)))["partitiontable"]
-    if result["label"] != "gpt" or result["sectorsize"] != 512:
-        raise ValueError("Expected a 512-byte-sector GPT disk")
-    if result.get("unit") != "sectors":
-        raise ValueError("GPT offsets must be in sectors")
-    names = [entry["name"] for entry in result["partitions"]]
-    if len(set(names)) != len(names):
-        raise ValueError("Duplicate GPT partition names")
-    return result
+    return validate_gpt_table(json.loads(run("sfdisk", "--json", str(path)))["partitiontable"])
 
 
 def check_layout(source, target):
@@ -107,43 +97,18 @@ def os_extents(stream, layout):
     physical = {entry["name"]: entry for entry in layout["partitions"]}
     super_start = physical["super"]["start"] * 512
     super_end = super_start + physical["super"]["size"] * 512
-    logical = read_partitions(stream, super_start)
-    geometry = LpMetadataGeometry.unpack(read_at(
-        stream, super_start + LP_PARTITION_RESERVED_BYTES, LpMetadataGeometry.size,
-    ))
-    metadata_max_size, metadata_slots = geometry[3:5]
-    metadata_end = (super_start + LP_PARTITION_RESERVED_BYTES + 2 * LP_METADATA_GEOMETRY_SIZE
-                    + 2 * metadata_max_size * metadata_slots)
-    if metadata_max_size <= 0 or metadata_slots <= 0 or metadata_end >= super_end:
-        raise ValueError("Invalid liblp metadata reservation")
-    partitions = {partition.name: partition for partition in logical}
-    all_extents = []
-    for partition in logical:
-        for extent in partition.extents:
-            if extent.target_type != LP_TARGET_TYPE_LINEAR or extent.target_source != 0:
-                raise ValueError(f"Unsupported liblp extent in {partition.name}")
-            offset = super_start + extent.target_data * 512
-            length = extent.num_sectors * 512
-            if length <= 0 or offset < metadata_end or offset + length > super_end:
-                raise ValueError(f"Extent outside super data area: {partition.name}")
-            all_extents.append((offset, length))
-    ordered = sorted(all_extents)
-    if not ordered or ordered[0][0] <= super_start:
-        raise ValueError("No reserved liblp metadata area")
-    for (offset, length), (next_offset, _) in zip(ordered, ordered[1:]):
-        if offset + length > next_offset:
-            raise ValueError("Overlapping liblp extents")
+    partitions = read_partitions(stream, super_start)
+    logical, metadata = validate_super_extents(stream, super_start, super_end, partitions)
     ranges = {}
     for name in OS_PARTITIONS:
         if name == "vbmeta_a":
             part = physical[name]
             ranges[name] = [(part["start"] * 512, part["size"] * 512)]
         else:
-            ranges[name] = [(super_start + extent.target_data * 512, extent.num_sectors * 512)
-                            for extent in partitions[name].extents]
+            ranges[name] = logical[name]
         if not ranges[name]:
             raise ValueError(f"No extents for {name}")
-    return ranges, (super_start, ordered[0][0] - super_start)
+    return ranges, metadata
 
 
 def plan_os(source, target, ranges, metadata):

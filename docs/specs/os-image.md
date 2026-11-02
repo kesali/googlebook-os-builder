@@ -5,7 +5,12 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-02 — native-bridge diagnostics rebuilt only system/system_ext;
+**Last verified:** 2026-11-03 — 28 focused image/USB tests pass in the builder. Cached
+`make android-image JOBS=12` runs took 18 and 19 seconds; both verified the GPT and wrote no
+partitions or boot files. All 76 recorded output files kept their metadata and non-disk hashes;
+GPT, liblp, the metadata partition and sampled userdata matched. The entire disk was not hashed.
+No QEMU boot or physical USB update was performed for this change.
+Earlier, 2026-11-02: native-bridge diagnostics rebuilt only system/system_ext;
 3,642/236 entries passed metadata checks. The repeat preserved image/bundle timestamps and
 wrote no partitions. 53 focused tests and two enforcing UEFI/QEMU runs pass
 ([build](../../out/arm-translation-diagnostic/build.log),
@@ -48,7 +53,7 @@ Verified: `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a` rebuilt as ERO
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
 `out/android/disk.img` with a 32 GiB sparse userdata and a 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`,
 Google's PARTUUID) holding the laptop's boot files; updates copy only changed partitions
-with read-back hashes; unchanged builds write nothing; updates refuse to run while the VM holds the disk lock.
+with read-back hashes; unchanged builds write no disk partitions; updates refuse to run while the VM holds the disk lock.
 OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make android-uefi-check`,
 2026-11-01; [laptop-hardware.md](laptop-hardware.md)). Its disposable boots left the source disk
 byte-identical. The owner later completed physical setup with Wi-Fi and input on an earlier image.
@@ -135,7 +140,8 @@ QEMU test used a reflinked copy.
 - [scripts/android-disk.sh](../../scripts/android-disk.sh) — create the private disk once: data partition, FAT32 boot partition.
 - [tests/test_android_disk.py](../../tests/test_android_disk.py) — its layout and refusals on a synthetic Google-shaped disk.
 - [scripts/android-boot.sh](../../scripts/android-boot.sh), [tests/test_android_boot.py](../../tests/test_android_boot.py) — boot files into the FAT32 partition; its refusals, no-op and repair on a synthetic disk.
-- [tools/android_sync.py](../../tools/android_sync.py), [tools/lp.py](../../tools/lp.py) — partition updates.
+- [tools/android_sync.py](../../tools/android_sync.py), [tools/android_layout.py](../../tools/android_layout.py)
+  and [tools/lp.py](../../tools/lp.py) — partition updates and shared layout checks.
 - [tools/update_usb.py](../../tools/update_usb.py), [tests/test_update_usb.py](../../tests/test_update_usb.py)
   — host USB selection, layout checks, incremental OS and menu-last boot updates.
 - [scripts/unpack.sh](../../scripts/unpack.sh) — Google image inventory (`out/google/inventory.txt`).
@@ -154,10 +160,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 - fakeroot does keep ownership and xattrs, but only because the comparison checks every entry;
   never weaken [tools/fs_metadata.py](../../tools/fs_metadata.py) to make a build pass.
 - Logical partitions can span several extents; the updater handles multi-extent copies (tested).
-- The USB updater rejects logical extents inside liblp metadata or overlapping another extent;
-  [android_sync.py](../../tools/android_sync.py) currently checks only the `super` boundary.
-  A read-only check of `out/android/disk.img` with the USB updater's guard passed. Local sync
-  does not reject those conflicts even when liblp checksums are valid.
+- [android_sync.py](../../tools/android_sync.py) and the USB updater share checks for extents
+  inside liblp metadata, outside `super`, or overlapping another parsed partition. Both verify
+  the GPT before writing. General liblp parser structural hardening is not part of this change.
 - An interrupted update is fixed by rerunning `make android-image`, not by deleting the disk.
 - Generate patches against Google's pristine file, not a previous build:
   `fsck.erofs --extract=DIR --xattrs out/google/super/<p>_a.img`, edit a copy, then
@@ -180,6 +185,8 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Shared local/USB extent and GPT checks without changing the
+  extractor; 28 focused tests, cached image build and no-write repeat pass. Physical USB untested.
 - 2026-11-02 (this commit) — Compared local and USB extent guards; the current private disk
   passes the stronger USB check, but local-sync metadata/overlap validation remains a gap.
 - 2026-11-02 (this commit) — Replaced serial retyping with default-no `y`/`yes` confirmation
