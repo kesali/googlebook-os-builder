@@ -119,7 +119,7 @@ def read_bundle(source):
     return kind, files, hashes
 
 
-def install(source, destination, initialize=False):
+def install(source, destination, initialize=False, dry_run=False):
     kind, files, hashes = read_bundle(source)
     destination = destination.absolute()
     if destination.is_symlink() or not destination.is_dir():
@@ -156,6 +156,11 @@ def install(source, destination, initialize=False):
     space = os.statvfs(destination)
     if required > space.f_bavail * space.f_frsize:
         raise OSError("Not enough free space on the boot filesystem (old builds are retained)")
+
+    if dry_run:
+        changed = [name for name, data in payloads.items()
+                   if not (destination / name).exists() or (destination / name).read_bytes() != data]
+        return changed + (["dali/grub.cfg"] if menu_changed else [])
 
     changed = []
     for name, data in payloads.items():

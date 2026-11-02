@@ -1,6 +1,10 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
+USB updater validation (2026-11-02): `make test` passes 129 tests, including regular-file combined
+OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
+on the real built image matches the old helper. Not verified: the new host mount/write workflow
+on physical USB hardware; no physical disk was written for this change.
 **Last verified:** 2026-11-02 — the codec affinity-query policy rebuilt only vendor; all 1,620
 entries passed metadata checks. Repeat build wrote no partitions; enforcing QEMU reached the
 inspected setup screen ([build](../../out/video-codec-image-build.log),
@@ -88,14 +92,19 @@ QEMU test used a reflinked copy.
   they already match, nothing is written. Only these two trees are touched.
 - The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a`, `vbmeta_a` — never
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
+- `make update-usb` is the supported physical USB update workflow: build in the container, then
+  run the host updater with sudo. List USB disks, select explicitly and confirm by serial.
+  Require matching GPT/liblp and the Android boot marker, preserve larger userdata, and update
+  OS ranges plus boot files with read-back. Private boot mounts are read-only until confirmation;
+  payloads precede the menu. Never format, repartition, auto-select or offer internal disks.
 - `/data` cannot grow without being erased: its ext4 has no `resize_inode` and ends on a
   group-descriptor boundary (no online `resize2fs`), and an offline resize needs the metadata
   encryption key, which we never extract. Enlarging the partition alone changes nothing. The
   owner-run, ignored `out/usb-flash-android/grow-data.sh` enlarges `userdata` and, if it holds data,
   blanks its first MiB so fs_mgr formats `/data` at the new size. Apart from a full flash it is the
   only helper that writes userdata, and it needs `--erase-data` plus a typed `ERASE` whenever data
-  would be lost. It never shrinks, and `update-os.sh` accepts a larger userdata (its other layout
-  checks are unchanged).
+  would be lost. It never shrinks; the tracked USB updater accepts a larger userdata while requiring
+  the rest of the layout to match.
 - Dependencies are per partition: Mesa, minigbm, firmware, emulator and crossystem rebuild vendor
   only; system_ext changes rebuild system_ext; the signed module manifest rebuilds vendor_dlkm.
 - Google's `/system/build.prop` turns on mmd's zram writeback, so `mmd_setup` makes an 8 GiB file in
@@ -115,6 +124,8 @@ QEMU test used a reflinked copy.
 - [tests/test_android_disk.py](../../tests/test_android_disk.py) — its layout and refusals on a synthetic Google-shaped disk.
 - [scripts/android-boot.sh](../../scripts/android-boot.sh), [tests/test_android_boot.py](../../tests/test_android_boot.py) — boot files into the FAT32 partition; its refusals, no-op and repair on a synthetic disk.
 - [tools/android_sync.py](../../tools/android_sync.py), [tools/lp.py](../../tools/lp.py) — partition updates.
+- [tools/update_usb.py](../../tools/update_usb.py), [tests/test_update_usb.py](../../tests/test_update_usb.py)
+  — host USB selection, layout checks, incremental OS and menu-last boot updates.
 - [scripts/unpack.sh](../../scripts/unpack.sh) — Google image inventory (`out/google/inventory.txt`).
 - [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py) — mismatch and early-failure safety.
 
@@ -148,9 +159,14 @@ must print no partition or boot-file writes and leave output timestamps unchange
   account (untested).
 
 ## Actions
-_None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
+- [ ] First physical use of `make update-usb JOBS=12` — done when the owner selects the existing
+  USB, verifies OS and boot updates succeed, confirms data remains intact and sees a no-write
+  repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Promoted USB updates into `make update-usb`: select/confirm by serial,
+  derive OS extents, preserve data/layout, reuse menu-last boot installation. 129 tests pass and
+  real-image ranges match; physical USB use remains untested. No disk written.
 - 2026-11-02 (this commit) — Added the software-codec vendor seccomp extension for Mesa's
   affinity query. Vendor-only rebuild and unchanged repeat pass; enforcing QEMU setup and software
   AVC encoding pass. The physical stick is unchanged; playback retest remains.

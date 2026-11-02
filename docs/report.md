@@ -53,15 +53,14 @@ system_a, vendor_a, system_ext_a, vendor_dlkm_a, vbmeta_a ─► out/android/dis
 kernel + initrd + GRUB + menu ─────────────────────────────► DALI-BOOT FAT32 partition
                  │
                  ├─ make qemu / qemu-check        boot the same disk in QEMU
-                 ├─ make deploy-android USB=...   copy boot files to the USB's mounted ESP
-                 └─ update-os.sh (owner, local)   write changed OS partitions to the USB with read-back
+                 └─ make update-usb              select USB; update OS + boot files with read-back
 ```
 
 The pieces, with the files that implement them:
 
 | Step | What happens | Where |
 |---|---|---|
-| Builder | Debian container with every build tool; the host only needs Docker, make and Python. | [scripts/builder.sh](../scripts/builder.sh), [docker/Dockerfile](../docker/Dockerfile) |
+| Builder | Debian container with every build tool; the host needs Docker, make and Python for builds, plus sudo/util-linux for USB deployment. | [scripts/builder.sh](../scripts/builder.sh), [docker/Dockerfile](../docker/Dockerfile) |
 | Pins | Every download: URL, version, SHA-256 or git commit, and why we use it. | [sources.mk](../sources.mk) |
 | Settings | Recovery image path, CPU count, memory, data size. | [config.mk](../config.mk) |
 | Unpack | Extract Google's partitions read-only and record an inventory. | [Makefile](../Makefile) `unpack` |
@@ -72,6 +71,7 @@ The pieces, with the files that implement them:
 | Disk | Reflinked copy of Google's disk; userdata moved to the end and grown; blank `KERN-A` merged into a 576 MiB FAT32 `DALI-BOOT`. Created once and never recreated automatically. | [scripts/android-disk.sh](../scripts/android-disk.sh) |
 | Sync | Copy only changed partitions into the disk, then read them back. Refuses while QEMU holds the disk. | [tools/android_sync.py](../tools/android_sync.py) |
 | Boot files | Kernel, initrd, GRUB and menu; written into the ESP with mtools (no mounts, no root). | [scripts/android-boot.sh](../scripts/android-boot.sh), [tools/deploy.py](../tools/deploy.py), [boot/android-menu.cfg](../boot/android-menu.cfg) |
+| USB update | List USB disks, select and confirm by serial; verify the existing layout, copy changed OS ranges, then install boot files menu-last via a private mount. No formatting or data writes. | [tools/update_usb.py](../tools/update_usb.py), [tools/deploy.py](../tools/deploy.py) |
 | Checks | `make test` (106 unit tests), `make qemu-check` (bounded graphical boot), `make android-uefi-check` (UEFI/GRUB boot from a temporary USB image next to a decoy NVMe). | [tests/](../tests), [tools/android_smoke.py](../tools/android_smoke.py), [tools/android_uefi_test.py](../tools/android_uefi_test.py) |
 
 **Build speed:**
@@ -85,13 +85,13 @@ The pieces, with the files that implement them:
 
 **Updating the laptop:**
 
-1. Run `make android-image`.
-2. Run `make deploy-android USB=/run/media/$USER/DALI-BOOT`. This step updates the boot files and
-   keeps the previous build's files.
-3. Run `sudo bash out/usb-flash-android/update-os.sh`. The script checks the approved USB's
-   by-id identity and its layout, writes only the OS partitions that changed, and reads each one
-   back. It never touches userdata or metadata.
-4. Optional, once: `sudo bash out/usb-flash-android/grow-data.sh --erase-data [GiB]` enlarges the
+1. Stop QEMU, connect the USB and unmount its partitions.
+2. Run `make update-usb JOBS=12` as your normal user. It builds first, then asks for sudo.
+3. Select the USB by model/capacity/serial, review the plan and type `UPDATE <serial>`.
+   The tracked updater verifies the layout, writes only changed OS partitions and boot files,
+   and checks read-back. It preserves userdata and metadata, including a larger data partition.
+   The manual boot-only `make deploy-android USB=...` remains available.
+4. Optional, once: the owner's local `sudo bash out/usb-flash-android/grow-data.sh --erase-data [GiB]` enlarges the
    data partition into the free space on the stick. Android cannot resize its encrypted `/data`, so
    this erases it and setup runs again; the script asks you to type `ERASE` first.
 

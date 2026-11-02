@@ -63,42 +63,48 @@ for Linux retrieval. These are Android logs, separate from the optional diagnost
 
 ### Updating the existing Android USB
 
-1. Stop any VM using the image, then run `make android-image JOBS=12`. This rebuilds only changed
-   components and updates the **regular image file**, not a physical disk. Keep downloads,
-   sources and build directories in `out/`; deleting them makes the next build slow.
-2. If the kernel, initrd or GRUB menu changed, mount the USB's **DALI-BOOT** partition and run:
+Stop any VM using the image, plug in the Android USB and unmount its partitions (including
+**DALI-BOOT**) in the file manager. Then run as your normal user:
 
-   ```sh
-   make deploy-android JOBS=12 USB=/run/media/$USER/DALI-BOOT
-   ```
+```sh
+make update-usb JOBS=12
+```
 
-   This checks the mounted destination, writes changed boot files and changes the menu last.
-   Unmount it afterwards. **`make deploy` is for the separate diagnostic OS, not Android.**
-3. If an OS partition changed, the owner's local
-   [update-os.sh](out/usb-flash-android/update-os.sh) compares and copies only the changed OS
-   ranges, checks the USB identity/layout, and verifies read-back. With its target reviewed
-   and all USB partitions unmounted, the owner runs:
+This builds changed components, then asks for sudo to run the tracked
+[USB updater](tools/update_usb.py) on the host. Choose a numbered USB disk from its model,
+capacity and serial; review the planned OS and boot-file changes, then type `UPDATE <serial>`
+to confirm. Enter at selection or a nonmatching confirmation cancels without writing.
 
-   ```sh
-   sudo -- bash out/usb-flash-android/update-os.sh
-   ```
+The updater:
+- Accepts only an **existing Dali Android USB**, not a blank disk or the diagnostic OS.
+- Refuses internal disks, missing serials, mounted/in-use disks and incompatible GPT/liblp layouts.
+- Derives OS ranges from the built image, copies only changed partitions and verifies read-back.
+- Updates kernel, initrd and GRUB together using the existing menu-last boot installer.
+- Preserves `/data`, metadata and partition tables, including an already enlarged userdata.
+- Unmounts its private boot mounts but leaves the USB attached to Linux; no replug is needed.
 
-   This is a machine-specific helper under ignored `out/`, not a portable installer or part of
-   the build. It never writes Android userdata or metadata. Do not adapt its device identity
-   or partition ranges by guessing. There is deliberately no automatic physical-disk writer.
-4. Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so
-   the owner's local [grow-data.sh](out/usb-flash-android/grow-data.sh) enlarges the `userdata`
-   partition into the free space behind it and blanks its first MiB; Android then formats `/data`
-   at the new size on the next boot. **That erases Android's accounts, apps and files** and setup
-   runs again, so it needs `--erase-data` and a typed `ERASE` (a blank partition grows without
-   them). Run it right after a flash and nothing of yours is lost. It never shrinks the partition
-   and refuses any other layout, with the same identity checks as `update-os.sh`:
+If interrupted, rerun it before booting Android. It is an updater, not an installer: it never
+formats or repartitions. It replaces the ignored, machine-specific `update-os.sh`.
+Host requirements are Python 3, sudo and util-linux (`lsblk`, `sfdisk`, `mount`, `umount`).
+Builds still run inside the Debian builder; only explicit physical-device deployment runs on the host.
+Keep downloads, sources and build directories in `out/`; deleting them makes the next build slow.
 
-   ```sh
-   sudo -- bash out/usb-flash-android/grow-data.sh --erase-data 128   # GiB; omit the size for all free space
-   ```
+For boot-only manual deployment, `make deploy-android JOBS=12 USB=/path/to/mounted/DALI-BOOT`
+remains available. **`make deploy` is for the separate diagnostic OS, not Android.**
 
-   Later `update-os.sh` runs accept the larger partition; reflashing returns to `ANDROID_DATA_GIB`.
+Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so
+the owner's local [grow-data.sh](out/usb-flash-android/grow-data.sh) enlarges the `userdata`
+partition into the free space behind it and blanks its first MiB; Android then formats `/data`
+at the new size on the next boot. **That erases Android's accounts, apps and files** and setup
+runs again, so it needs `--erase-data` and a typed `ERASE` (a blank partition grows without
+them). Run it right after a flash and nothing of yours is lost. It never shrinks the partition
+and refuses any other layout. This helper remains specific to the owner's Seagate stick:
+
+```sh
+sudo -- bash out/usb-flash-android/grow-data.sh --erase-data 128   # GiB; omit the size for all free space
+```
+
+Later `make update-usb` runs accept the larger partition; reflashing returns to `ANDROID_DATA_GIB`.
 
 An unchanged image build writes no partitions or boot files. A successful QEMU check is a useful
 regression test, not proof of working laptop audio, brightness or GPU acceleration.
@@ -108,6 +114,7 @@ regression test, not proof of working laptop audio, brightness or GPU accelerati
 | File | Responsibility |
 |---|---|
 | [Makefile](Makefile) | Dependencies and commands; `make` lists targets |
+| [tools/update_usb.py](tools/update_usb.py) | Select and update an existing Android USB; preserve data and verify writes |
 | [config.mk](config.mk) | Output path, jobs, recovery path, USB mountpoint, QEMU sizes |
 | [sources.mk](sources.mk) | Source URLs, exact revisions and SHA-256 pins |
 | [docker/Dockerfile](docker/Dockerfile) | Debian build/test tools |

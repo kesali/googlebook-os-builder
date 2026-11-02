@@ -63,10 +63,14 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
 .PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki \
-	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console FORCE
+	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console update-usb FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
+
+# Device selection and mounts belong to the host, never a privileged builder container.
+update-usb: android-image ## Select an existing Android USB and update OS + boot files, preserving data
+	sudo -- python3 tools/update_usb.py "$(ANDROID)/disk.img" "$(ANDROID)/boot"
 
 builder: $(BUILD_READY) ## Build the Debian tool environment
 $(BUILD_READY): docker/Dockerfile

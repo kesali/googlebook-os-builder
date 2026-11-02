@@ -11,7 +11,7 @@ The component specs track the details; the plan keeps the overall direction in o
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial | Owner checks the brightness slider on the laptop |
 | [Boot chain](boot.md) | partial | Retrieve the snapshot and logs after each laptop retest |
-| [OS image and disk](os-image.md) | working | — (stable; the USB layout is tracked in Laptop hardware) |
+| [OS image and disk](os-image.md) | working | Owner verifies the unified USB updater on the existing stick |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Validate software video playback after the codec sandbox affinity-query fix |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |

@@ -125,8 +125,8 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
    Master (0–74), while production uses ALC256's mono Master (0–87). It captures WAV only,
    never host speaker output. A zero-filled WAV is **not** audio success.
 3. Follow the [Android update workflow](../../README.md#updating-the-existing-android-usb).
-   Kernel changes re-sign modules, so update both the boot files (`make deploy-android`) and
-   the OS partitions (`update-os.sh`). Do not select the previous or framebuffer-free menu entry.
+   `make update-usb JOBS=12` updates the OS partitions and boot files together, including re-signed
+   modules after kernel changes. Do not select the previous or framebuffer-free menu entry.
 4. Owner retest: start with low Android volume, play media, check speakers/headphones and move
    the brightness slider. Confirm density/input/Wi-Fi remain usable. Retrieve the new snapshot
    and relevant logs whether the result succeeds or fails.
@@ -166,6 +166,8 @@ metadata/logd starts still needs a screen photo.
   while it stays plugged in. Re-attach it without unplugging by rescanning its host as root:
   `echo '- - -' > /sys/class/scsi_host/host0/scan` (the host name is listed under
   `/sys/bus/usb/devices/<port>:1.0/`). Mount DALI-BOOT for `make deploy-android` before running them.
+  The tracked `make update-usb` replaces `update-os.sh` and leaves the USB attached; it requires all
+  partitions unmounted and handles its own private boot mounts.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
@@ -198,6 +200,9 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Main USB update workflow is now `make update-usb JOBS=12`: select
+  the disk, confirm by serial, update OS and boot files without touching data. 129 fixture tests
+  pass; first physical use of the new tool is pending. No USB write made.
 - 2026-11-02 (this commit) — Owner reports HDMI fine; Vulkan HWUI has no noticeable speed benefit.
   Retrieved both boots' logs read-only: software codecs crash on Mesa's sandboxed affinity query.
   Vendor policy fix built and QEMU-checked, not written to the USB; laptop playback retest pending.
