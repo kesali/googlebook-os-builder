@@ -32,6 +32,7 @@ renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. QEMU
   vendor linker-namespace problems. Pins: [sources.mk](../../sources.mk).
 - Software rendering is selected with `LIBGL_ALWAYS_SOFTWARE`/`GALLIUM_DRIVER` in
   [graphics-softpipe.rc](../../android/system_ext/graphics-softpipe.rc), not Android properties (name-length limits).
+  That profile also skips shader priming and the boot animation, which softpipe draws too slowly ([QEMU spec](qemu.md)).
 - The laptop menu selects AMD only for PCI `1002:15e7`; otherwise softpipe is the default.
   [graphics-amd.rc](../../android/system_ext/graphics-amd.rc) selects Google's ANGLE GLES,
   RADV Vulkan RenderEngine and Mesa GBM/Zink, with GL HWUI like QEMU. Vulkan HWUI needs a

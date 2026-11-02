@@ -4,5 +4,10 @@ on early-init
     setprop ro.hardware.vulkan none
     setprop debug.renderengine.vulkan false
     setprop debug.renderengine.backend skiaglthreaded
+    # Softpipe spends ~23 s priming SurfaceFlinger's shader cache (it generates 0 shaders) and ~50 s
+    # drawing Google's 2880x1800 boot animation, which WindowManager waits for. Skipping both brings
+    # QEMU's sys.boot_completed from ~49 s to ~22 s; the laptop's AMD profile keeps them.
+    setprop service.sf.prime_shader_cache 0
+    setprop debug.sf.nobootanimation 1
     export LIBGL_ALWAYS_SOFTWARE true
     export GALLIUM_DRIVER softpipe

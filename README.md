@@ -297,8 +297,9 @@ alone is not a passing result. The captured screen also needs visual inspection.
 Verified locally: the actual Googlebook welcome/setup screen at 1280x720, with Mesa softpipe,
 software keys and SELinux enforcing, VNC connection, mouse navigation into the language picker,
 and clean guest shutdown. The `make test` unit tests (including the GBM wrapper checks) pass; unchanged builds preserve output
-timestamps and write no OS partitions, and a running VM rejects disk updates. Allow several minutes
-for CPU-rendered startup. Setup completion, Google account sign-in, hardware-backed attestation
+timestamps and write no OS partitions, and a running VM rejects disk updates. A repeat boot completes
+in about 20 seconds, because the softpipe profile skips the boot animation and shader priming; allow
+several minutes for the first CPU-rendered startup on fresh data. Setup completion, Google account sign-in, hardware-backed attestation
 and laptop performance are **not** claimed as tested. Bluetooth, Wi-Fi and audio hardware are
 not presented to this VM; QEMU provides a virtual Ethernet adapter instead.
 

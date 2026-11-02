@@ -1,7 +1,9 @@
 # QEMU VM
 
 **Status:** parked — boots to the setup screen with keyboard and mouse; setup not finished, paused while the laptop comes first.
-**Last verified:** 2026-10-31 — `make qemu-check`; VNC mouse click reached the language picker (`out/qemu/input-screen.png`).
+**Last verified:** 2026-11-02 — `make qemu-check JOBS=12` PASS with `sys.boot_completed` at 20.5 s
+(4 CPUs); [setup screen](../../out/qemu-boot-speed/qemu-check-screen.png) inspected. 2026-10-31: a
+VNC mouse click reached the language picker (`out/qemu/input-screen.png`).
 
 ## Goal
 A fast, safe place to develop Googlebook OS: one command builds what changed and boots it,
@@ -10,7 +12,8 @@ with a screen, input, network and a shell, and a bounded check that proves a rea
 ## Current state
 Verified: KVM VM (`-cpu host`, 4 CPUs, 6 GB, q35) boots the private NVMe disk; VNC on
 localhost:5900; virtio keyboard and relative mouse; virtual Ethernet gets `10.0.2.15/24`;
-serial shell and QMP via Unix sockets; clean guest shutdown.
+serial shell and QMP via Unix sockets; clean guest shutdown. Boot completes in about 20 s
+([timings](../../out/qemu-boot-speed/summary.txt)).
 Not verified: finishing SetupWizard, Internet access beyond DHCP, Google sign-in, apps.
 Known noise: Bluetooth services crash-loop because no Bluetooth device exists.
 
@@ -22,6 +25,9 @@ Known noise: Bluetooth services crash-loop because no Bluetooth device exists.
   (not enough on its own: see the s2idle pitfall).
 - `-no-reboot`: a guest reboot or panic ends QEMU instead of looping.
 - A shared lock on the disk: the updater refuses to write while the VM runs.
+- The softpipe profile skips SurfaceFlinger's shader priming and the boot animation
+  ([graphics-softpipe.rc](../../android/system_ext/graphics-softpipe.rc)): under softpipe they kept
+  boot completion waiting for WindowManager's 30 s timeout (~49 s → ~22 s). The laptop keeps both.
 
 ## Files
 - [scripts/qemu.sh](../../scripts/qemu.sh) — the virtual machine.
@@ -35,7 +41,11 @@ SurfaceFlinger/KeyMint/Gatekeeper PIDs for 30 s, SELinux enforcing, softpipe, 12
 Evidence in `out/qemu/`. Then **look at `screen.png`**. For input, use `make qemu` + a VNC viewer.
 
 ## Pitfalls
-- `sys.boot_completed=1` arrives while the boot animation is still on screen; wait for it to exit.
+- `***** BOOT TIMEOUT: forcing display enabled` means WindowManager waited 30 s for a window or
+  the boot animation. To see which, run `cmd protolog_configuration logcat enable WM_DEBUG_BOOT`
+  over the console before `boot_progress_enable_screen`. The serial shell cannot read the result in
+  `/metadata/dali-bootlog/current/android-boot.log*`; after the VM stops, copy the metadata partition
+  out of `out/android/disk.img` and read it with `debugfs` ([boot spec](boot.md)).
 - A 1280x720 screenshot can still be QEMU's inactive-display placeholder; inspect it.
 - Unbounded `logcat -b all -d` over serial can time out and leave the shell busy; filter on the
   guest (`logcat -d -s Tag | tail -n 200`). Ctrl-C through the socket recovers it.
@@ -60,7 +70,9 @@ Parked while the laptop is the focus (owner, 2026-10-31); these are still the ag
 - Keep the guest awake (for example Android's stay-awake setting) so it does not enter s2idle.
 
 ## Handoff log
-- 2026-10-31 (this commit) — Parked: the owner is satisfied that QEMU boots Android to setup and
+- 2026-11-02 (this commit) — Softpipe profile skips shader priming and the boot animation; boot
+  completes at ~20 s instead of ~50 s (WindowManager no longer hits its 30 s BOOT TIMEOUT).
+- 2026-10-31 `9c78a5d` — Parked: the owner is satisfied that QEMU boots Android to setup and
   moved to the laptop. Recorded that the guest enters s2idle after about 3 minutes idle.
 - 2026-10-31 `56719c0` — Graphical boot to setup; mouse input; sleep disabled; bounded smoke check.
 - 2026-10-31 `2f02300` — Headless boot to a serial shell (stalled at vold before software KeyMint).
