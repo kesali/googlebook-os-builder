@@ -162,7 +162,8 @@ class BootlogTests(unittest.TestCase):
         text = (REPO / "android/system_ext/bootlog.rc").read_text()
         self.assertIn("setprop ro.logd.kernel true", text)
         self.assertIn("on property:sys.dali.bootlog.ready=1", text)
-        self.assertIn("on property:sys.boot_completed=1\n    start dali_hardware_snapshot", text)
+        self.assertIn("on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1\n"
+                      "    start dali_hardware_snapshot", text)
         self.assertIn("seclabel u:r:dali_hardware_diag:s0", text)
         commands = [line.split() for line in text.splitlines()
                     if line.startswith("service dali_") and "/system/bin/logcat" in line]
@@ -275,7 +276,23 @@ class HardwareSnapshotTests(unittest.TestCase):
         (self.logs / "current/hardware.txt").symlink_to(target)
         result = self.snapshot()
         self.assertNotEqual(result.returncode, 0)
+        self.assertIn("dali hardware snapshot failed", result.stderr)
         self.assertEqual(target.read_text(), "keep\n")
+
+    def test_empty_proc_file_keeps_next_section_on_a_new_line(self):
+        (self.proc / "asound").mkdir()
+        (self.proc / "asound/pcm").touch()
+        result = self.snapshot()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hardware = (self.logs / "current/hardware.txt").read_text()
+        self.assertIn("asound_pcm=\nloaded_sound_modules:\n", hardware)
+
+    def test_refuses_directory_at_output_path(self):
+        (self.logs / "current/hardware.txt").mkdir()
+        result = self.snapshot()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("dali hardware snapshot failed", result.stderr)
+        self.assertEqual(list((self.logs / "current/hardware.txt").iterdir()), [])
 
 
 if __name__ == "__main__":

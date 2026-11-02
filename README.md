@@ -4,9 +4,10 @@ A small, readable build for developing a Googlebook OS port on the **MSI Modern 
 Google's recovery image is a read-only input, not something we patch with byte offsets.
 Upstream code is used unchanged where possible; each carried patch is small and explains its purpose.
 
-**QEMU verified; laptop retest pending:** plain Googlebook OS with a source-built GKI kernel,
-Mesa softpipe fallback and an AMD graphics stack awaiting the physical test,
-plus software KeyMint/Gatekeeper from Google's emulator. No KernelSU, dual-boot
+**The laptop boots and completes setup over Wi-Fi:** keyboard and touchpad work.
+Sound and screen brightness are still being brought up. QEMU keeps a Mesa softpipe fallback;
+the laptop uses the AMD graphics profile, with acceleration not yet measured.
+Software KeyMint/Gatekeeper come from Google's emulator. No KernelSU, dual-boot
 installer, host-GPU passthrough or raw physical-disk writes by the build. The separate USB diagnostic target is
 retained, but it does not run Android.
 
@@ -23,7 +24,7 @@ Allow at least 50 GB for sources, builds and recovery images, plus Android's spa
 ```sh
 make qemu JOBS=12         # build changed components and run; VNC viewer: localhost:5900
 make console COMMAND='getprop sys.boot_completed'   # from another terminal
-make qemu-check          # bounded graphical boot/stability check; shuts the VM down afterwards
+make qemu-check JOBS=12   # bounded graphical check; shuts only the VM down afterwards
 ```
 
 `QEMU_VNC_PORT=5901` changes the localhost-only published port. Android has 4 virtual CPUs,
@@ -41,26 +42,49 @@ make android-uefi-check JOBS=12  # disposable USB/UEFI boots in QEMU; no physica
 The Android image is **49.8 GiB (53,430,190,080 bytes)**, not the small diagnostic image below.
 Use a **64 GB or larger USB**, preferably USB 3. Flash [out/android/disk.img](out/android/disk.img)
 with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
-The laptop spec records a checked USB transfer, but the owner reports Android still hangs
-after the GPU-label fix. A framebuffer-free test then ended in a kernel panic and wrote crash
-records to UEFI variable storage. The Churro-based framebuffer handoff and EFI crash-logging
-safeguard passed offline QEMU checks; the owner installed them on the USB and read-back matched.
-The saved previous GRUB menu may still write crash records. For the retest, use only the normal
-entry, not the previous build or framebuffer-free test. The existing disk image still has the
-prior boot files until rebuilt. A usable physical boot is not yet verified.
+For an existing Android USB, **update instead of reflashing**: a full flash would erase its
+Android accounts and data. Use the normal GRUB entry. The old framebuffer-free experiment
+panicked; a saved previous menu may predate the EFI crash-logging safeguard.
 
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
 `1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
 Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm
-are included, but **AMD display/input have not been verified on the laptop**. QEMU reaches usable
-setup; that does not prove a physical graphics handoff. Wi-Fi, Bluetooth, audio and suspend remain
-unverified. Photograph the setup screen and test the keyboard/touchpad; if it stops, photograph
-the last visible log. Details and evidence: [laptop hardware](docs/specs/laptop-hardware.md).
-Persistent kernel/Android diagnostics saved logs from the previous laptop boot, but not the
-framebuffer-free panic. They use native logcat and retain current/previous boot on metadata,
+are included. The owner has completed setup and used Wi-Fi and input. Sound and brightness still
+need a physical retest after changes; Bluetooth, microphones and suspend are not verified.
+Details and evidence: [laptop hardware](docs/specs/laptop-hardware.md).
+Persistent kernel/Android diagnostics use native logcat and retain current/previous boot on metadata,
 with an explicitly approved scoped enforcing policy. See [boot](docs/specs/boot.md) for limits/coverage
 and [laptop hardware](docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
 for Linux retrieval. These are Android logs, separate from the optional diagnostic USB below.
+
+### Updating the existing Android USB
+
+1. Stop any VM using the image, then run `make android-image JOBS=12`. This rebuilds only changed
+   components and updates the **regular image file**, not a physical disk. Keep downloads,
+   sources and build directories in `out/`; deleting them makes the next build slow.
+2. If the kernel, initrd or GRUB menu changed, mount the USB's **DALI-BOOT** partition and run:
+
+   ```sh
+   make deploy-android JOBS=12 USB=/run/media/$USER/DALI-BOOT
+   ```
+
+   This checks the mounted destination, writes changed boot files and changes the menu last.
+   Unmount it afterwards. **`make deploy` is for the separate diagnostic OS, not Android.**
+3. If an OS partition changed, the owner's local
+   [update-os.sh](out/usb-flash-android/update-os.sh) compares and copies only the changed OS
+   ranges, checks the USB identity/layout, and verifies read-back. With its target reviewed
+   and all USB partitions unmounted, the owner runs:
+
+   ```sh
+   sudo -- bash out/usb-flash-android/update-os.sh
+   ```
+
+   This is a machine-specific helper under ignored `out/`, not a portable installer or part of
+   the build. It never writes Android userdata or metadata. Do not adapt its device identity
+   or partition ranges by guessing. There is deliberately no automatic physical-disk writer.
+
+An unchanged image build writes no partitions or boot files. A successful QEMU check is a useful
+regression test, not proof of working laptop audio, brightness or GPU acceleration.
 
 ## Optional USB diagnostics (not Android)
 

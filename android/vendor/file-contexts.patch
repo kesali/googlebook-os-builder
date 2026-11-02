@@ -1,15 +1,16 @@
-Label DRM nodes and the files that identify this laptop's GPU with existing graphics types:
-the device files Google labels sysfs_gpu for its own GPU at 00:02.0. libdrm reads uevent,
-vendor, device and subsystem IDs to list a GPU; without them Mesa finds no DRM device and
-SurfaceFlinger aborts in a loop. No permissions or domains change.
-Drop the PCI-path entry when Google's labels cover it.
+Label DRM nodes and the MSI GPU identification files as Google labels its own GPU; libdrm needs
+these to find the renderer. Label only the analog card ID for renaming, and the native panel
+backlight with the existing lights HAL type. No generic sysfs permissions are broadened.
+Drop entries as Google adds support for this hardware.
 
 --- a/etc/selinux/vendor_file_contexts
 +++ b/etc/selinux/vendor_file_contexts
-@@ -389,3 +389,6 @@
+@@ -389,3 +389,8 @@
  /vendor/bin/hw/android\.hardware\.boot@1\.2-service\.android-desktop u:object_r:hal_bootctl_default_exec:s0
  /vendor/bin/hw/vendor\.dolby\.media\.c2-default-service-dax-desktop            u:object_r:mediacodec_exec:s0
  /vendor/bin/hw/android\.hardware\.graphics\.allocator-service\.minigbm   u:object_r:hal_graphics_allocator_default_exec:s0
 +/dev/dri/card[0-9]+ u:object_r:gpu_device:s0
 +/dev/dri/renderD[0-9]+ u:object_r:gpu_device:s0
 +/sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.0/(uevent|vendor|device|subsystem_vendor|subsystem_device|revision|config|resource|irq) u:object_r:sysfs_gpu:s0
++/sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.6/sound/card[0-9]+/id u:object_r:dali_audio_id:s0
++/sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.0/drm/card[0-9]+/card[0-9]+-eDP-1/backlight(/.*)? u:object_r:sysfs_leds:s0

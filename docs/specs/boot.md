@@ -1,7 +1,10 @@
 # Boot chain
 
-**Status:** partial — the laptop completed setup; the built hardware snapshot awaits a physical retest.
-**Last verified:** 2026-11-02 — `make test` passed 87 tests; `make android-image JOBS=12` rebuilt
+**Status:** partial — the laptop completed setup; the latest physical snapshot still needs retrieval.
+**Last verified:** 2026-11-02 — readiness-gated snapshot recovered from a disposable enforcing
+QEMU boot ([snapshot](../../out/hardware-fixes-validation/final-production-hardware.txt)).
+It exits successfully and does not run before boot-log preparation succeeds.
+Earlier, `make test` passed 87 tests; `make android-image JOBS=12` rebuilt
 the changed partitions with 0 missing/changed kABI exports, and the repeat wrote nothing. The
 graphical QEMU smoke test on a reflinked disk copy completed with SELinux enforcing; the setup
 screen was inspected and the snapshot file was recovered
@@ -52,7 +55,10 @@ The diagnostic candidate was transferred and booted on the laptop; its saved log
 recovered after journal replay on an owner-approved RAM copy of metadata.
 The recovered logs show no backlight path and no loaded HDA/ALSA card. The one-shot, read-only
 snapshot now runs in QEMU under its dedicated enforcing domain, with no matching SELinux denials;
-QEMU does not expose the laptop's backlight or audio hardware, so the physical snapshot is next.
+QEMU does not expose the laptop's backlight or ALC256 hardware. The owner booted the snapshot
+image but reported sound/brightness still broken; its latest USB logs were inaccessible during
+the autonomous investigation. The snapshot now also reports backlight permission/SELinux labels,
+requires both boot completion and log-preparation readiness, and rejects directory/symlink outputs.
 
 ## Decisions
 - Command line is Google's, minus Intel-only arguments, minus SPI-flash write enables,
@@ -79,7 +85,8 @@ QEMU does not expose the laptop's backlight or audio hardware, so the physical s
   Each stream rotates at 256 KiB with seven archives, leaving headroom below the agreed
   16 MiB per stream per boot and space for other files on the 64 MiB metadata partition.
   Collection begins at `post-fs`, not first-stage init; an earlier hang still needs a photo.
-- A one-shot `sys.boot_completed` diagnostic may read backlight, ALSA and loaded-module metadata
+- A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.dali.bootlog.ready=1`
+  may read backlight, ALSA and loaded-module metadata
   into the current boot log directory. It must not read sound device nodes or write sysfs, and it
   uses a separate enforcing SELinux domain.
 
@@ -148,6 +155,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   device details are reviewed from `/metadata/dali-bootlog/current/hardware.txt`.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Snapshot waits for successful log preparation, rejects directory
+  outputs and records backlight labels. Focused failures/gates and enforcing QEMU recovery pass.
+  Latest physical logs remain unavailable; owner retrieval is still needed.
 - 2026-11-02 `uncommitted` — 87 tests pass; image build and no-op repeat pass. QEMU on a reflinked
   copy shows setup with SELinux enforcing and creates the snapshot; physical hardware details await
   the owner's USB update and retest.

@@ -1,0 +1,23 @@
+Google's lights HAL tries backlight, intel_backlight and two other fixed names, not amdgpu_blN. On the MSI Modern 15 B7M only, register its first native panel as backlight. No brightness algorithm changes. Drop when the HAL discovers native AMD backlights.
+
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+@@ -70,6 +70,7 @@
+ #include "ivsrcid/ivsrcid_vislands30.h"
+ 
+ #include <linux/backlight.h>
++#include <linux/dmi.h>
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
+ #include <linux/types.h>
+@@ -5241,6 +5242,10 @@
+ 
+ 	snprintf(bl_name, sizeof(bl_name), "amdgpu_bl%d",
+ 		 drm->primary->index + aconnector->bl_idx);
++	if (aconnector->bl_idx == 0 &&
++	    dmi_match(DMI_SYS_VENDOR, "Micro-Star International Co., Ltd.") &&
++	    dmi_match(DMI_PRODUCT_NAME, "Modern 15 B7M"))
++		strscpy(bl_name, "backlight", sizeof(bl_name));
+ 
+ 	dm->backlight_dev[aconnector->bl_idx] =
+ 		backlight_device_register(bl_name, aconnector->base.kdev, dm,

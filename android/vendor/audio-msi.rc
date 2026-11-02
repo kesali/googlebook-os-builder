@@ -1,0 +1,12 @@
+# Google's audio HAL uses its board mapping's card ID, not SoundCardName alone.
+on boot && property:ro.boot.dali.graphics=amd
+    start vendor.dali.audio
+
+service vendor.dali.audio /vendor/bin/get_variant_audio /sys ALC256
+    user root
+    group root
+    disabled
+    oneshot
+
+on property:vendor.audio.dali.ready=1
+    restart vendor.audio-hal-aidl

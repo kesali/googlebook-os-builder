@@ -21,7 +21,7 @@ service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare
     oneshot
     stdio_to_kmsg
 
-on property:sys.boot_completed=1
+on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1
     start dali_hardware_snapshot
 
 service dali_hardware_snapshot /system/bin/sh /system_ext/etc/dali/hardware-snapshot.sh /metadata/dali-bootlog /sys /proc /dev

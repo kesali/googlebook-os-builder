@@ -1,11 +1,15 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-02 — `make test` passed 87 tests. `make android-image JOBS=12` updated
-`system_a`, `system_ext_a` and `vendor_dlkm_a`; `android-sync` verified their read-back and
-reported userdata/metadata untouched. The repeat build wrote no partitions or boot files. A
-graphical QEMU smoke test on a reflinked disk copy reached setup with SELinux enforcing
-([screen](../../out/hardware-snapshot-validation/screen.png) inspected).
+**Last verified:** 2026-11-02 — `make android-image JOBS=12` updated vendor, system_ext,
+vendor_dlkm and boot files for the hardware candidate. Full filesystem metadata and read-back
+checks pass. All 52,168,658,944 bytes outside those regions match the preserved baseline,
+including userdata, metadata, GPT/liblp and other partitions
+([comparison](../../out/hardware-fixes-validation/preservation-final.txt)).
+All 100 unit tests pass. An idle no-op took 15.94 s, preserved all 23 checked published outputs
+and wrote no partitions or boot files
+([timestamps](../../out/hardware-fixes-validation/noop-final-timestamps.json)).
+Disposable enforcing QEMU boots reach setup; the saved disk's data was never booted or replaced.
 Earlier, the diagnostic image was rebuilt with full filesystem metadata checks;
 51,657,060,352 bytes outside system/vendor/system_ext are unchanged, including userdata,
 metadata, GPT/liblp and ESP ([comparison](../../out/bootlog-validation/preservation-final.txt)).
@@ -40,7 +44,7 @@ byte-identical. The owner later completed physical setup with Wi-Fi and input on
 the current image has not been transferred to the USB ([laptop-hardware.md](laptop-hardware.md)).
 The system/system_ext logging changes and removal of vendor's precompiled policy are built
 and verified through the QEMU smoke test ([boot.md](boot.md)). The image updater changed only
-the three OS partitions named above; Android userdata, metadata and layout were preserved. The
+the OS partitions named above; Android userdata, metadata and layout were preserved. The
 QEMU test used a reflinked copy, and this candidate has not been transferred to the physical USB.
 
 ## Decisions
@@ -112,6 +116,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Hardware candidate rebuilt with metadata/read-back checks; 100
+  tests pass. 52,168,658,944 unaffected bytes preserved; idle no-op 15.94 s, all 23 timestamps
+  unchanged. Disposable enforcing setup/input checked; physical USB update remains the owner's step.
 - 2026-11-02 `uncommitted` — 87 tests pass; rebuilt system, system_ext and vendor_dlkm with kABI
   clean. Sync verified the OS writes and preserved userdata/metadata; repeat build wrote nothing.
   QEMU on a reflinked copy reaches setup with SELinux enforcing; physical transfer is pending.

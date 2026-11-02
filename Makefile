@@ -13,7 +13,8 @@ EMU_PATCH := $(DL)/emulator-$(EMU_SHA).patch
 BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
 KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
 KERNEL_PATCH := kernel/drm-firmware-handoff.patch
-KERNEL_PATCH_SHA := $(shell sha256sum $(KERNEL_PATCH) | cut -d' ' -f1)
+BACKLIGHT_PATCH := kernel/msi-backlight.patch
+KERNEL_PATCH_SHA := $(shell cat $(KERNEL_PATCH) $(BACKLIGHT_PATCH) | sha256sum | cut -d' ' -f1)
 KERNEL_SRC := $(KERNEL_CACHE)-$(KERNEL_PATCH_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
 GKI_SYMVERS := $(DL)/vmlinux-$(GKI_BUILD)-$(GKI_SYMVERS_SHA).symvers
@@ -60,7 +61,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
-.PHONY: help builder unpack sources kernel initramfs image usb deploy shell test smoke toolchain gki \
+.PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki \
 	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console FORCE
 
 help: ## Show this list
@@ -82,9 +83,9 @@ $(EMU_PATCH): | $(BUILD_READY)
 $(BUSYBOX): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
 
-$(KERNEL_SRC)/.ready: $(EMU_PATCH) $(KERNEL_PATCH) | $(BUILD_READY)
+$(KERNEL_SRC)/.ready: $(EMU_PATCH) $(KERNEL_PATCH) $(BACKLIGHT_PATCH) | $(BUILD_READY)
 	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_TAG)" "$(KERNEL_REV)" \
-		"$(EMU_PATCH)" "$(KERNEL_PATCH)" "$(KERNEL_CACHE)" "$(KERNEL_SRC)"
+		"$(EMU_PATCH)" "$(KERNEL_PATCH)" "$(BACKLIGHT_PATCH)" "$(KERNEL_CACHE)" "$(KERNEL_SRC)"
 
 sources: $(KERNEL_SRC)/.ready ## Fetch the pinned kernel source tree (editable under out/src/)
 
@@ -309,6 +310,9 @@ $(ANDROID)/boot/manifest.json: $(GKI)/bzImage $(ANDROID)/initrd.img $(OUT)/grub/
 		boot/android-menu.cfg android/cmdline.txt tools/deploy.py
 	$(BUILDER) python3 tools/deploy.py bundle --kind android --cmdline android/cmdline.txt "$(GKI)/bzImage" \
 		"$(ANDROID)/initrd.img" "$(OUT)/grub/BOOTX64.EFI" boot/android-menu.cfg "$(ANDROID)/boot"
+deploy-android: $(ANDROID)/boot/manifest.json ## Update Android boot files: make deploy-android USB=/mounted/USB
+	@test -n "$(USB)" || { echo "Set USB to the mounted DALI-BOOT partition; no raw devices." >&2; exit 1; }
+	python3 tools/deploy.py usb "$(ANDROID)/boot" "$(USB)"
 android-boot: $(ANDROID)/disk.img $(ANDROID)/boot/manifest.json ## Put the laptop's boot files into the disk's boot partition
 	$(BUILDER) bash scripts/android-boot.sh "$(ANDROID)/disk.img" "$(ANDROID)/boot"
 

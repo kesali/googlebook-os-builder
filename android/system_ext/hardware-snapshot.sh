@@ -2,6 +2,7 @@
 # Read: the boot-log directory and sysfs/procfs/dev roots. Write: one read-only hardware snapshot.
 set -eu
 umask 077
+trap 'status=$?; if [ "$status" -ne 0 ]; then echo "dali hardware snapshot failed (status $status)" >&2; fi' EXIT
 
 logs=$1
 sys_root=$2
@@ -17,6 +18,9 @@ for root in "$sys_root" "$proc_root" "$dev_root"; do
     test -d "$root" && test ! -L "$root"
 done
 test ! -L "$output"
+if [ -e "$output" ]; then
+    test -f "$output"
+fi
 test ! -L "$temporary"
 if [ -e "$temporary" ]; then
     test -f "$temporary"
@@ -55,6 +59,7 @@ snapshot_file() {
         for field in type brightness actual_brightness max_brightness; do
             snapshot_file "$field" "$device/$field"
         done
+        ls -lZ "$device/brightness" || echo '[brightness label unavailable]'
     done
     if [ "$found" -eq 0 ]; then
         echo none

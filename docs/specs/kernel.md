@@ -1,16 +1,13 @@
 # Kernel (GKI)
 
-**Status:** partial — firmware-to-PCI-GPU handoff works in QEMU; AMD needs a laptop retest.
-**Last verified:** 2026-11-02 — `make gki JOBS=12` passes config and ABI checks: all 4501 Google
-exports and all 5142 previous kernel/module symbol-version records are unchanged
-([build log](../../out/framebuffer-handoff-evidence/kernel-build.log),
-[previous symbols](../../out/framebuffer-handoff-evidence/previous-Module.symvers),
-[current symbols](../../out/gki/build/Module.symvers)). A repeat build preserved the kernel
-and signed-module bytes and timestamps. An offline disposable UEFI boot showed the
-[handoff to virtio card0](../../out/fb2/android-uefi-console-g0b93ipe/handoff.txt); the
-firmware-free QEMU graphics configuration also reached
-[setup](../../out/fb3/android-uefi-graphics-tlovd2in/screen.png).
-The owner installed the kernel on the USB and [read-back matched](../../out/framebuffer-handoff-evidence/usb-update-readback.txt).
+**Status:** partial — laptop display/input/Wi-Fi work; the backlight candidate needs a physical test.
+**Last verified:** 2026-11-02 — `make android-image JOBS=12` rebuilt the patched kernel/modules:
+all 4501 Google exports/CRCs and all 5507 prior symbol-version records are unchanged
+([build log](../../out/hardware-fixes-validation/build.log),
+[previous symbols](../../out/hardware-fixes-validation/Module.symvers-before),
+[current symbols](../../out/gki/build/Module.symvers)). Enforcing QEMU reaches setup; a repeat
+build preserves published timestamps. The owner previously completed physical setup with input
+and Wi-Fi. The new AMD backlight name is not yet physically verified.
 
 ## Goal
 Build Google's Googlebook kernel from source with the instruction emulator compiled in, identical
@@ -23,17 +20,16 @@ config changes are listed in [kernel/gki.config](../../kernel/gki.config): trust
 simpledrm/drm_log, modular amdgpu and its display helpers, and EROFS Zstd support.
 Every Google export and CRC is preserved; Google's certificate remains trusted;
 Google's prebuilt virtio GPU/input/net modules load in QEMU, which still reaches the setup screen.
-The four missing modules (`amdgpu`, `amdxcp`, `hwmon`, `drm_panel_backlight_quirks`) are stripped
-and signed with this build's trusted key. Google's existing helper modules remain unchanged.
-All 1,585 import CRCs across the previous 13-module AMD dependency tree matched the prior kernel
-and actual Google helper exports ([check](../../out/overnight/module-crcs.log)); the new build
-preserves those symbol versions and the signing certificate. This is static verification, not
-runtime loading on the new kernel. The existing Android module image still matches the
-[previous module manifest](../../out/framebuffer-handoff-evidence/image-modules.manifest).
-The rebuilt signed modules were published separately, not written into the original disk or USB.
+The nine AMD display and MT7922 modules in [laptop-modules.list](../../kernel/laptop-modules.list)
+are stripped, signed with this build's trusted key and included in the regular Android image.
+The vendor_dlkm build checks imports against Google's actual helpers; those helpers and the ABI
+whitelist remain unchanged. The new source-tree path caused a full rebuild and changed all nine
+module hashes and the kernel bytes, not just amdgpu. No physical USB was updated.
 [drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) releases the firmware
 framebuffer before a PCI display driver takes a DRM minor. It works with virtio in QEMU and is
-based on the owner's working Churro setup; the laptop's missing UI still has an unproven cause.
+based on the owner's working Churro setup; the owner subsequently reached physical setup.
+[msi-backlight.patch](../../kernel/msi-backlight.patch) changes only the first panel's registered
+name on the exact MSI model so Google's unchanged lights HAL can discover it.
 
 ## Decisions
 - Google's exact toolchain (clang r584948c, Rust 1.91.1.p3, bindgen 0.72.1, pahole 1.31 from
@@ -48,6 +44,9 @@ based on the owner's working Churro setup; the laptop's missing UI still has an 
   userspace is built for Intel Panther Lake; this Zen 3 CPU lacks those instructions.
 - The source-level framebuffer handoff follows Churro's PCI display approach; errors are
   reported and abort DRM initialization. Touchpad settings and security safeguards are unchanged.
+- Only DMI vendor `Micro-Star International Co., Ltd.` / model `Modern 15 B7M`, first panel:
+  name the AMD backlight `backlight`, which Google's lights HAL supports. Preserve all brightness
+  calculations and other machines' names. Remove this patch when the HAL supports AMD discovery.
 - Builds fail on unlisted config changes, a release-string mismatch, or any missing/changed
   Google export or CRC.
 - New modules use the build's signing key to access protected GKI exports. Do not remove
@@ -61,10 +60,11 @@ based on the owner's working Churro setup; the laptop's missing UI still has an 
 - [tools/kconfig_check.py](../../tools/kconfig_check.py), [tools/kabi_check.py](../../tools/kabi_check.py),
   [tools/kernel_certs.py](../../tools/kernel_certs.py) — config, ABI and certificate checks.
 - [scripts/git-fetch.sh](../../scripts/git-fetch.sh), [scripts/pahole.sh](../../scripts/pahole.sh) — toolchain.
-- [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + emulator and
-  framebuffer handoff patches; a new patch hash creates a separate tree.
+- [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + emulator,
+  framebuffer handoff and backlight patches; a new patch hash creates a separate tree.
 - [kernel/drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) — early PCI
   framebuffer handoff before DRM minor allocation.
+- [kernel/msi-backlight.patch](../../kernel/msi-backlight.patch) — exact-model panel naming.
 - [tests/test_kernel_source.py](../../tests/test_kernel_source.py) — source preparation and patch checks.
 - [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [kernel/laptop-modules.list](../../kernel/laptop-modules.list) — explicit signed-module publication.
 
@@ -89,8 +89,8 @@ Inspect the screenshots; this does not verify AMD hardware.
   and relinks (about 50 s).
 
 ## Actions
-- [ ] Check the AMD handoff on the laptop with the updated USB — done when
-  the owner verifies a usable display and input; QEMU uses a different GPU driver.
+- [ ] Check backlight discovery on the laptop — done when the owner confirms the brightness
+  slider changes the panel and the snapshot shows the expected name/label.
 
 ### Ideas (not approved)
 - Extend instruction emulation to SSE GFNI if a userspace binary needs it (see gbos-x86 `isa_emu`).
@@ -99,6 +99,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-02 (this commit) — MSI-only backlight name patch built; 4501 Google exports and 5507
+  previous symbol versions unchanged. Exact DMI/first-panel naming tests and enforcing QEMU pass.
+  Laptop handoff/Wi-Fi are owner-confirmed; new physical brightness behavior awaits retest.
 - 2026-11-02 `uncommitted` — Churro-based handoff passes ABI and offline QEMU checks; the owner
   updated the USB and read-back matched. Original disk preserved; laptop AMD remains untested.
 - 2026-11-01 (this commit) — Added modular AMD display support and EROFS Zstd; Google's 4501

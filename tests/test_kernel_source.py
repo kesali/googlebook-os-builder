@@ -32,8 +32,10 @@ class KernelSourceTests(unittest.TestCase):
         (self.cache / "state.txt").write_text("local source edit\n")
         self.emulator_patch = self.work / "emulator.patch"
         self.handoff_patch = self.work / "handoff.patch"
+        self.backlight_patch = self.work / "backlight.patch"
         self.emulator_patch.write_text(self.patch("original", "emulator"))
         self.handoff_patch.write_text(self.patch("emulator", "handoff"))
+        self.backlight_patch.write_text(self.patch("handoff", "backlight"))
         self.destination = self.work / "new-source"
 
     def git(self, *arguments):
@@ -52,7 +54,7 @@ class KernelSourceTests(unittest.TestCase):
     def prepare(self, cache=None, env=None):
         return subprocess.run(
             ["bash", str(ROOT / "scripts/kernel-source.sh"), str(self.origin), "test-release",
-             self.revision, str(self.emulator_patch), str(self.handoff_patch),
+             self.revision, str(self.emulator_patch), str(self.handoff_patch), str(self.backlight_patch),
              str(cache if cache is not None else self.cache), str(self.destination)],
             capture_output=True, text=True, env=env,
         )
@@ -60,14 +62,14 @@ class KernelSourceTests(unittest.TestCase):
     def test_patches_in_order_without_copying_existing_source_edits(self):
         result = self.prepare()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.destination / "state.txt").read_text(), "handoff\n")
+        self.assertEqual((self.destination / "state.txt").read_text(), "backlight\n")
         self.assertTrue((self.destination / ".ready").exists())
         self.assertEqual((self.cache / "state.txt").read_text(), "local source edit\n")
 
     def test_source_can_be_prepared_without_an_existing_cache(self):
         result = self.prepare(cache=self.work / "missing-cache")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.destination / "state.txt").read_text(), "handoff\n")
+        self.assertEqual((self.destination / "state.txt").read_text(), "backlight\n")
 
     def test_moved_tag_is_rejected_even_with_cached_objects(self):
         (self.origin / "state.txt").write_text("new revision\n")
@@ -94,6 +96,14 @@ class KernelSourceTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Refusing to replace", result.stderr)
         self.assertEqual((self.destination / "owner-edit").read_text(), "keep\n")
+
+    def test_failed_backlight_patch_leaves_no_partial_checkout(self):
+        self.backlight_patch.write_text(self.patch("wrong source", "backlight"))
+        result = self.prepare()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.destination.exists())
+        self.assertEqual(list(self.work.glob("new-source.partial.*")), [])
+        self.assertEqual((self.cache / "state.txt").read_text(), "local source edit\n")
 
     def test_dangling_destination_symlink_is_not_followed_or_replaced(self):
         target = self.work / "missing-owner-source"
@@ -130,6 +140,46 @@ class KernelSourceTests(unittest.TestCase):
         self.assertEqual((self.destination / "owner-edit").read_text(), "keep\n")
         self.assertEqual([path.name for path in self.destination.iterdir()], ["owner-edit"])
         self.assertEqual(list(self.work.glob("new-source.partial.*")), [])
+
+
+class BacklightPatchTests(unittest.TestCase):
+    def test_only_first_msi_panel_uses_google_hal_name(self):
+        patch = (ROOT / "kernel/msi-backlight.patch").read_text()
+        text = "\n".join(line[1:] for line in patch.splitlines()
+                         if line.startswith((" ", "+")) and not line.startswith("+++"))
+        naming = text[text.index("\tsnprintf(bl_name"):text.index("\tdm->backlight_dev")]
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "backlight.c"
+            program = Path(temporary) / "backlight"
+            source.write_text(
+                "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n"
+                "#define DMI_SYS_VENDOR 0\n#define DMI_PRODUCT_NAME 1\n"
+                "#define strscpy(dst, src, size) snprintf(dst, size, \"%s\", src)\n"
+                "static const char *dmi[2];\n"
+                "static int dmi_match(int key, const char *value) {\n"
+                "    return strcmp(dmi[key], value) == 0;\n}\n"
+                "int main(int argc, char **argv) {\n"
+                "    if (argc != 5) return 2;\n"
+                "    dmi[0] = argv[1]; dmi[1] = argv[2];\n"
+                "    struct minor { int index; } primary = { atoi(argv[3]) };\n"
+                "    struct drm { struct minor *primary; } device = { &primary }, *drm = &device;\n"
+                "    struct connector { int bl_idx; } connector = { atoi(argv[4]) }, *aconnector = &connector;\n"
+                "    char bl_name[16];\n" + naming + "\n    puts(bl_name);\n}\n"
+            )
+            subprocess.run(["cc", "-Wall", "-Wextra", "-Werror", str(source), "-o", str(program)],
+                           check=True, capture_output=True, text=True)
+            cases = [
+                ("Micro-Star International Co., Ltd.", "Modern 15 B7M", "0", "0", "backlight"),
+                ("Micro-Star International Co., Ltd.", "Modern 15 B7M", "2", "0", "backlight"),
+                ("Micro-Star International Co., Ltd.", "Modern 15 B7M", "2", "1", "amdgpu_bl3"),
+                ("Other", "Modern 15 B7M", "2", "0", "amdgpu_bl2"),
+                ("Micro-Star International Co., Ltd.", "Other", "2", "0", "amdgpu_bl2"),
+            ]
+            for vendor, model, minor, panel, expected in cases:
+                with self.subTest(vendor=vendor, model=model, minor=minor, panel=panel):
+                    result = subprocess.run([str(program), vendor, model, minor, panel],
+                                            check=True, capture_output=True, text=True)
+                    self.assertEqual(result.stdout.strip(), expected)
 
 
 class FramebufferPatchTests(unittest.TestCase):

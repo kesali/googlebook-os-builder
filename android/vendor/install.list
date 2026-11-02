@@ -4,6 +4,10 @@
 #
 # path                                                                   mode owner  selinux type                source
 
+# MSI ALC256 setup; keep Google's audio HAL and select its expected card ID.
+bin/get_variant_audio                                                   0755 0:2000 get_variant_audio_exec      ./get_variant_audio
+etc/init/dali-audio.rc                                                   0644 0:0    vendor_configs_file         ./audio-msi.rc
+
 # Software KeyMint, unmodified from Google's emulator image. Not hardware-backed.
 bin/hw/android.hardware.security.keymint-service                         0755 0:2000 hal_keymint_default_exec    emulator/vendor/bin/hw/android.hardware.security.keymint-service
 etc/init/android.hardware.security.keymint-service.rc                    0644 0:0    vendor_configs_file         emulator/vendor/etc/init/android.hardware.security.keymint-service.rc
