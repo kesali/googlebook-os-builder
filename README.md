@@ -19,6 +19,13 @@ gbos-x86, read the [report](docs/report.md).
 laptop, USB diagnostics) are in [docs/specs/](docs/specs/README.md). AI coding agents start from
 [AGENTS.md](AGENTS.md); `/pickup <component>` and `/handoff` prompts keep the specs current.
 
+## License
+
+Original code and documentation in this repository are licensed under the
+[MIT License](LICENSE), provided **"AS IS"**, without warranty.
+Third-party code, firmware and Google's recovery images retain their own licenses;
+this license does not grant rights to redistribute those materials.
+
 ## Build and boot
 
 For Googlebook OS, Linux needs Docker, GNU make, Python 3, `/dev/kvm` and a VNC viewer.
