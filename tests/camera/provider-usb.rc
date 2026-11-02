@@ -1,0 +1,12 @@
+service vendor.camera.provider-usb /vendor/bin/hw/android.hardware.camera.provider-usb-service.android-desktop
+    interface aidl android.hardware.camera.provider.ICameraProvider/usb/0
+    class hal
+    user cameraserver
+    group audio camera input drmrpc usb
+    ioprio rt 4
+    capabilities SYS_NICE
+    task_profiles CameraServiceCapacity MaxPerformance
+
+on boot
+    write /sys/module/uvcvideo/parameters/hwtimestamps 1
+    write /sys/module/uvcvideo/parameters/nodrop 1

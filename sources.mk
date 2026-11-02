@@ -67,6 +67,13 @@ EXPAT_VERSION := 2.7.3
 EXPAT_URL := https://github.com/libexpat/libexpat/releases/download/R_2_7_3/expat-$(EXPAT_VERSION).tar.xz
 EXPAT_SHA := 71df8f40706a7bb0a80a5367079ea75d91da4f8c65c58ec59bcdfbf7decdab9f
 
+# libva 2.22.0 (VA-API 1.22), matching Google's camera loader. Only development
+# headers are prepared; Google's libva.so stays unchanged. Mesa's AMD VA driver
+# has no suitable official Android prebuilt. Commit peeled from upstream tag 2.22.0.
+LIBVA_VERSION := 2.22.0
+LIBVA_REV := 217da1c28336d6a7e9c0c4cb8f1c303968a675f1
+LIBVA_URL := https://github.com/intel/libva.git
+
 # AMD's runtime firmware, unchanged from linux-firmware's official release.
 # SHA-256: https://cdn.kernel.org/pub/linux/kernel/firmware/sha256sums.asc
 FIRMWARE_VERSION := 20260916

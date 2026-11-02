@@ -62,6 +62,53 @@ Audio and backlight were designed from the references, Google's HALs and this la
   HAL resolved ACP `(2,0)` and stereo S32_LE correctly, but its two-period buffers conflicted
   with Renoir's limits. After the isolated buffer patch below, the owner confirms the
   microphone works. Capture quality and speaker/headset regression were not separately reported.
+- Camera: fresh boot `dd2faa0b-28c1-4ab4-8835-b42f924cc84c` shows the USB HAL registering
+  `30c9:0042` on `/dev/video0`, camera ID 2, up to 1280x720; the owner reports "no camera"
+  in a camera app. The HAL labels it external, and Google's internal-camera table omits this ID.
+  Camera/front feature declarations already exist. No capture-open failure was found in the
+  retained logs ([snapshot](../../out/laptop-logs/20261102-211552-18mjtoqx/current/)).
+  Approved [camera-msi.patch](../../android/vendor/camera-msi.patch) adds only this USB ID with
+  `FACING_FRONT`, without guessed calibration. 13 camera/overlay tests pass; the 25.9 s vendor
+  rebuild reads back the exact intended table and verifies all 1620 filesystem metadata entries.
+  Its 348,319,744 B image fits the 387,108,864 B limit. The 14.7 s repeat preserves 29 published
+  file sizes/timestamps and writes nothing; bounded QEMU passes in 76.3 s (enforcing SELinux,
+  stable services, setup screenshot inspected; input not retested).
+  [Build evidence](../../out/camera-config/). QEMU does not exercise this webcam entry;
+  preview and capture remain unverified by that check.
+  Owner retest confirms front-camera discovery, but preview is black. Boot
+  `b4212718-04d8-4706-abbf-7bb58c87a5e4` shows the diagnostic app opening camera 0, then repeated
+  USB HAL SIGABRT in `HardwareJpegDecoderVaapi`: libva fails loading
+  `/vendor/lib64/radeonsi_drv_video.so`, followed by `Option::unwrap()` on `None`.
+  That image ships libva and Intel iHD, but no RadeonSI VA driver; its Mesa build selects only
+  softpipe/Zink and RADV. Kernel logs already show `jpeg_v2_0` and a `jpeg_dec` ring.
+  Owner chose hardware VA-API investigation rather than disabling the existing hardware-JPEG
+  setting, then approved the [RadeonSI VA build candidate](graphics.md) and shared AMD helper.
+  20 tests, actual shipping ELF imports/bytes, vendor metadata/fit, no-write repeat (39 files)
+  and enforcing QEMU pass; setup screenshot inspected and VM exit confirmed.
+  Google's libva/libdrm and all seven rendering libraries remain byte-identical.
+  Camera-HAL namespace loading, supported JPEG profiles and actual decoding remain unverified;
+  update/retest the laptop next ([build evidence](../../out/camera-vaapi/)).
+  [Capture-test logs](../../out/laptop-logs/20261102-212827-m7k5rziw/current/).
+  Retest with the driver still shows black preview; new boot
+  `e42498e7-47ba-451f-b88a-cf9eeb462511` retains the JPEG initialization abort.
+  The media probe finds the VA entry point but initialization fails. Source tracing identifies
+  the inherited global Zink override as a likely conflict with the RadeonSI-only VA build.
+  Approved camera-service-only clearing passes 21 tests, image read-back/metadata/fit,
+  no-write repeat and enforcing QEMU (setup screen inspected, VM exited); physical retest pending
+  ([details](graphics.md), [logs](../../out/laptop-logs/20261102-221612-z03h9kht/current/)).
+  Latest retest (`dc40de8f-009e-4ef5-a671-9b5acb3af439`) confirms camera VA initialization
+  succeeds. Preview now fails in VC effects: Vulkan DRM modifiers require 1.2 or
+  `VK_KHR_image_format_list`, but strict-mode RADV reports 1.1.
+  Approved native-capability build setting passes 22 tests, Mesa/image checks, no-write repeat
+  (39 artifacts) and enforcing QEMU (screen inspected, VM exited). Physical Vulkan enumeration,
+  desktop/app regression and camera preview/capture remain pending
+  ([details](graphics.md), [logs](../../out/laptop-logs/20261102-224045-sm_8d1oi/current/)).
+  Next retest (`df0b9859-30cd-4454-8299-cd2bddbcff5b`): white activation indicator, RADV 1.4
+  effects context, 640x480 YUYV streaming; frames fail Vulkan import because NV12 pitch is 640,
+  not a multiple of 256. With NV12/NV21 pitch alignment the owner confirms the camera works
+  (boot `7e418353-cba2-48a6-8994-c7f60114b837`); the white activation indicator flashes, with no
+  camera reopen loop in the logs
+  ([details](graphics.md), [logs](../../out/laptop-logs/20261102-225836-66p3d2f6/current/)).
 - Native panel backlight is under the GPU's `cardN-eDP-1`, with `max_brightness=65535`.
   Google's lights HAL accepts `backlight`, but not `amdgpu_blN`. The source patch gives only
   this model's first AMD panel that supported name; the driver/scaling algorithm is unchanged.
@@ -207,6 +254,9 @@ metadata/logd starts still needs a screen photo.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
+- [x] Camera — owner confirms the integrated webcam works in the Camera app.
+- [ ] Camera activation indicator flashes during use — done when the cause is known (the logs
+  show steady streaming without reopen) and fixed or accepted as Google's behavior.
 - [ ] Remaining physical checks — done when the owner reports
   the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before). The
@@ -255,6 +305,23 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-02 — Camera works (owner-confirmed): front-facing entry, VA JPEG decode, native RADV
+  for effects and 256-byte NV12/NV21 pitches. Activation indicator flashing remains open.
+- 2026-11-02 `uncommitted` — Camera VA initialization succeeds on laptop; effects now reject
+  Vulkan dependencies under the 1.1 cap. Native-capability setting passes 22 tests, image checks,
+  no-write repeat and enforcing QEMU; physical rendering/preview/capture pending, SELinux unchanged.
+- 2026-11-02 `uncommitted` — VA preview still black; source trace suggests inherited Zink override.
+  Approved camera-service-only clearing passes 21 tests, image/read-back/no-write repeat and
+  enforcing QEMU (screen inspected); physical preview/capture remains pending.
+- 2026-11-02 `uncommitted` — RadeonSI JPEG-only driver and shared AMD helper built; 20 tests,
+  shipping ELF/image checks, no-write repeat and enforcing QEMU pass (screen inspected).
+  No camera-HAL loading or physical preview/capture result yet; owner update/retest next.
+- 2026-11-02 `uncommitted` — Owner confirms front-camera discovery, but preview is black.
+  Fresh logs prove USB HAL aborts in VA JPEG initialization with the AMD video driver absent.
+  Approved RadeonSI VA build candidate added; validation and physical capture pending.
+- 2026-11-02 `uncommitted` — Fresh logs show camera ID 2 advertised as external, not missing
+  UVC support. Scoped front-facing candidate passes 13 tests, image metadata/read-back/fit,
+  no-write repeat and enforcing QEMU; physical HAL acceptance/visibility/preview/capture pending.
 - 2026-11-02 `uncommitted` — Owner confirms microphone works after the Renoir buffer update.
   Closed the built-in capture task; no new capture logs, quality measurements or separate
   speaker/headset regression result supplied. HDMI audio and camera remain separate work.

@@ -13,9 +13,9 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Boot chain](boot.md) | partial | Berberis fixes tested laptop apps; retrieve logs after subsequent retests |
 | [OS image and disk](os-image.md) | working | Owner verifies the unified USB updater on the existing stick |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial | Video and tested games work; confirm compositor/HWUI renderer |
+| [Graphics](graphics.md) | partial | Camera works on laptop; check wider RADV app rendering |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Microphone owner-confirmed; remaining physical checks below |
+| [Laptop hardware](laptop-hardware.md) | partial | Camera works; activation indicator flashes |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·

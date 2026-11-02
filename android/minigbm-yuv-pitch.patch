@@ -1,18 +1,24 @@
 # The AMD Mesa backend allocates unsupported planar YUV as a linear R8 buffer. Its plane
 # strides otherwise follow the visible width, but RADV on GFX9 requires every linear 8-bit
-# plane pitch to be a multiple of 256 bytes. Align luma to 512 so half-width chroma is valid.
-# This is the source equivalent of gbos's old dumb-buffer alignment fix, not a binary edit.
-# Drop when the backend negotiates per-plane constraints with Mesa.
+# plane pitch to be a multiple of 256 bytes. NV12/NV21 chroma rows are as wide as luma, so
+# align their width to 256 (a 640x480 camera frame otherwise fails Vulkan import with
+# INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT and the preview stays black). YV12 chroma is half
+# width, so align its luma to 512. This is the source equivalent of gbos's old dumb-buffer
+# alignment fix, not a binary edit. Drop when the backend negotiates per-plane constraints
+# with Mesa.
 
 --- a/gbm_mesa_driver/gbm_mesa_internals.cpp
 +++ b/gbm_mesa_driver/gbm_mesa_internals.cpp
-@@ -386,6 +386,10 @@
+@@ -386,6 +386,13 @@
  
  	if (alloc_args.drm_format == 0) {
  		/* Always use linear for spoofed format allocations. */
 +		if (format == DRM_FORMAT_YVU420 || format == DRM_FORMAT_YVU420_ANDROID) {
 +			/* RADV requires 256-byte alignment for both half-width chroma planes. */
 +			alloc_args.width = ALIGN(alloc_args.width, 512);
++		} else if (format == DRM_FORMAT_NV12 || format == DRM_FORMAT_NV21) {
++			/* Interleaved chroma rows are as wide as luma rows. */
++			alloc_args.width = ALIGN(alloc_args.width, 256);
 +		}
  		drv_bo_from_format(bo, alloc_args.width, 1, alloc_args.height, format);
  		bo_layout_ready = true;

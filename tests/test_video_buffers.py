@@ -72,13 +72,14 @@ int main(void)
 }
 """)
 
-    def test_yv12_luma_and_chroma_pitch_for_all_widths_through_8k(self):
-        logic = additions("minigbm-yv12.patch")
+    def test_yuv_luma_and_chroma_pitch_for_all_widths_through_8k(self):
+        logic = additions("minigbm-yuv-pitch.patch")
         self.compile_and_run(r"""
 #include <assert.h>
 #include <stdint.h>
 #define ALIGN(value, alignment) (((value) + (alignment) - 1) & ~((alignment) - 1))
-enum { DRM_FORMAT_YVU420 = 1, DRM_FORMAT_YVU420_ANDROID = 2, RGB = 3 };
+enum { DRM_FORMAT_YVU420 = 1, DRM_FORMAT_YVU420_ANDROID = 2, RGB = 3,
+       DRM_FORMAT_NV12 = 4, DRM_FORMAT_NV21 = 5 };
 static unsigned width_for_format(unsigned width, unsigned format)
 {
     struct { unsigned width; } alloc_args = {width};
@@ -96,8 +97,15 @@ int main(void)
             assert(chroma % 256 == 0);
             assert(chroma == ALIGN(luma / 2, 16));
         }
+        for (unsigned format = DRM_FORMAT_NV12; format <= DRM_FORMAT_NV21; ++format) {
+            unsigned pitch = width_for_format(width, format);
+            assert(pitch >= width && pitch < width + 256);
+            assert(pitch % 256 == 0);
+        }
         assert(width_for_format(width, RGB) == width);
     }
+    assert(width_for_format(640, DRM_FORMAT_NV12) == 768);
+    assert(width_for_format(1280, DRM_FORMAT_NV12) == 1280);
     assert(width_for_format(1280, DRM_FORMAT_YVU420_ANDROID) == 1536);
     assert(width_for_format(1920, DRM_FORMAT_YVU420_ANDROID) == 2048);
 }

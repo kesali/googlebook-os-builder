@@ -34,6 +34,7 @@ LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_SHA).tar.xz
 LIBDRM_SRC := $(OUT)/src/libdrm-$(LIBDRM_SHA)
 EXPAT_TAR := $(DL)/expat-$(EXPAT_SHA).tar.xz
 EXPAT_SRC := $(OUT)/src/expat-$(EXPAT_SHA)
+LIBVA_SRC := $(OUT)/src/libva-$(LIBVA_VERSION)-$(LIBVA_REV)
 NDK_ZIP := $(DL)/android-ndk-$(NDK_SHA).zip
 NDK := $(TOOLCHAIN)/ndk-$(NDK_SHA)
 ANDROID_EMU_ZIP := $(DL)/emulator-$(ANDROID_EMU_SHA).zip
@@ -43,7 +44,7 @@ FIRMWARE := $(OUT)/firmware-$(FIRMWARE_SHA)
 MINIGBM := $(OUT)/minigbm
 MINIGBM_TAR := $(DL)/minigbm-$(MINIGBM_SHA).tar.gz
 MINIGBM_PATCH := android/minigbm-amd.patch
-MINIGBM_PATCHES := $(MINIGBM_PATCH) android/minigbm-yv12.patch
+MINIGBM_PATCHES := $(MINIGBM_PATCH) android/minigbm-yuv-pitch.patch
 MINIGBM_SOURCE_SHA := $(shell cat $(MINIGBM_PATCHES) scripts/source.sh | sha256sum | cut -d' ' -f1)
 MINIGBM_SRC := $(OUT)/src/minigbm-$(MINIGBM_SHA)-$(MINIGBM_SOURCE_SHA)
 HEADERS := $(OUT)/android-headers/$(ANDROID_HEADERS_TAG)
@@ -195,14 +196,16 @@ $(LIBDRM_SRC)/.ready: $(LIBDRM_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
 $(EXPAT_SRC)/.ready: $(EXPAT_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
+$(LIBVA_SRC)/.ready: | $(BUILD_READY)
+	$(BUILDER) bash scripts/git-fetch.sh "$(LIBVA_URL)" "$(LIBVA_REV)" "$(@D)"
 $(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
 	$(BUILDER) bash scripts/ndk.sh "$<" "$(@D)"
 $(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh tools/lp.py
 	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super" "$(@D)"
 
-mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Zink and AMD Vulkan from source
-$(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready scripts/mesa.sh
-	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)"
+mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Zink, AMD Vulkan and VA-API
+$(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready $(LIBVA_SRC)/.ready scripts/mesa.sh
+	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)" "$(LIBVA_SRC)"
 
 $(FIRMWARE_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(FIRMWARE_URL)" "$(FIRMWARE_SHA)" "$@"

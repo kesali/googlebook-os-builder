@@ -1,5 +1,6 @@
 """Exercise Mesa publication without compiling or downloading its dependencies."""
 
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -11,21 +12,42 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class MesaPublicationTests(unittest.TestCase):
+    def test_render_build_exposes_native_vulkan_without_changing_va_configuration(self):
+        script = (ROOT / "scripts/mesa.sh").read_text()
+        render = script.split('setup "$build/mesa"', 1)[1].split('setup "$va_build"', 1)[0]
+        va = script.split('setup "$va_build"', 1)[1]
+        self.assertIn("-Dandroid-strict=false", render)
+        self.assertNotIn("-Dandroid-strict=false", va)
+        self.assertEqual(script.count("-Dandroid-strict=false"), 1)
+
     def test_stripping_unchanged_libraries_preserves_published_timestamps(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for name in ("bin", "mesa", "drm", "expat", "ndk", "out"):
-                (root / name).mkdir()
+            for name in ("bin", "mesa", "drm", "expat", "ndk", "out", "libva/va",
+                         "ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"):
+                (root / name).mkdir(parents=True, exist_ok=True)
+            (root / "libva/va/va.h").write_text("/* fixture header */\n")
+            readelf = root / "ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+            readelf.write_text(
+                "#!/bin/sh\n"
+                "printf '1: 00000000 1 FUNC GLOBAL DEFAULT 1 __vaDriverInit_1_22\\n'\n"
+            )
+            readelf.chmod(0o755)
             meson = root / "bin/meson"
             meson.write_text("""#!/bin/sh
 set -eu
 case "$1" in
-setup) mkdir -p "$2" ;;
+setup)
+    printf '%s\\n' "$@" >> "$TRACE"
+    mkdir -p "$2/va"
+    printf '#define VA_VERSION 1.22.0\\n' > "$2/va/va_version.h"
+    ;;
 install)
     mkdir -p "$DESTDIR/lib64/pkgconfig" "$DESTDIR/lib64/gbm"
     printf 'prefix=/\\n' > "$DESTDIR/lib64/pkgconfig/test.pc"
     for file in libEGL_mesa.so libGLESv1_CM_mesa.so libGLESv2_mesa.so \\
-                libgallium_dri.so libvulkan_radeon.so libgbm_mesa.so gbm/dri_gbm.so; do
+                libgallium_dri.so libvulkan_radeon.so libgbm_mesa.so gbm/dri_gbm.so \\
+                radeonsi_drv_video.so libdrm_amdgpu.so; do
         printf 'unchanged stripped bytes\\n' > "$DESTDIR/lib64/$file"
     done
     ;;
@@ -35,15 +57,48 @@ esac
             cmake.write_text("#!/bin/sh\nexit 0\n")
             meson.chmod(0o755)
             cmake.chmod(0o755)
-            environment = dict(os.environ, PATH=f"{root / 'bin'}:{os.environ['PATH']}")
+            trace = root / "meson.log"
+            environment = dict(os.environ, PATH=f"{root / 'bin'}:{os.environ['PATH']}",
+                               TRACE=str(trace))
             invocation = ["bash", str(ROOT / "scripts/mesa.sh")]
-            invocation.extend(str(root / name) for name in ("mesa", "drm", "expat", "ndk", "out"))
+            invocation.extend(str(root / name) for name in ("mesa", "drm", "expat", "ndk", "out", "libva"))
             subprocess.run(invocation, env=environment, check=True, capture_output=True)
-            published = list((root / "out/install").rglob("*.so")) + [root / "out/manifest"]
-            self.assertEqual(len(published), 8)
+            cross = next((root / "out").glob("build-*/va-cross.ini"))
+            dependency_key = hashlib.sha256(cross.read_bytes()).hexdigest()[:16]
+            self.assertIn(f"\n{cross.parent}/va-{dependency_key}\n", trace.read_text())
+            self.assertIn(
+                f"PKG_CONFIG_LIBDIR={cross.parent}/va-sysroot/lib64/pkgconfig:"
+                f"{cross.parent}/sysroot/lib64/pkgconfig",
+                cross.read_text())
+            published = list((root / "out/install").rglob("*.so*")) + [root / "out/manifest"]
+            self.assertEqual(len(published), 10)
             for path in published:
                 os.utime(path, ns=(1_000_000_000, 1_000_000_000))
             before = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in published}
             subprocess.run(invocation, env=environment, check=True, capture_output=True)
             self.assertEqual(before, {
                 path: (path.read_bytes(), path.stat().st_mtime_ns) for path in published})
+            readelf.write_text("#!/bin/sh\nprintf 'no VA entry point\\n'\n")
+            result = subprocess.run(invocation, env=environment, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("does not export Google's VA-API 1.22 entry point", result.stderr)
+            self.assertEqual(before, {
+                path: (path.read_bytes(), path.stat().st_mtime_ns) for path in published})
+
+    def test_va_driver_is_explicitly_enabled_and_packaged_without_replacing_libva(self):
+        script = (ROOT / "scripts/mesa.sh").read_text()
+        self.assertIn("-Dgallium-drivers=softpipe,zink -Dvulkan-drivers=amd", script)
+        self.assertIn("-Dgallium-drivers=radeonsi -Dvulkan-drivers=", script)
+        self.assertIn("-Dgallium-va=enabled", script)
+        self.assertIn("-Dvideo-codecs=jpegdec", script)
+        self.assertIn("-Dopengl=false", script)
+        self.assertIn("-Dllvm=disabled -Damd-use-llvm=false", script)
+        installs = [line.split() for line in
+                    (ROOT / "android/vendor/install.list").read_text().splitlines()
+                    if line and not line.startswith("#")]
+        self.assertIn(["lib64/radeonsi_drv_video.so", "0644", "0:0",
+                       "same_process_hal_file", "mesa/lib64/radeonsi_drv_video.so"], installs)
+        self.assertIn(["lib64/libdrm_amdgpu.so", "0644", "0:0",
+                       "same_process_hal_file", "mesa/lib64/libdrm_amdgpu.so"], installs)
+        self.assertFalse(any(Path(line[0]).name in ("libva.so", "libdrm.so")
+                             for line in installs))

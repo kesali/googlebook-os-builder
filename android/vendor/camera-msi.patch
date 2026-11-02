@@ -1,0 +1,22 @@
+Google's internal USB-camera table omits the MSI webcam (30c9:0042), so the
+USB HAL advertises it as external. Apps selecting only front/back cameras
+may therefore report no camera. Mark this exact USB ID front-facing without
+inventing lens/sensor calibration or changing other cameras and effects.
+Drop when Google's table includes this webcam or discovery classifies it
+correctly without the override. Physical preview/capture must be retested.
+
+--- a/etc/camera/internal_usb_camera_info.txtpb
++++ b/etc/camera/internal_usb_camera_info.txtpb
+@@ -1,6 +1,12 @@
+ use_hardware_jpeg_decoder: true
+ face_detection_input_width: 320
+ camera_modules {
++  key: "30c9:0042" # MSI Modern 15 B7M integrated webcam
++  value {
++    facing: FACING_FRONT
++  }
++}
++camera_modules {
+   key: "0408:4052" # Quanta YHVA-5
+   value {
+     lens_info {

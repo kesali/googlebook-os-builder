@@ -1,0 +1,16 @@
+The AMD rendering profile globally selects Zink for GBM. Mesa's VA loader
+inherits that override too, but the separate JPEG-only driver contains
+RadeonSI, not Zink. Clear it only in the USB camera service so VA detects
+the DRM device normally; keep desktop rendering and SELinux unchanged.
+Drop when renderer selection no longer leaks into the VA loader.
+
+--- a/etc/init/android.hardware.camera.provider-usb-service.android-desktop.rc
++++ b/etc/init/android.hardware.camera.provider-usb-service.android-desktop.rc
+@@ -2,6 +2,7 @@
+     interface aidl android.hardware.camera.provider.ICameraProvider/usb/0
+     class hal
+     user cameraserver
++    setenv MESA_LOADER_DRIVER_OVERRIDE ""
+     group audio camera input drmrpc usb
+     ioprio rt 4
+     capabilities SYS_NICE
