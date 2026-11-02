@@ -1,15 +1,12 @@
 # Laptop hardware
 
-**Status:** partial — the laptop completes setup over Wi-Fi with working input; physical sound
-and screen brightness still fail on the last owner-tested image.
-**Last verified:** 2026-11-02 — the owner booted `ec5d360` and reported no sound or brightness
-adjustment. The new candidate builds with unchanged Google kABI; all 100 unit tests pass. Its enforcing
-QEMU [setup](../../out/hardware-fixes-validation/qemu-final-production/screen.png) responds to a
-[mouse click](../../out/hardware-fixes-validation/qemu-final-production/after-click.png);
-both screenshots were inspected.
-A disposable HDA fixture verifies card selection, scoped sysfs permissions, HAL restart and a
-nonzero 1 kHz signal ([measurements](../../out/hardware-fixes-validation/qemu-audio-final/signal.json)).
-That fixture uses QEMU mixer values, not the MSI's; physical confirmation is still required.
+**Status:** partial — setup over Wi-Fi, input and sound work; an external HDMI monitor halved
+the frame rate (candidate fix built, untested) and the brightness slider is unconfirmed.
+**Last verified:** 2026-11-02 — the owner booted `95b3bf6`: sound works; frame rate halves with
+HDMI connected. Its [snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt) shows
+`/sys/class/backlight/backlight` labelled `sysfs_leds`, brightness 51750 of 62451. Commits after
+`95b3bf6` (HDMI page flips, generic bionic/libz, polling fixes, TPM wait, power HAL CPU masks)
+are verified in QEMU only.
 
 ## Goal
 Run Googlebook OS on the **MSI Modern 15 B7M** (Ryzen 5 7530U, Radeon Vega graphics,
@@ -22,9 +19,8 @@ touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86;
 impression, not a benchmark. Density 160 replaces 180 in the AMD profile only; QEMU keeps 240.
 GPU acceleration, Bluetooth, microphones and suspend have not been independently verified.
 
-The latest USB hardware snapshot could not be retrieved with the available access. Investigation
-therefore used the references, Google's HALs and this laptop's **host Linux** hardware, read-only
-([evidence](../../out/hardware-fixes-validation/host-hardware.txt)):
+Audio and backlight were designed from the references, Google's HALs and this laptop's
+**host Linux** hardware, read-only ([evidence](../../out/hardware-fixes-validation/host-hardware.txt)):
 
 - Analog HDA at `03:00.6`: ALC256, usually card1/`Generic_1`; HDMI at `03:00.1` is a different
   card. Card numbers and `Generic` IDs are not reliable selectors.
@@ -36,8 +32,12 @@ therefore used the references, Google's HALs and this laptop's **host Linux** ha
   Google's lights HAL accepts `backlight`, but not `amdgpu_blN`. The source patch gives only
   this model's first AMD panel that supported name; the driver/scaling algorithm is unchanged.
   Its sysfs files use the HAL's existing `sysfs_leds` permissions.
-- The new image contains these candidates and a readiness-gated, read-only hardware snapshot.
-  QEMU checks do not prove the physical ALC256 mixer or AMD backlight works.
+- The composer allows a modeset on every flip; on DCN 2.1 amdgpu then does a full update under
+  a global lock, so with HDMI connected each display's flip waits for the other's. The
+  [kernel](kernel.md) fast-flip patch keeps plain flips on the fast path.
+- Google's bionic/libz use Panther Lake instructions that Zen 3 emulates in the kernel; the image
+  now uses the emulator's generic builds ([os-image](os-image.md)). Expect fewer kernel traps;
+  the laptop speed difference is not measured.
 
 The regular image is [out/android/disk.img](../../out/android/disk.img), **53,430,190,080 B**
 (49.8 GiB), not the separate diagnostic OS. The BUP Slim USB retains its own Android accounts
@@ -45,12 +45,12 @@ and data. This work updated only the regular image; no physical disk was written
 
 | Part | Device [ID] | Driver / status |
 |---|---|---|
-| Display / GPU | Radeon Barcelo [1002:15e7] | `amdgpu`; usable desktop, acceleration not measured |
+| Display / GPU | Radeon Barcelo [1002:15e7] | `amdgpu`; usable desktop; HDMI frame-rate fix untested |
 | Keyboard | i8042 AT keyboard | `atkbd`; works |
 | Touchpad | ELAN0307:00 [04f3:3282] | AMD I2C, `i2c_hid_acpi`, `hid-multitouch`; works |
 | Wi-Fi | MT7922 [14c3:0616] | `mt7921e`; setup completed over Wi-Fi |
 | Bluetooth | MediaTek USB [0e8d:0616] | Not verified |
-| Audio | HDA [1022:15e3], HDMI [1002:1637], ACP [1022:15e2] | ALC256 candidate awaits physical retest |
+| Audio | HDA [1022:15e3], HDMI [1002:1637], ACP [1022:15e2] | ALC256 sound works (owner report); mic, HDMI audio not done |
 | Camera / SD reader | USB [30c9:0042], [0bda:0129] | Later |
 | Storage | Samsung PM9C1a NVMe [144d:a80d] | Hidden from laptop Android; boot from USB |
 
@@ -82,6 +82,10 @@ and data. This work updated only the regular image; no physical disk was written
   Do not advertise missing HDMI/ACP PCMs as working microphones or outputs.
 - Backlight naming is restricted by exact DMI vendor/model and the first panel; other machines
   retain upstream names. Drop the patch when the unchanged HAL can discover AMD backlights.
+- Keep Google's power HAL, without its Panther Lake CPU masks
+  ([powerhint.patch](../../android/vendor/powerhint.patch)). On 12 CPUs they limited apps to
+  0-7, background work to 4-7, and media playback to 4-7 with no load balancing. Init's
+  all-CPU cpusets stay; SocSlider and the top-app uclamp boost are kept.
 
 ## Files
 - [kernel/gki.config](../../kernel/gki.config), [laptop-modules.list](../../kernel/laptop-modules.list),
@@ -93,6 +97,7 @@ and data. This work updated only the regular image; no physical disk was written
 - [audio-policy.patch](../../android/vendor/audio-policy.patch),
   [file-contexts.patch](../../android/vendor/file-contexts.patch) — scoped labels/permissions.
 - [android/vendor_dlkm/modules.patch](../../android/vendor_dlkm/modules.patch) — codec preload/HDA unblock.
+- [android/vendor/powerhint.patch](../../android/vendor/powerhint.patch) — power HAL without 8-CPU masks.
 - [hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — read-only physical evidence.
 - [tests/test_audio.py](../../tests/test_audio.py), [test_kernel_source.py](../../tests/test_kernel_source.py)
   — selector failures, exact card-ID bytes and model-specific backlight naming.
@@ -108,8 +113,8 @@ and data. This work updated only the regular image; no physical disk was written
    Master (0–74), while production uses ALC256's mono Master (0–87). It captures WAV only,
    never host speaker output. A zero-filled WAV is **not** audio success.
 3. Follow the [Android update workflow](../../README.md#updating-the-existing-android-usb).
-   This candidate changes vendor, system_ext, vendor_dlkm and boot files; both boot-file and
-   OS-partition updates are needed. Do not select the previous or framebuffer-free menu entry.
+   Kernel changes re-sign modules, so update both the boot files (`make deploy-android`) and
+   the OS partitions (`update-os.sh`). Do not select the previous or framebuffer-free menu entry.
 4. Owner retest: start with low Android volume, play media, check speakers/headphones and move
    the brightness slider. Confirm density/input/Wi-Fi remain usable. Retrieve the new snapshot
    and relevant logs whether the result succeeds or fails.
@@ -146,10 +151,10 @@ metadata/logd starts still needs a screen photo.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
-- [ ] Physical audio retest — done when the owner hears media through speakers/headphones;
-  inspect the new snapshot/logs if silent.
-- [ ] Physical brightness retest — done when the setting visibly changes the panel; confirm
-  the new backlight name and label in the snapshot.
+- [ ] Physical retest of `2ee6da9` or later — done when the owner reports the frame rate with
+  HDMI connected, the brightness slider visibly changing the panel, and boot/app speed with the
+  generic bionic. Retrieve the snapshot and logs either way.
+- [ ] Headphone output — done when the owner hears media through the headphone jack.
 - [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
 - [ ] Diagnose the old framebuffer-free hard lockup only with a safe, evidence-based test.
 - [ ] Establish whether the touchpad needs `X86_AMD_PLATFORM_DEVICE` through a separately
@@ -160,7 +165,13 @@ metadata/logd starts still needs a screen photo.
 - Generalize the local OS updater only if needed; no passwordless physical-write udev rule.
 
 ## Handoff log
-- 2026-11-02 (this commit) — ALC256 routing/mixer and MSI-only backlight naming built; scoped
+- 2026-11-02 (this commit) — Power HAL CPU masks removed: with 12 vCPUs, QEMU cpusets went from
+  0-7/4-7 to 0-11 everywhere and the 500 ms xe-IRQ write retries stopped; `qemu-check` passed.
+  `9663a21` removed the 10 s TPM wait. Laptop effect not measured.
+- 2026-11-02 `6d0d663`–`9663a21` — Owner confirmed sound on `95b3bf6`, reported HDMI halving the
+  frame rate. HDMI flip patch, generic bionic/libz and polling fixes verified in QEMU only.
+  Next: owner updates boot files and OS partitions and retests.
+- 2026-11-02 `95b3bf6` — ALC256 routing/mixer and MSI-only backlight naming built; scoped
   enforcing audio selection and a real 1 kHz QEMU signal verified with a test-only mixer.
   No physical writes/reboot. Next: owner updates both boot and OS files and retests hardware.
 - 2026-11-02 `ec5d360` — Density 160, HDA unblock and read-only snapshot built and QEMU-checked.

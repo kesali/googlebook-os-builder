@@ -331,6 +331,9 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   a second. The same files from the pinned Android 17 emulator image, a generic x86-64 build,
   replace them **unmodified**; [scripts/check-replacements.sh](scripts/check-replacements.sh)
   checks each is a drop-in. Remaining traps are rare (Rust std, HWUI, ART).
+- Google's power HAL configuration pins cpusets to Panther Lake's 8 CPUs; on the laptop's 12 it
+  kept apps off 4 CPUs and background work on 4. [android/vendor/powerhint.patch](android/vendor/powerhint.patch)
+  removes only those masks, so Android's default all-CPU cpusets stay.
 - Google firmware updaters (including the security-chip update that blocked startup for 10 s
   waiting for a TPM), OTA and the absent EC logger are removed. The only replacement
   firmware command is [android/crossystem-qemu.c](android/crossystem-qemu.c), compiled from source:
