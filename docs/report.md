@@ -131,7 +131,7 @@ plus [android/cmdline.txt](../android/cmdline.txt) and [android/bootconfig.txt](
 | Patch | Change |
 |---|---|
 | vendor `audio-msi`, `audio-policy` | ALC256 mixer paths: speaker, headphone and mic on analog PCM 0. |
-| vendor `build-prop` | Graphics profile properties; gamma log spam fix. |
+| vendor `build-prop` | Graphics profile properties; gamma log spam fix; zram writeback off (Google's mmd made an 8 GiB file in `/data` every boot). |
 | vendor `file-contexts` | SELinux labels for DRM, GPU sysfs, the sound card ID and the backlight. |
 | vendor `powerhint` | Drop the 8-CPU masks that confined apps to CPUs 0–7 and media to 4–7. |
 | vendor `ueventd` | Serialize uevents. |

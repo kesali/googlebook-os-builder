@@ -1,8 +1,12 @@
 # OS image and disk
 
 **Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
-**Last verified:** 2026-11-02 — `make android-image JOBS=12` (54 s) rebuilt system, vendor,
-system_ext and vendor_dlkm; every replaced Google file passed
+**Last verified:** 2026-11-02 — `make android-image JOBS=12` rebuilt only vendor (24 s) with zram
+writeback off; a QEMU boot of it reached setup with SELinux enforcing and no 8 GiB writeback
+device in the kernel log, where the previous vendor image had one
+([evidence](../../out/data-growth-validation/)); `make test` passes 113 tests. Earlier the same day:
+`make android-image JOBS=12` (54 s) rebuilt system, vendor, system_ext and vendor_dlkm; every
+replaced Google file passed
 [check-replacements.sh](../../scripts/check-replacements.sh) and the full metadata comparison;
 the updater wrote only OS partitions. A repeat build took 16 s and left `disk.img` unmodified.
 `make test` passes 106 unit tests; `make qemu-check` reaches setup
@@ -74,6 +78,11 @@ QEMU test used a reflinked copy, and this candidate has not been transferred to 
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
 - Dependencies are per partition: Mesa, minigbm, firmware, emulator and crossystem rebuild vendor
   only; system_ext changes rebuild system_ext; the signed module manifest rebuilds vendor_dlkm.
+- Google's `/system/build.prop` turns on mmd's zram writeback, so `mmd_setup` makes an 8 GiB file in
+  `/data/per_boot/zram` on every boot and writes idle pages out to the USB, which runs at USB 2.0
+  speed. [build-prop.patch](../../android/vendor/build-prop.patch) sets
+  `mmd.zram.writeback.enabled=false`: zram swap stays in RAM and the 8 GiB stays free. Drop the line
+  when /data is large and on fast storage. The laptop effect is not measured.
 
 ## Files
 - [android/system/](../../android/system/), [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/) — every change to Google's partitions.
@@ -109,11 +118,17 @@ must print no partition or boot-file writes and leave output timestamps unchange
 - `mkfs.vfat` sizes clusters from the whole disk file, not the partition: at 19 GiB it picks 16 KiB
   clusters (36,843 for 576 MiB), too few for FAT32, which UEFI firmware may then read as FAT16.
   The script passes `-s 8`; the test checks at least 65,525 clusters.
+- Non-`ro.` properties in `/vendor/build.prop` override `/system/build.prop`; init logs
+  `Overriding previous property '…':'true' with new value 'false'`. The serial shell cannot read
+  mmd's properties (`getprop` prints nothing), so check that kernel-log line and `df /data`.
 
 ## Actions
 _None agreed._ The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-02 (this commit) — Turned off Google's mmd zram writeback (`build-prop.patch`): it made an
+  8 GiB file in /data every boot. QEMU, previous vs new vendor: `loop45` of 16,777,216 sectors and
+  `zram: setup backing device` vs neither; setup reached, enforcing. Laptop effect not measured.
 - 2026-11-02 (this commit) — Pin and verify the recovery image's SHA-256 before unpacking; a
   mismatch is rejected before existing extracted files are removed. `make test`: 106 tests pass.
 - 2026-11-02 (this commit) — Generic bionic/runtime APEX/libz from the emulator image, with a

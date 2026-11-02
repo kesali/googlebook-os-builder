@@ -3,6 +3,9 @@ profile. The selected profile owns the HWUI renderer. Keep SDR; drop when Google
 The composer looks for xe's LOG_GAMMA_LUT on every frame when use_log_gamma_lut is set; other
 drivers lack it, so it logged a fallback each frame. With the color pipeline off it only clears
 GAMMA_LUT either way.
+Keep zram swap in RAM: Google's /system/build.prop turns on mmd's zram writeback, so mmd_setup
+creates an 8 GiB backing file in /data on every boot (a quarter of our 32 GiB) and idle pages
+are written back to the USB. Drop when /data is large and on fast internal storage.
 
 --- a/build.prop
 +++ b/build.prop
@@ -54,8 +57,10 @@ GAMMA_LUT either way.
  vendor.hwc.drm.skip_plane_damage_clips=true
  ro.soc.manufacturer=Intel
  ro.sf.lcd_density=240
-@@ -182,4 +177,3 @@
+@@ -181,5 +176,5 @@
+ dalvik.vm.jitinitialsize=128k
  dalvik.vm.jitmaxsize=256m
  dalvik.vm.jitthreshold=5000
++mmd.zram.writeback.enabled=false
  # end of file
 -

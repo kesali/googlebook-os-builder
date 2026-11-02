@@ -162,6 +162,9 @@ metadata/logd starts still needs a screen photo.
   `android-boot.log`, compare `boot_progress_enable_screen` with `sf_stop_bootanim`: a long gap
   means WindowManager waited for windows or the boot animation (QEMU waited ~30 s before `7d8e51f`).
 - [ ] Headphone output — done when the owner hears media through the headphone jack.
+- [ ] Deploy the zram-writeback change — done when, after `update-os.sh` (vendor only, no data
+  loss), the owner sees about 8 GiB less used in `/data` and boot/app speed is unchanged. Swap now
+  relies on zram alone; the laptop effect is not measured.
 - [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up
   without firmware errors. Check Wi-Fi still works: both run on the same MT7922.
 - [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
@@ -178,6 +181,9 @@ metadata/logd starts still needs a screen photo.
   snapshot shows the governor and EPP actually in effect.
 
 ## Handoff log
+- 2026-11-02 (this commit) — Disabled mmd's zram writeback in the vendor `build.prop` ([os-image](os-image.md)),
+  which stops an 8 GiB file being created in /data each boot. QEMU-verified only; the owner
+  deploys it with `update-os.sh` (vendor only).
 - 2026-11-02 (this commit) — Installed the official MT7922 Bluetooth RAM code the `95b3bf6` boot
   lacked. Vendor image holds the archive's exact bytes; QEMU has no Bluetooth, so it is untested.
 - 2026-11-02 `e51523d` — Snapshot now records DRM connectors and cpufreq policies, so the next
