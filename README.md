@@ -12,6 +12,8 @@ installer, host-GPU passthrough or raw physical-disk writes by the build. The se
 retained, but it does not run Android.
 
 The [project plan](docs/plan.md) tracks personal priorities and the proposed order of work.
+For one readable overview of how it works, what changed and how it compares with Churro and
+gbos-x86, read the [report](docs/report.md).
 **Status and next steps** for each component (kernel, boot, image, security, graphics, QEMU,
 laptop, USB diagnostics) are in [docs/specs/](docs/specs/README.md). AI coding agents start from
 [AGENTS.md](AGENTS.md); `/pickup <component>` and `/handoff` prompts keep the specs current.
