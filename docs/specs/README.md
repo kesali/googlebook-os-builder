@@ -11,7 +11,7 @@ The component specs track the details; the plan keeps the overall direction in o
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial | Owner retests Lenovo primary-alpha candidate; brightness check remains |
 | [Boot chain](boot.md) | partial | Berberis fixes tested laptop apps; retrieve logs after subsequent retests |
-| [OS image and disk](os-image.md) | working (expanded fresh image) | Owner flashes fresh layout once; confirms Lenovo/MSI hardware |
+| [OS image and disk](os-image.md) | working (expanded fresh image) | Owner retries larger-USB update after GPT compatibility fix |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Retest Lenovo desktop with primary-alpha candidate; wider RADV checks remain |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |

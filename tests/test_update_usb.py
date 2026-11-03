@@ -5,6 +5,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import update_usb
+import install_usb
 from deploy import COMPONENTS, bundle, install
 from lp import Extent, LP_TARGET_TYPE_LINEAR, LpMetadataGeometry, Partition
 
@@ -27,7 +29,7 @@ class USBUpdateTests(unittest.TestCase):
         self.image.write_bytes(b"I" * (96 * 512))
         self.target.write_bytes(b"T" * (104 * 512))
         self.layout = {
-            "id": "disk-uuid", "firstlba": 34,
+            "id": "disk-uuid", "firstlba": 34, "lastlba": 62,
             "partitions": [
                 {"name": "userdata", "start": 88, "size": 8, "node": "data", "uuid": "data-id"},
                 {"name": "super", "start": 2, "size": 70, "node": "super", "uuid": "super-id"},
@@ -270,7 +272,8 @@ class USBUpdateTests(unittest.TestCase):
                 patch.object(update_usb, "check_unused"), \
                 patch.object(update_usb, "table", return_value=self.layout), \
                 patch.object(update_usb, "read_partitions", return_value=self.logical), \
-                patch.object(update_usb.subprocess, "run"), \
+                patch.object(update_usb.subprocess, "run",
+                             return_value=subprocess.CompletedProcess([], 0, "", "")), \
                 patch.object(update_usb.fcntl, "ioctl", return_value=(512).to_bytes(4, "little")), \
                 patch.object(update_usb, "boot_mount", side_effect=fake_mount) as mounts, \
                 patch.object(update_usb, "snapshot_bundle", side_effect=fake_snapshot):
@@ -297,6 +300,93 @@ class USBUpdateTests(unittest.TestCase):
             with patch("builtins.input", side_effect=AssertionError("no confirmation for a no-op")):
                 update_usb.update(self.image, self.bundle)
             self.assertEqual(self.target.stat().st_mtime_ns, timestamp)
+
+
+class USBGPTTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.image = self.root / "image"
+        self.target = self.root / "usb"
+        with self.image.open("wb") as stream:
+            stream.truncate(16 * 1024 * 1024)
+        subprocess.run(
+            ["sfdisk", str(self.image)],
+            input="label: gpt\nsize=1MiB, name=test\n",
+            text=True, check=True, capture_output=True,
+        )
+        self.layout = update_usb.table(self.image)
+        subprocess.run(["sfdisk", "--verify", str(self.image)],
+                       check=True, capture_output=True)
+        shutil.copyfile(self.image, self.target)
+        with self.target.open("ab") as stream:
+            stream.write(b"T" * (1024 * 1024))
+
+    def verify(self):
+        with self.image.open("rb") as source, self.target.open("rb") as target:
+            update_usb.verify_target_gpt(
+                source, target, self.layout, self.target, self.target.stat().st_size,
+            )
+
+    def test_raw_flash_to_larger_target_verifies_without_any_writes(self):
+        size = self.image.stat().st_size
+        expected = hashlib.sha256(self.image.read_bytes()).hexdigest()
+        with self.image.open("rb") as source, self.target.open("r+b") as target:
+            install_usb.flash(source, target, size, expected, Mock(), Mock())
+        before = self.target.read_bytes()
+        timestamp = self.target.stat().st_mtime_ns
+        result = subprocess.run(["sfdisk", "--verify", str(self.target)], capture_output=True)
+        self.assertIn(b"MyLBA mismatch", result.stderr)
+        with patch.object(update_usb.subprocess, "run",
+                          side_effect=AssertionError("must compare verified GPT bytes")):
+            self.verify()
+        self.assertEqual(self.target.read_bytes(), before)
+        self.assertEqual(self.target.stat().st_mtime_ns, timestamp)
+
+    def test_changed_mbr_headers_and_arrays_never_use_the_exception(self):
+        original = self.target.read_bytes()
+        end = (self.layout["lastlba"] + 1) * 512
+        for offset in (446, 512, 1024, end, self.image.stat().st_size - 512):
+            with self.subTest(offset=offset):
+                changed = bytearray(original)
+                changed[offset] ^= 1
+                self.target.write_bytes(changed)
+                failure = subprocess.CompletedProcess([], 1, "", "GPT error")
+                with patch.object(update_usb.subprocess, "run", return_value=failure) as verify:
+                    with self.assertRaisesRegex(ValueError, "GPT error"):
+                        self.verify()
+                    verify.assert_called_once_with(
+                        ["sfdisk", "--verify", str(self.target)],
+                        check=False, capture_output=True, text=True,
+                    )
+                self.assertEqual(self.target.read_bytes(), changed)
+
+    def test_relocated_gpt_and_equal_size_targets_use_normal_verification(self):
+        subprocess.run(["sfdisk", "--relocate", "gpt-bak-std", str(self.target)],
+                       check=True, capture_output=True)
+        with patch.object(update_usb.subprocess, "run",
+                          wraps=subprocess.run) as verify:
+            self.verify()
+            verify.assert_called_once()
+        shutil.copyfile(self.image, self.target)
+        with patch.object(update_usb.subprocess, "run",
+                          wraps=subprocess.run) as verify:
+            self.verify()
+            verify.assert_called_once()
+
+    def test_source_metadata_bounds_are_checked(self):
+        for bounds in ({"firstlba": 0}, {"lastlba": self.image.stat().st_size // 512}):
+            with self.subTest(bounds=bounds):
+                self.layout.update(bounds)
+                with self.assertRaisesRegex(ValueError, "metadata bounds"):
+                    self.verify()
+
+    def test_verifier_diagnostics_fail_even_when_exit_status_is_zero(self):
+        result = subprocess.CompletedProcess([], 0, "", "1 error detected.\n")
+        with patch.object(update_usb.subprocess, "run", return_value=result):
+            with self.assertRaisesRegex(ValueError, "1 error detected"):
+                update_usb.verify_gpt(self.image)
 
 
 if __name__ == "__main__":

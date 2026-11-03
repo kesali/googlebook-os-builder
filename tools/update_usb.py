@@ -74,6 +74,37 @@ def table(path):
     return validate_gpt_table(json.loads(run("sfdisk", "--json", str(path)))["partitiontable"])
 
 
+def verify_gpt(path):
+    result = subprocess.run(["sfdisk", "--verify", str(path)],
+                            check=False, capture_output=True, text=True)
+    # Some util-linux versions report GPT errors on stderr but still exit zero.
+    if result.returncode or result.stderr.strip():
+        diagnostics = result.stderr.strip() or result.stdout.strip()
+        raise ValueError(f"GPT verification failed for {path} "
+                         f"(status {result.returncode}):\n{diagnostics}")
+    print(result.stdout, end="", flush=True)
+
+
+def verify_target_gpt(source, target, source_table, path, target_size):
+    """Verify normally, or match both GPT copies to the already verified source image."""
+    source_size = os.fstat(source.fileno()).st_size
+    if target_size > source_size:
+        first = source_table["firstlba"] * 512
+        end = (source_table["lastlba"] + 1) * 512
+        if not 1024 <= first < end < source_size:
+            raise ValueError("Invalid source GPT metadata bounds")
+        # A verbatim flash leaves backup GPT at the image boundary, not the USB end.
+        # Match all metadata bytes, including PMBR, headers and partition-array CRCs;
+        # never accept a damaged or changed copy merely because sfdisk can read it.
+        ranges = [(0, first), (end, source_size - end)]
+        length = sum(size for _, size in ranges)
+        if disk_hash(source, ranges, length) == disk_hash(target, ranges, length):
+            print("USB GPT matches the verified image exactly; backup remains at the "
+                  "image boundary. No GPT changes needed.", flush=True)
+            return
+    verify_gpt(path)
+
+
 def check_layout(source, target):
     for key in ("id", "firstlba"):
         if source[key] != target[key]:
@@ -232,8 +263,8 @@ def update(image, bundle):
                 raise ValueError("USB logical sectors must be 512 bytes")
             print("Checking USB layout and comparing OS partitions (read-only)...", flush=True)
             source_table, target_table = table(image), table(path)
-            subprocess.run(["sfdisk", "--verify", str(image)], check=True)
-            subprocess.run(["sfdisk", "--verify", str(path)], check=True)
+            verify_gpt(image)
+            verify_target_gpt(source, target, source_table, path, selected["size"])
             check_layout(source_table, target_table)
             ranges, metadata = os_extents(source, source_table)
             planned = plan_os(source, target, ranges, metadata)

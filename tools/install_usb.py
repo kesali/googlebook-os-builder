@@ -17,6 +17,7 @@ import subprocess
 from android_sync import CHUNK, disk_hash
 from update_usb import (
     BLKFLSBUF, BLKSSZGET, check_identity, check_unused, choose, os_extents, table,
+    verify_gpt, verify_target_gpt,
 )
 
 
@@ -70,7 +71,7 @@ def install(image):
             if not stat.S_ISREG(info.st_mode) or not info.st_size or info.st_size % 512:
                 raise ValueError("Expected a nonempty, sector-aligned regular image")
             source_table = table(image)
-            subprocess.run(["sfdisk", "--verify", str(image)], check=True)
+            verify_gpt(image)
             os_extents(source, source_table)
             names = {entry["name"] for entry in source_table["partitions"]}
             if not {"userdata", "metadata", "EFI-SYSTEM"} <= names:
@@ -116,7 +117,7 @@ def install(image):
                 flash(source, target, info.st_size, expected, unused,
                       lambda: fcntl.ioctl(target, BLKFLSBUF))
                 unused()
-                subprocess.run(["sfdisk", "--verify", str(path)], check=True)
+                verify_target_gpt(source, target, source_table, path, selected["size"])
                 print("Fresh USB image verified. Safely unplug/replug before booting.")
 
 

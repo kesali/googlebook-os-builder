@@ -78,7 +78,14 @@ The unchanged USB updater rejects an old layout and works only after a matching 
 `make install-usb JOBS=12` provides the owner-run full flash: reuse USB-only selection and
 identity/in-use checks, require exact `ERASE <serial>`, copy the entire image and verify SHA-256
 read-back. It does not grow partitions; larger USBs keep the backup GPT at the image boundary,
-as with a raw flash. Physical use is unverified; the agent never runs this target.
+as with a raw flash. Owner's larger USB boots, but the subsequent updater rejected this
+placement with `MyLBA mismatch`. The shared installer/updater check now compares all GPT
+metadata bytes (PMBR, both headers and arrays) with the verified source for this exact case;
+other layouts still require normal `sfdisk --verify`. No GPT relocation or disk writes by agent.
+All 32 installer/updater tests pass in the builder, including an actual raw flash to a larger
+regular file, unchanged GPT/timestamps, damaged metadata refusal and relocated/equal-size GPTs.
+Verification also rejects stderr diagnostics when older `sfdisk` exits zero despite errors.
+[Evidence](../../out/intel-primary-alpha/usb-gpt-tests.log). Owner's physical update retest remains.
 
 Earlier disposable Intel-layout experiment (2026-11-03): upstream `lpmake` generates a separate
 12 GiB super image with `vendor_dlkm_a` enlarged to 32 MiB and every logical B entry retained
@@ -269,6 +276,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Larger raw-flashed USB exposed GPT placement rejection. Shared
+  read-only comparison accepts only exact verified-source GPT bytes; sfdisk diagnostics fail
+  even on zero exit. 32 regular-file tests pass; owner update retest pending, no agent disk writes.
 - 2026-11-03 (this commit) — Added separate owner-run `install-usb`: explicit serial erase
   confirmation, USB identity/in-use/capacity guards and full-image read-back. Regular-file
   installer/shared updater tests pass; physical flash untested and never run by the agent.

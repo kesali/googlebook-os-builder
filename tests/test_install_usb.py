@@ -4,6 +4,7 @@ from contextlib import ExitStack
 import fcntl
 import hashlib
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -68,6 +69,8 @@ class InstallUSBTests(unittest.TestCase):
             patches.enter_context(patch("install_usb.table", return_value={
                 "partitions": [{"name": name} for name in ("userdata", "metadata", "EFI-SYSTEM")]}))
             verify = patches.enter_context(patch("install_usb.subprocess.run"))
+            verify.return_value = subprocess.CompletedProcess([], 0, "", "")
+            target_verify = patches.enter_context(patch("install_usb.verify_target_gpt"))
             patches.enter_context(patch("install_usb.os_extents"))
             patches.enter_context(patch("install_usb.choose",
                                         return_value=self.node if selected else None))
@@ -98,11 +101,13 @@ class InstallUSBTests(unittest.TestCase):
                 install_usb.install(self.image)
                 if answer == "ERASE TEST123" and selected:
                     self.assertEqual(self.target.read_bytes(), b"I" * 4096 + b"T" * 4096)
-                    self.assertEqual(verify.call_count, 2)
+                    self.assertEqual(verify.call_count, 1)
+                    target_verify.assert_called_once()
                     self.assertGreaterEqual(identity.call_count, 4)
                 else:
                     self.assertEqual(self.target.read_bytes(), before)
                     self.assertEqual(verify.call_count, 1)
+                    target_verify.assert_not_called()
                     if not selected:
                         prompt.assert_not_called()
 

@@ -137,7 +137,9 @@ Internal disks, missing serials, mounted/in-use, read-only and undersized device
 The whole image is copied and SHA-256 read-back verified; **all existing USB data is lost**.
 Extra USB space is not allocated and partitions are not grown. Like a raw image flash, the
 backup GPT remains at the image boundary; partition tools may report that it is not at the
-end of a larger USB. Safely unplug/replug afterwards, then boot its UEFI entry.
+end of a larger USB. The installer and updater accept this only when all GPT metadata
+matches the verified source image byte-for-byte; neither relocates it.
+Safely unplug/replug afterwards, then boot its UEFI entry.
 If interrupted or verification fails, rerun installation before booting; do not trust a partial USB.
 The agent tests this tool on regular files only; physical installation is your operation.
 
