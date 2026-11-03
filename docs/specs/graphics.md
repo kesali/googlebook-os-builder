@@ -5,6 +5,10 @@
 fails (fb -22). Churro's primary-alpha candidate passes 33 tests, kernel/image/metadata checks,
 no-write repeat and disposable enforcing QEMU setup/input (screens inspected); hardware retest
 pending. [Evidence](../../out/intel-primary-alpha/). Owner confirms the pre-patch MSI image boots.
+Subsequent owner test: guest and another profile reach desktop, performance feels good and
+video plays. [Successful boot logs](../../out/laptop-logs/20261103-185854-21kebgv7/current/)
+show no framebuffer rejection. Original-profile freeze with flashing Caps Lock remains
+unexplained; recovered logs contain no panic trace. Hardware video decoding is not established.
 
 Earlier, 2026-11-03 — Fresh expanded image builds; 92 focused tests and enforcing
 direct/UEFI QEMU setup/input checks pass. Iris/softpipe/Zink compile without shipping LLVM.
@@ -37,7 +41,8 @@ OpenGL ES 3.2. After animation the display goes dark while keyboard activity wak
 drmhwc logs framebuffer creation -22, failed AtomicCommitArgs and BAD_DISPLAY; no rejected
 format is printed. Churro documents the same Broadwell failure with alpha client targets.
 The approved [kernel candidate](../../kernel/i915-gen4-primary-alpha.patch) reuses its fix;
-local validation passes, Lenovo retest is pending. Bluetooth initialization crashes are separate.
+local validation passes; subsequent desktop/video results are recorded above.
+Bluetooth initialization crashes are separate.
 Owner confirms the expanded image boots MSI; wider regression has not been reported.
 
 Broadwell integration (2026-11-03, enumeration verified above): unchanged upstream Iris builds into
@@ -54,8 +59,8 @@ SELinux; an injected tap opens accessibility (screens inspected), and the NVMe d
 unchanged. [Evidence](../../out/intel-bringup/).
 The subsequent owner-approved fresh expanded image now builds through the normal pipeline:
 vendor_dlkm has 64 MiB and logical B is removed, without changing the old local disk or USB.
-See [image spec](os-image.md). Lenovo i915/Iris binding is now confirmed but desktop presentation
-fails; MSI boots by owner report, not a full peripheral regression.
+See [image spec](os-image.md). Lenovo i915/Iris binding and subsequent desktop/video are
+confirmed as described above; MSI boots by owner report, not a full peripheral regression.
 No Intel Vulkan, audio or network support is claimed.
 
 Verified: source-built Mesa and minigbm work with Google's unchanged composer, allocator service
@@ -261,8 +266,6 @@ a correctly sized image can still be QEMU's "Display output is not active" place
   bytes; otherwise an unchanged build rewrites library timestamps.
 
 ## Actions
-- [ ] Owner updates the expanded-layout USB and retests Lenovo — done when the primary-alpha
-  candidate reaches a usable desktop and fresh logs show successful framebuffer presentation.
 - [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
   output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
@@ -272,6 +275,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Owner confirms Lenovo guest/another-profile desktop and video,
+  with good perceived performance. Successful boot has no prior framebuffer errors; original-
+  profile freeze lacks panic evidence. Wi-Fi/touchpad work is tracked in the hardware spec.
 - 2026-11-03 (this commit) — Lenovo i915/Iris confirmed; fb -22 after animation matches
   Churro's primary-alpha fix. Reused patch passes build/33 tests/no-write repeat and enforcing
   QEMU setup/input (screens inspected); Lenovo hardware retest remains, Bluetooth separate.

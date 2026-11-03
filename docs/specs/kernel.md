@@ -1,7 +1,14 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-03 — primary-alpha candidate: 33 focused tests and
+**Last verified:** 2026-11-03 — AR9565 candidate: 40 focused tests, kernel/image build,
+all 4,501 Google exports, signed-module imports/aliases and 517 vendor_dlkm entries pass.
+The 20,054,016-byte vendor_dlkm fits 64 MiB. Repeat preserves hashes/timestamps of all 34
+recorded outputs including the disk and writes no partitions or boot files. Disposable
+enforcing QEMU reaches setup and accessibility after input (screens inspected); VM exited.
+[Evidence](../../out/lenovo-wifi/). Physical Wi-Fi scanning/connection remains untested.
+
+Earlier, 2026-11-03 — primary-alpha candidate: 33 focused tests and
 `make android-image JOBS=12` pass; 4,501 Google exports unchanged, module signatures/imports
 and 513 vendor_dlkm metadata entries verified. Repeat preserves all 30 recorded output/disk
 hashes and timestamps with no partition/boot writes. Disposable QEMU reaches inspected setup
@@ -21,14 +28,23 @@ Build Google's Googlebook kernel from source with the instruction emulator compi
 enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEMU drivers) load.
 
 ## Current state
+Lenovo AR9565 candidate: unchanged upstream ath9k/ath9k_hw/ath9k_common/ath modules
+compile and pass the existing Google-helper import/CRC and 4,501-export checks.
+Only `168c:0036` is added to hotplug metadata. Google's actual Googlebook mac80211 exports
+the LED APIs (unlike the generic emulator copy); no LED/source patch or helper replacement
+is needed. Signed packaging, final image/repeat/QEMU validation pass as above; physical
+Wi-Fi enumeration/association remains pending. [Build evidence](../../out/lenovo-wifi/).
+
 Lenovo evidence (2026-11-03): i915 binds Broadwell and exposes `intel_backlight`;
-Iris renders as HD Graphics 5500, but framebuffer creation fails with -EINVAL after animation.
+Iris renders as HD Graphics 5500. The earlier boot failed framebuffer creation with -EINVAL.
 The owner's MSI boot of the expanded image succeeds (not a full peripheral regression).
 Approved candidate: reuse Churro commit `70538d7`'s
 [primary-alpha patch](../../kernel/i915-gen4-primary-alpha.patch) without changing its code hunks.
 Gen4-8 primaries accept Android ARGB/ABGR client targets as opaque scanout; VLV/CHV retain
 native alpha, sprites/Gen9+/AMD are unchanged. Built and regression-checked as above;
-the Lenovo fix is not hardware-confirmed.
+the owner subsequently reaches desktop in guest/another profile and reports good performance
+and video. Successful-boot logs show no framebuffer rejection; the original-profile freeze
+has no retained panic trace and remains unresolved.
 
 Verified: release `6.18.21-android17-5-g3938c8d97142-ab16302624` from tag
 `android17-6.18-2026-06_r52` (commit `3938c8d97142`);
@@ -146,8 +162,8 @@ Inspect the screenshots; this does not verify AMD hardware.
   and relinks (about 50 s).
 
 ## Actions
-- [ ] Owner retests the primary-alpha image on Lenovo — done when a usable desktop appears
-  and fresh logs no longer show framebuffer rejection (local validation passes).
+- [ ] Owner retests AR9565 Wi-Fi — done when fresh logs show ath9k binding and the owner
+  confirms scanning and connection; local validation passes, touchpad follows separately.
 - [ ] Check the brightness slider — done when the owner confirms it changes the panel
   (the snapshot already shows the expected `backlight` name and label).
 
@@ -158,6 +174,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-03 (this commit) — Upstream AR9565 ath9k needs no source patch: actual Googlebook
+  mac80211 exports LED APIs. Four signed modules/exact alias pass 40 tests, build/kABI/import/
+  metadata checks, no-write repeat and enforcing QEMU setup/input. Physical Wi-Fi retest remains.
 - 2026-11-03 (this commit) — Reused Churro's primary-alpha fix for Lenovo fb -22. 33 tests,
   build/kABI/module/metadata checks, no-write repeat and enforcing QEMU setup/input pass
   (screens inspected). Lenovo retest pending; MSI pre-patch boot owner-confirmed; USB untouched.

@@ -28,6 +28,7 @@ def dependency_closure(direct, dependencies, system_modules=frozenset()):
 LAPTOP_ALIASES = {
     "amdgpu": "pci:v00001002d000015E7sv*sd*bc*sc*i*",
     "mt7921e": "pci:v000014C3d00000616sv*sd*bc*sc*i*",
+    "ath9k": "pci:v0000168Cd00000036sv*sd*bc*sc*i*",
     "snd-rn-pci-acp3x": "pci:v00001022d000015E2sv*sd*bc04sc80i00*",
     "snd-acp3x-pdm-dma": "platform:acp_rn_pdm_dma",
     "snd-acp3x-rn": "platform:acp_pdm_mach",

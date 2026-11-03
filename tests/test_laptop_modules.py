@@ -106,6 +106,26 @@ class LaptopModuleTests(unittest.TestCase):
             ["+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915"],
         )
 
+    def test_ar9565_uses_upstream_modules_without_replacing_google_wireless_helpers(self):
+        config = (REPO / "kernel/gki.config").read_text()
+        paths = (REPO / "kernel/laptop-modules.list").read_text().splitlines()
+        installs = (REPO / "android/vendor_dlkm/install.list").read_text()
+        for option in ("ATH_COMMON", "ATH9K", "ATH9K_HW", "ATH9K_COMMON"):
+            self.assertIn(f"CONFIG_{option}=m\n", config)
+        for path in ("drivers/net/wireless/ath/ath.ko",
+                     "drivers/net/wireless/ath/ath9k/ath9k_hw.ko",
+                     "drivers/net/wireless/ath/ath9k/ath9k_common.ko",
+                     "drivers/net/wireless/ath/ath9k/ath9k.ko"):
+            self.assertIn(path, paths)
+            self.assertIn(f"gki/{Path(path).name}", installs)
+        for name in ("cfg80211.ko", "mac80211.ko"):
+            self.assertNotIn(f"gki/{name}", installs)
+            self.assertFalse(any(Path(path).name == name for path in paths))
+        module_patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        alias = "pci:v0000168Cd00000036sv*sd*bc*sc*i*"
+        self.assertEqual(LAPTOP_ALIASES["ath9k"], alias)
+        self.assertIn(f"+alias {alias} ath9k\n", module_patch)
+
     def test_sound_module_paths_keep_traversal_and_root_guards(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)

@@ -34,7 +34,12 @@ contain no panic trace. The successful boot's
 [logs](../../out/laptop-logs/20261103-185854-21kebgv7/current/) show Atheros `168c:0036`
 Wi-Fi without ath9k, plus `ETD0630/PNP0F13` and an unbound PS/2 serio port; Google's config
 disables `MOUSE_PS2`. Owner confirms Wi-Fi/touchpad do not work. Upstream ath9k and
-psmouse/Elantech are the initial candidates, not yet integrated or hardware-verified.
+psmouse/Elantech are the initial candidates. Ath9k is now wired with unchanged upstream source,
+four signed modules and the exact device alias; it passes compile/import/CRC checks against
+Googlebook's actual helpers. No new firmware is needed for this PCI ath9k path.
+Final image validation passes: 40 tests, unchanged Google exports, signed dependencies/alias,
+517 metadata entries, no-write repeat and enforcing QEMU setup/input (screens inspected).
+Physical Wi-Fi testing remains; touchpad integration follows Wi-Fi.
 
 Verified on the laptop: the normal framebuffer-handoff boot, setup over Wi-Fi, keyboard and
 touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86; this is an
@@ -319,6 +324,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-03 (this commit) — Added unchanged upstream AR9565 ath9k with Googlebook's existing
+  wireless helpers (LED APIs verified). 40 tests, ABI/import/image checks, no-write repeat and
+  enforcing QEMU setup/input pass. Owner Wi-Fi test pending; PS/2 touchpad remains separate.
 - 2026-11-03 (this commit) — Successful Lenovo desktop logs identify unbound AR9565 Wi-Fi
   and PS/2 Elantech candidates; owner selects Wi-Fi first. Retrieval safely skips interrupted
   hardware snapshots; 10 tests pass. Drivers not yet added; original-profile freeze unresolved.

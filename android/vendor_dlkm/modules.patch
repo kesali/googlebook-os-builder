@@ -5,10 +5,11 @@ Android relies on ueventd aliases rather than the kernel's request_module fallba
 Add upstream i915/intel-gtt with only the verified Broadwell 8086:1616 hotplug alias.
 Do not let i915 claim newer Intel GPUs handled by Google's Xe driver.
 Drop when Google supports these laptops.
+Add unchanged upstream ath9k modules with only the verified AR9565 168c:0036 alias.
 
 --- a/lib/modules/modules.dep
 +++ b/lib/modules/modules.dep
-@@ -582,3 +582,18 @@
+@@ -582,3 +582,22 @@
  /vendor/lib/modules/igc.ko: /system/lib/modules/ptp.ko /system/lib/modules/pps_core.ko
  /vendor/lib/modules/snd-soc-sst-cht-bsw-rt5645.ko: /vendor/lib/modules/snd-soc-rt5645.ko /vendor/lib/modules/snd-soc-rl6231.ko
  /vendor/lib/modules/snd-sof-pci-intel-tng.ko: /vendor/lib/modules/snd-sof-intel-atom.ko /vendor/lib/modules/snd-sof-xtensa-dsp.ko /vendor/lib/modules/snd-sof-pci.ko /vendor/lib/modules/snd-sof.ko /vendor/lib/modules/snd-sof-utils.ko
@@ -27,9 +28,13 @@ Drop when Google supports these laptops.
 +/vendor/lib/modules/snd-acp3x-rn.ko:
 +/vendor/lib/modules/i915.ko: /vendor/lib/modules/intel-gtt.ko /vendor/lib/modules/drm_buddy.ko /vendor/lib/modules/drm_display_helper.ko /vendor/lib/modules/video.ko /vendor/lib/modules/wmi.ko /vendor/lib/modules/i2c-algo-bit.ko /vendor/lib/modules/hwmon.ko
 +/vendor/lib/modules/intel-gtt.ko:
++/vendor/lib/modules/ath.ko: /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko
++/vendor/lib/modules/ath9k_hw.ko: /vendor/lib/modules/ath.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko
++/vendor/lib/modules/ath9k_common.ko: /vendor/lib/modules/ath9k_hw.ko /vendor/lib/modules/ath.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko
++/vendor/lib/modules/ath9k.ko: /vendor/lib/modules/ath9k_hw.ko /vendor/lib/modules/ath9k_common.ko /vendor/lib/modules/ath.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
 --- a/lib/modules/modules.alias
 +++ b/lib/modules/modules.alias
-@@ -7655,3 +7655,9 @@
+@@ -7655,3 +7655,10 @@
  alias pci:v00008086d000015FDsv*sd*bc*sc*i* igc
  alias platform:cht-bsw-rt5645 snd_soc_sst_cht_bsw_rt5645
  alias pci:v00008086d0000119Asv*sd*bc*sc*i* snd_sof_pci_intel_tng
@@ -39,6 +44,7 @@ Drop when Google supports these laptops.
 +alias platform:acp_rn_pdm_dma snd_acp3x_pdm_dma
 +alias platform:acp_pdm_mach snd_acp3x_rn
 +alias pci:v00008086d00001616sv*sd*bc03sc*i* i915
++alias pci:v0000168Cd00000036sv*sd*bc*sc*i* ath9k
 --- a/lib/modules/modules.blocklist
 +++ b/lib/modules/modules.blocklist
 @@ -1 +0,0 @@
