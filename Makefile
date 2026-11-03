@@ -17,7 +17,7 @@ BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
 KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
 # Our kernel source patches, applied in this order after the emulator patch.
 KERNEL_PATCHES := kernel/drm-firmware-handoff.patch kernel/msi-backlight.patch kernel/amdgpu-fast-flips.patch \
-	kernel/renoir-capture-buffers.patch
+	kernel/renoir-capture-buffers.patch kernel/i915-gen4-primary-alpha.patch
 KERNEL_PATCH_SHA := $(shell cat $(KERNEL_PATCHES) | sha256sum | cut -d' ' -f1)
 KERNEL_SRC := $(KERNEL_CACHE)-$(KERNEL_PATCH_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)

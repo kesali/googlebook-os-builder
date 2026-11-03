@@ -9,11 +9,11 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial | Owner confirms microphone works; remaining brightness check |
+| [Kernel (GKI)](kernel.md) | partial | Owner retests Lenovo primary-alpha candidate; brightness check remains |
 | [Boot chain](boot.md) | partial | Berberis fixes tested laptop apps; retrieve logs after subsequent retests |
 | [OS image and disk](os-image.md) | working (expanded fresh image) | Owner flashes fresh layout once; confirms Lenovo/MSI hardware |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial | Camera works on laptop; check wider RADV app rendering |
+| [Graphics](graphics.md) | partial | Retest Lenovo desktop with primary-alpha candidate; wider RADV checks remain |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
 | [Laptop hardware](laptop-hardware.md) | partial | Owner checks brightness and Bluetooth |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |

@@ -1,7 +1,14 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-02 — `make android-image JOBS=12` with the Renoir buffer patch: `kABI:
+**Last verified:** 2026-11-03 — primary-alpha candidate: 33 focused tests and
+`make android-image JOBS=12` pass; 4,501 Google exports unchanged, module signatures/imports
+and 513 vendor_dlkm metadata entries verified. Repeat preserves all 30 recorded output/disk
+hashes and timestamps with no partition/boot writes. Disposable QEMU reaches inspected setup
+and responds to an accessibility tap, SELinux enforcing; VM exited.
+[Evidence](../../out/intel-primary-alpha/). Lenovo hardware retest remains.
+
+Earlier, 2026-11-02 — `make android-image JOBS=12` with the Renoir buffer patch: `kABI:
 4501 Google exports, 0 missing, 0 changed`; 44 focused source/module/audio/overlay tests pass.
 `make qemu-check JOBS=12` reaches setup with enforcing SELinux and stable service PIDs
 ([screen](../../out/qemu/screen.png), inspected). The owner's boot of `95b3bf6` had sound, and its
@@ -14,6 +21,15 @@ Build Google's Googlebook kernel from source with the instruction emulator compi
 enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEMU drivers) load.
 
 ## Current state
+Lenovo evidence (2026-11-03): i915 binds Broadwell and exposes `intel_backlight`;
+Iris renders as HD Graphics 5500, but framebuffer creation fails with -EINVAL after animation.
+The owner's MSI boot of the expanded image succeeds (not a full peripheral regression).
+Approved candidate: reuse Churro commit `70538d7`'s
+[primary-alpha patch](../../kernel/i915-gen4-primary-alpha.patch) without changing its code hunks.
+Gen4-8 primaries accept Android ARGB/ABGR client targets as opaque scanout; VLV/CHV retain
+native alpha, sprites/Gen9+/AMD are unchanged. Built and regression-checked as above;
+the Lenovo fix is not hardware-confirmed.
+
 Verified: release `6.18.21-android17-5-g3938c8d97142-ab16302624` from tag
 `android17-6.18-2026-06_r52` (commit `3938c8d97142`);
 config changes are listed in [kernel/gki.config](../../kernel/gki.config): trusted key, touchpad,
@@ -91,6 +107,8 @@ functionality; generic ACP migration and other machines remain untested.
   buffers or the old driver is replaced and verified.
 
 ## Files
+- [kernel/i915-gen4-primary-alpha.patch](../../kernel/i915-gen4-primary-alpha.patch) — Churro's
+  older Intel primary-plane client-target compatibility candidate.
 - [scripts/gki-kernel.sh](../../scripts/gki-kernel.sh) — configure, build, check, publish `out/gki/`.
 - [kernel/gki.config](../../kernel/gki.config) — the complete list of config changes.
 - [tools/kconfig_check.py](../../tools/kconfig_check.py), [tools/kabi_check.py](../../tools/kabi_check.py),
@@ -128,6 +146,8 @@ Inspect the screenshots; this does not verify AMD hardware.
   and relinks (about 50 s).
 
 ## Actions
+- [ ] Owner retests the primary-alpha image on Lenovo — done when a usable desktop appears
+  and fresh logs no longer show framebuffer rejection (local validation passes).
 - [ ] Check the brightness slider — done when the owner confirms it changes the panel
   (the snapshot already shows the expected `backlight` name and label).
 
@@ -138,6 +158,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-03 (this commit) — Reused Churro's primary-alpha fix for Lenovo fb -22. 33 tests,
+  build/kABI/module/metadata checks, no-write repeat and enforcing QEMU setup/input pass
+  (screens inspected). Lenovo retest pending; MSI pre-patch boot owner-confirmed; USB untouched.
 - 2026-11-03 (this commit) — Signed i915/intel-gtt and sole Broadwell alias included in the fresh
   64 MiB vendor_dlkm; all 4,501 Google exports and image checks pass. Enforcing direct/UEFI QEMU
   verified; physical i915 binding and MSI regression remain owner tests.

@@ -1,9 +1,14 @@
 # Graphics
 
 **Status:** partial — QEMU softpipe works; the laptop desktop and camera work, and Chrome uses RADV.
-**Last verified:** 2026-11-03 — Fresh expanded image builds; 92 focused tests and enforcing
+**Last verified:** 2026-11-03 — Lenovo logs prove i915/Iris enumeration but desktop presentation
+fails (fb -22). Churro's primary-alpha candidate passes 33 tests, kernel/image/metadata checks,
+no-write repeat and disposable enforcing QEMU setup/input (screens inspected); hardware retest
+pending. [Evidence](../../out/intel-primary-alpha/). Owner confirms the pre-patch MSI image boots.
+
+Earlier, 2026-11-03 — Fresh expanded image builds; 92 focused tests and enforcing
 direct/UEFI QEMU setup/input checks pass. Iris/softpipe/Zink compile without shipping LLVM.
-The Lenovo GPU and MSI regression remain untested. [Evidence](../../out/intel-bringup/fresh/).
+Hardware was not yet tested at that point. [Evidence](../../out/intel-bringup/fresh/).
 Earlier, 2026-11-02: the owner reports working camera preview and recording
 ([logs](../../out/laptop-logs/20261102-231851-2bm_5yev/current/)). Earlier,
 `make test` (113 tests), `make mesa JOBS=12`,
@@ -26,7 +31,16 @@ Show Googlebook OS on screen. First correctness (softpipe),
 then speed (accelerated rendering), later the laptop's AMD GPU.
 
 ## Current state
-Broadwell candidate (2026-11-03, not hardware-verified): unchanged upstream Iris builds into
+Lenovo hardware attempt (2026-11-03): [saved boot](../../out/laptop-logs/20261103-181307-7gwlz7mk/current/boot.txt)
+selects Intel; i915 binds and EGL reports `Mesa Intel(R) HD Graphics 5500 (BDW GT2)`,
+OpenGL ES 3.2. After animation the display goes dark while keyboard activity wakes backlight.
+drmhwc logs framebuffer creation -22, failed AtomicCommitArgs and BAD_DISPLAY; no rejected
+format is printed. Churro documents the same Broadwell failure with alpha client targets.
+The approved [kernel candidate](../../kernel/i915-gen4-primary-alpha.patch) reuses its fix;
+local validation passes, Lenovo retest is pending. Bluetooth initialization crashes are separate.
+Owner confirms the expanded image boots MSI; wider regression has not been reported.
+
+Broadwell integration (2026-11-03, enumeration verified above): unchanged upstream Iris builds into
 Mesa alongside softpipe/Zink; native `mesa_clc`/`vtn_bindgen2` use builder-only LLVM 19.
 The [Intel profile](../../android/system_ext/graphics-intel.rc) selects GLES without Vulkan,
 software forcing or AMD overrides; GRUB selects it only for the Lenovo's `8086:1616` GPU.
@@ -40,8 +54,9 @@ SELinux; an injected tap opens accessibility (screens inspected), and the NVMe d
 unchanged. [Evidence](../../out/intel-bringup/).
 The subsequent owner-approved fresh expanded image now builds through the normal pipeline:
 vendor_dlkm has 64 MiB and logical B is removed, without changing the old local disk or USB.
-See [image spec](os-image.md). Lenovo i915/Iris binding and MSI hardware regression remain
-untested. No Intel Vulkan, audio or network support is claimed.
+See [image spec](os-image.md). Lenovo i915/Iris binding is now confirmed but desktop presentation
+fails; MSI boots by owner report, not a full peripheral regression.
+No Intel Vulkan, audio or network support is claimed.
 
 Verified: source-built Mesa and minigbm work with Google's unchanged composer, allocator service
 and mapper on virtio-gpu. RADV/Zink and the AMD allocator backend build; all 49 gralloc and 22 GBM
@@ -246,6 +261,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
   bytes; otherwise an unchanged build rewrites library timestamps.
 
 ## Actions
+- [ ] Owner updates the expanded-layout USB and retests Lenovo — done when the primary-alpha
+  candidate reaches a usable desktop and fresh logs show successful framebuffer presentation.
 - [ ] Confirm the laptop compositor and HWUI renderer — done when SurfaceFlinger's or HWUI's
   output from a laptop boot names ANGLE/RADV rather than a software renderer (apps already do).
 - [ ] Plan accelerated rendering in QEMU (e.g. virgl or Venus with host Mesa) — done when
@@ -255,6 +272,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Lenovo i915/Iris confirmed; fb -22 after animation matches
+  Churro's primary-alpha fix. Reused patch passes build/33 tests/no-write repeat and enforcing
+  QEMU setup/input (screens inspected); Lenovo hardware retest remains, Bluetooth separate.
 - 2026-11-03 (this commit) — Iris/exact-ID Intel GLES integrated into the normal fresh expanded
   image; direct and USB/UEFI enforcing QEMU reach inspected setup. Old disk/USB untouched;
   owner Lenovo GPU binding and MSI regression remain.
