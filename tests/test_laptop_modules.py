@@ -82,6 +82,29 @@ class LaptopModuleTests(unittest.TestCase):
                     "platform:acp_pdm_mach snd-acp3x-rn"))
                 with self.assertRaisesRegex(ValueError, "snd-acp3x-rn"):
                     check(root, installs)
+                alias_file.write_text("".join(
+                    f"alias {alias} {name.replace('-', '_')}\n"
+                    for name, alias in LAPTOP_ALIASES.items()) +
+                    "alias pci:v00008086d000056A0sv*sd*bc03sc*i* i915\n")
+                with self.assertRaisesRegex(ValueError, "only the verified Broadwell"):
+                    check(root, installs)
+
+    def test_broadwell_modules_are_modular_and_explicitly_packaged(self):
+        config = (REPO / "kernel/gki.config").read_text()
+        paths = (REPO / "kernel/laptop-modules.list").read_text().splitlines()
+        installs = (REPO / "android/vendor_dlkm/install.list").read_text()
+        for option in ("DRM_I915", "INTEL_GTT"):
+            self.assertIn(f"CONFIG_{option}=m\n", config)
+        for path in ("drivers/gpu/drm/i915/i915.ko", "drivers/char/agp/intel-gtt.ko"):
+            self.assertIn(path, paths)
+            self.assertIn(f"gki/{Path(path).name}", installs)
+        module_patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        self.assertIn("+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915\n", module_patch)
+        self.assertEqual(
+            [line for line in module_patch.splitlines()
+             if line.startswith("+alias ") and line.endswith(" i915")],
+            ["+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915"],
+        )
 
     def test_sound_module_paths_keep_traversal_and_root_guards(self):
         with tempfile.TemporaryDirectory() as temporary:

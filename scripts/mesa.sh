@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# Read: Mesa, libdrm, Expat and libva source + NDK. Write: Android EGL/GLES, AMD Vulkan/VA drivers.
+# Read: Mesa/libdrm/Expat/libva source, NDK and native shader tools. Write: Android GPU libraries.
 # The upstream build systems run every time; only changed installed libraries change the manifest.
 #
-#   mesa.sh <mesa> <libdrm> <expat> <ndk> <output> <libva>
+#   mesa.sh <mesa> <libdrm> <expat> <ndk> <output> <libva> <shader tools>
 set -euo pipefail
 mesa=$(realpath "$1") drm=$(realpath "$2") expat=$(realpath "$3")
 ndk=$(realpath "$4") out=$(realpath -m "$5")
 libva=$(realpath "$6")
+shader_tools=$(realpath "$7")
+for name in mesa_clc vtn_bindgen2; do
+    test -x "$shader_tools/bin/$name" || {
+        echo "Missing native Mesa shader tool: $shader_tools/bin/$name" >&2; exit 1;
+    }
+done
+export PATH="$shader_tools/bin:$PATH"
 mkdir -p "$out/pkgconfig"
 tc=$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin
 key=$(printf '%s\n' "$mesa" "$drm" "$expat" "$ndk" "$libva" | sha256sum | cut -c1-16)
@@ -48,7 +55,7 @@ va_build=$build/va-$(sha256sum "$build/va-cross.ini" | cut -c1-16)
 
 # Configure only on the first build or after this script or the cross file changed; it takes
 # seconds. Ninja reruns Meson or CMake by itself when an upstream build file changes.
-settings=$(cat "$0" "$out/cross.ini" | sha256sum | cut -d' ' -f1)
+settings=$(cat "$0" "$out/cross.ini" "$shader_tools/manifest" | sha256sum | cut -d' ' -f1)
 configure=false
 if [ "$settings" != "$(cat "$build/settings" 2>/dev/null)" ]; then
     configure=true
@@ -118,12 +125,12 @@ if $configure; then
     setup "$build/mesa" "$mesa" --cross-file "$out/cross.ini" \
         --prefix=/ --libdir=lib64 --buildtype=release -Db_ndebug=true --wrap-mode=nofallback \
         -Dplatforms=android -Dplatform-sdk-version=35 -Dandroid-stub=true \
-        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe,zink -Dvulkan-drivers=amd \
+        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd \
         -Dgallium-va=disabled -Dandroid-strict=false \
         -Dllvm=disabled -Damd-use-llvm=false -Dgbm=enabled -Dgbm-backends-path=/vendor/lib64/gbm \
         -Dglx=disabled -Degl=enabled \
         -Dgles1=enabled -Dgles2=enabled -Degl-lib-suffix=_mesa -Dgles-lib-suffix=_mesa \
-        -Dvalgrind=disabled -Dlibunwind=disabled -Dzstd=disabled
+        -Dvalgrind=disabled -Dlibunwind=disabled -Dzstd=disabled -Dmesa-clc=system
     # Decode-only RadeonSI needs neither shader compilation nor libelf. Keep its
     # libraries separate from the verified rendering build and Google's loader.
     setup "$va_build" "$mesa" --cross-file "$build/va-cross.ini" \

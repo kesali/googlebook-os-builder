@@ -24,13 +24,14 @@ def dependency_closure(direct, dependencies, system_modules=frozenset()):
     return result
 
 
-# The MSI's devices; only these aliases are added for our modules.
+# Verified laptop devices; only these aliases are added for our modules.
 LAPTOP_ALIASES = {
     "amdgpu": "pci:v00001002d000015E7sv*sd*bc*sc*i*",
     "mt7921e": "pci:v000014C3d00000616sv*sd*bc*sc*i*",
     "snd-rn-pci-acp3x": "pci:v00001022d000015E2sv*sd*bc04sc80i00*",
     "snd-acp3x-pdm-dma": "platform:acp_rn_pdm_dma",
     "snd-acp3x-rn": "platform:acp_pdm_mach",
+    "i915": "pci:v00008086d00001616sv*sd*bc03sc*i*",
 }
 
 
@@ -64,7 +65,12 @@ def check(root, install_list):
         module_name = subprocess.check_output(
             ["modinfo", "-F", "name", str(modules / f"{module}.ko")], text=True).strip()
         if alias not in aliases or f"alias {alias} {module_name}" not in installed_aliases:
-            raise ValueError(f"The kernel or installed aliases do not match the MSI's {module} device")
+            raise ValueError(f"The kernel or installed aliases do not match the laptop's {module} device")
+        if module == "i915":
+            expected_alias = f"alias {alias} {module_name}"
+            if any(line.split()[-1:] == [module_name] and line != expected_alias
+                   for line in installed_aliases):
+                raise ValueError("i915 aliases must select only the verified Broadwell GPU")
     print("Laptop module signatures, dependency metadata and device aliases verified")
 
 

@@ -10,3 +10,4 @@ etc/dali/hardware-snapshot.sh 0644 0:0 system_file ./hardware-snapshot.sh
 etc/dali/graphics-softpipe.rc 0644 0:0 system_file ./graphics-softpipe.rc
 etc/dali/graphics-amd.rc 0644 0:0 system_file ./graphics-amd.rc
 etc/dali/graphics-amd-vulkan.rc 0644 0:0 system_file ./graphics-amd-vulkan.rc
+etc/dali/graphics-intel.rc 0644 0:0 system_file ./graphics-intel.rc

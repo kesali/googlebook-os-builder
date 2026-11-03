@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Build and verify a disposable enlarged super image using upstream lpmake.
+"""Build and verify an enlarged super image using upstream lpmake.
 
 Never updates a disk, GPT, userdata, metadata partition or an existing output.
+The CLI retains the 32 MiB experiment; fresh builds supply explicit A-only allocations.
 """
 
 import argparse
@@ -12,7 +13,7 @@ import struct
 import subprocess
 import tempfile
 
-from android_layout import validate_gpt_table, validate_super_extents
+from android_layout import ACTIVE_PARTITIONS, validate_gpt_table, validate_super_extents
 from lp import (
     LP_PARTITION_RESERVED_BYTES, LP_METADATA_GEOMETRY_SIZE,
     LpMetadataGeometry, LpMetadataHeader, LpMetadataPartitionGroup,
@@ -96,7 +97,7 @@ def verify_payload(f, partition, path):
             raise ValueError(f"Truncated payload: {partition.name}")
 
 
-def build(lpmake, recovery, images, vendor_dlkm, output):
+def build(lpmake, recovery, images, vendor_dlkm, output, allocations=None):
     regular_file(lpmake)
     regular_file(recovery)
     regular_file(vendor_dlkm)
@@ -123,8 +124,20 @@ def build(lpmake, recovery, images, vendor_dlkm, output):
     if "vendor_dlkm_a" not in names or "system_b" not in names:
         raise ValueError("Expected the Google A/B partition layout")
     vendor_partition = next(p for p in partitions if p.name == "vendor_dlkm_a")
-    if vendor_partition.size >= VENDOR_DLKM_BYTES:
+    if allocations is None and vendor_partition.size >= VENDOR_DLKM_BYTES:
         raise ValueError("The 32 MiB experiment must enlarge, not shrink, vendor_dlkm_a")
+    if allocations is not None:
+        if allocations.keys() != ACTIVE_PARTITIONS or any(
+                type(value) is not int or value <= 0 or value % 4096
+                for value in allocations.values()):
+            raise ValueError("Expected six positive, aligned slot-A allocations")
+        if sum(allocations.values()) >= size:
+            raise ValueError("Logical allocations leave no room for super metadata")
+        partitions = [p for p in partitions if p.name in allocations]
+        if {p.name for p in partitions} != allocations.keys():
+            raise ValueError("Google's source is missing an active logical partition")
+        used_groups = {p.group for p in partitions} | {"default"}
+        groups = [(name, maximum) for name, maximum in groups if name in used_groups]
     command = [
         str(lpmake.resolve()), "--device-size", str(size),
         "--metadata-size", str(geometry[3]), "--metadata-slots", str(geometry[4]),
@@ -141,7 +154,10 @@ def build(lpmake, recovery, images, vendor_dlkm, output):
         if partition.name.endswith("_b"):
             allocated = 0
         elif partition.name.endswith("_a") and partition.size:
-            allocated = VENDOR_DLKM_BYTES if partition.name == "vendor_dlkm_a" else partition.size
+            if allocations is not None:
+                allocated = allocations[partition.name]
+            else:
+                allocated = VENDOR_DLKM_BYTES if partition.name == "vendor_dlkm_a" else partition.size
             image = vendor_dlkm if partition.name == "vendor_dlkm_a" else images / f"{partition.name}.img"
             regular_file(image)
             if image.stat().st_size > allocated:
@@ -180,8 +196,10 @@ def build(lpmake, recovery, images, vendor_dlkm, output):
             raise ValueError("An input changed during image creation")
         # Hard-link publication fails atomically if another writer creates the destination.
         output.hardlink_to(candidate)
-    print(f"Verified {output}: vendor_dlkm_a={VENDOR_DLKM_BYTES} bytes; "
-          "all B allocations empty, all A payloads unchanged, GPT untouched")
+    vendor_bytes = expected_sizes["vendor_dlkm_a"]
+    b_state = "logical B partitions removed" if allocations is not None else "all B allocations empty"
+    print(f"Verified {output}: vendor_dlkm_a={vendor_bytes} bytes; "
+          f"{b_state}, all A payloads verified, GPT untouched")
 
 
 def main():

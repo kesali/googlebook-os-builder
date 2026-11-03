@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Read: one pristine Google EROFS partition + its change directory. Write: a new verified EROFS.
 # fakeroot keeps Android's uid/gid, modes and xattrs without a privileged container or mount.
-# Usage: android-partition.sh GOOGLE PARTITION CHANGES OUTPUT [NAME=DIR ...]
+# Usage: android-partition.sh GOOGLE PARTITION CHANGES OUTPUT [--layout JSON] [NAME=DIR ...]
 # The NAME=DIR inputs are passed to android-overlay.sh for install.list sources.
 set -euo pipefail
 google=$(realpath "$1") partition=$2 changes=$3 output=$(realpath -m "$4")
@@ -13,6 +13,11 @@ mkdir -p "$(dirname "$output")"
 work=$(mktemp -d "$output.partial.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 source=$google/super/${partition}_a.img
+size_limit=$(stat -c %s "$source")
+if [ "${1:-}" = --layout ]; then
+    size_limit=$(python3 "$tools/android_layout.py" "${2:?Missing layout file}" "${partition}_a")
+    shift 2
+fi
 fsck.erofs --extract="$work/root" --xattrs --preserve "$source"
 bash "$scripts/android-overlay.sh" "$changes" "$work/root" "$@"
 bash "$scripts/check-replacements.sh" "$source" "$changes" "$work/root"
@@ -37,7 +42,7 @@ mkfs.erofs -z"$compression" -C262144 -T0 -U "$uuid" "$work/new.img" "$work/root"
 # Read the new image back: every file, owner, mode and SELinux label must be what we built.
 fsck.erofs --extract="$work/check" --xattrs --preserve "$work/new.img"
 python3 "$tools/fs_metadata.py" check "$work/check" "$work/metadata.json"
-if [ "$(stat -c %s "$work/new.img")" -gt "$(stat -c %s "$source")" ]; then
+if [ "$(stat -c %s "$work/new.img")" -gt "$size_limit" ]; then
     echo "$partition no longer fits its logical partition; refusing to truncate it." >&2
     exit 1
 fi

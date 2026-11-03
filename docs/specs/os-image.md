@@ -5,7 +5,16 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-03 — Copy-only super migration: 43 focused migration/image/USB tests
+**Last verified:** 2026-11-03 — 92 focused tests pass; fresh expanded slot-A image builds with
+`make android-image JOBS=12`;
+all rebuilt filesystem metadata/import checks and all 4,501 Google exports pass. The exact six
+A allocations and absence of logical B partitions/group are verified. Direct and USB/UEFI QEMU
+reach inspected setup screens with enforcing SELinux; input opens accessibility in the direct
+test and a low-battery setup warning in UEFI (setup not completed). Two repeat builds preserve
+all 74 recorded published files and full disk hashes/timestamps,
+with no partition writes. Old local disk and physical USB untouched. Lenovo GPU and MSI
+hardware regression remain untested. [Evidence](../../out/intel-bringup/fresh/).
+Earlier the same day: Copy-only super migration: 43 focused migration/image/USB tests
 pass. All A payloads and every byte outside super are preserved on a disposable disk copy;
 full source/candidate hashes and timestamps stay unchanged on repeat refusal/no-op checks.
 Enforcing UEFI/QEMU reaches the inspected setup screen and responds to an injected tap.
@@ -55,7 +64,19 @@ Turn Google's read-only recovery image into a private QEMU disk with a short lis
 changes, and update only the changed OS partitions without touching Android's data.
 
 ## Current state
-Disposable Intel-layout experiment (2026-11-03): upstream `lpmake` generates a separate
+The owner approved a fresh image rather than migration, with additional growth space.
+[super-layout.json](../../android/super-layout.json) declares system 2 GiB, vendor 1 GiB,
+product 3 GiB, system_ext 1 GiB and both module partitions 64 MiB. Logical B partitions and their
+unused group are removed; small physical B entries and the 12 GiB outer super allocation remain.
+[android_fresh.py](../../tools/android_fresh.py) builds the super through upstream lpmake,
+creates a new disk from recovery, checks super read-back, installs vbmeta/boot files, then
+publishes privately and atomically. The working path is now `out/android-expanded/disk.img`;
+the old `out/android/disk.img` is never replaced. New userdata starts empty, not copied from the
+old disk. Later builds update only OS/boot files and enforce the declared logical allocations.
+To deploy, the owner must flash the fresh image once: this erases the USB's existing data.
+The unchanged USB updater rejects an old layout and works only after a matching full flash.
+
+Earlier disposable Intel-layout experiment (2026-11-03): upstream `lpmake` generates a separate
 12 GiB super image with `vendor_dlkm_a` enlarged to 32 MiB and every logical B entry retained
 but empty. The Zstd-9 i915 candidate is 19,636,224 B; all 513 entries pass metadata checks.
 Geometry, group limits, six primary/backup metadata copies and every supplied A payload/padding
@@ -76,7 +97,8 @@ holds the source disk lock, verifies read-back and every byte outside super, the
 atomically with private permissions. Existing destinations, devices and `disk.img` outputs are
 refused. A migrated source is a no-write no-op. Nine migration tests plus 34 related tests pass;
 the migrated copy also passes enforcing USB/UEFI QEMU with inspected setup/input screens.
-This does not alter the working disk, enable normal Intel image builds, or migrate a USB.
+That earlier experiment did not alter the working disk, enable normal Intel image builds or
+migrate a USB; the fresh expanded pipeline above supersedes it.
 
 Verified: `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a` rebuilt as EROFS with every file's bytes,
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
@@ -120,13 +142,17 @@ QEMU test used a reflinked copy.
   image (generic x86-64, same API) replace them, as Churro does. This removed about 99.7% of
   traps in QEMU (15.3 M → 44,644) and the softpipe boot animation ended at 66 s instead of 110 s.
 - Rebuild without root: `fsck.erofs` extraction and `mkfs.erofs` under fakeroot; original UUID
-  kept; output must not exceed the original partition size. LZ4HC level 9 with 256 KiB clusters:
+  kept; output must not exceed its declared allocation in [super-layout.json](../../android/super-layout.json).
+  LZ4HC level 9 with 256 KiB clusters:
   2–3x faster to build than level 12 and about 0.2% larger (system 1053 MB of 1134 MB).
-  Exception: vendor_dlkm uses Zstd level 9, 17,190,912 B within its 18,096,128 B partition.
-  LZ4 required 25.6 MB with AMD; Zstd retains every Google module and the fixed layout.
+  Exception: vendor_dlkm uses Zstd level 9, now 19,652,608 B within its 64 MiB allocation.
+  Zstd retains every Google module without unnecessary image growth.
 - AVB is disabled through a new vbmeta (`--algorithm NONE --flags 3`); SELinux stays enforcing.
 - The disk is a reflink copy of the recovery image with userdata moved to the end and grown;
   slot A marked bootable/successful. It holds Android's data, so it is **never recreated automatically**.
+- Fresh expanded layout instead of migration (owner-approved): keep growth space in A-only
+  logical partitions; retain physical B boot-control entries. Existing disks need a new image
+  path/full owner-run flash, never an in-place layout overwrite or relaxed updater checks.
 - EFI-SYSTEM absorbs the blank `KERN-A` beside it and is formatted FAT32 for the laptop's boot
   files; it keeps its PARTUUID, which the initrd uses to find the disk. The script refuses unless
   both partitions are adjacent and all zeros, so a newer Google image is never formatted over.
@@ -160,6 +186,9 @@ QEMU test used a reflinked copy.
   when /data is large and on fast storage. The laptop effect is not measured.
 
 ## Files
+- [android/super-layout.json](../../android/super-layout.json) — shared A-only logical allocations.
+- [tools/android_fresh.py](../../tools/android_fresh.py) — guarded first creation of the expanded disk;
+  [tests/test_android_fresh.py](../../tests/test_android_fresh.py).
 - [tools/super_migrate_copy.py](../../tools/super_migrate_copy.py) — verified, copy-only layout
   migration; [tests/test_super_migrate_copy.py](../../tests/test_super_migrate_copy.py).
 - [android/system/](../../android/system/), [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/) — every change to Google's partitions.
@@ -179,6 +208,11 @@ QEMU test used a reflinked copy.
 - [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py) — mismatch and early-failure safety.
 
 ## Verify
+`make android-image JOBS=12` creates the fresh expanded disk once, then updates it without
+recreating data. The first USB flash is the owner's operation and erases the selected USB;
+later `make update-usb JOBS=12` preserves data only on a matching layout.
+
+Earlier copy-only experiment (not the production layout):
 For a disposable migration of the installed local image (never a device):
 ```sh
 make lp-tools JOBS=12
@@ -187,8 +221,8 @@ scripts/builder.sh python3 tools/super_migrate_copy.py \
 ```
 Keep this private copy under ignored `out/`. **Do not flash it onto an existing USB:** it
 contains the local disk's userdata, metadata and boot identity, not the USB's current data.
-Working-disk migration and an interruption-safe owner-run USB operation need separate approval;
-do not run `make android-image` or `make update-usb` with the uncommitted Intel modules yet.
+This 32 MiB copy-only tool is not the new expanded production layout; no working/USB migration
+is planned after the owner chose a fresh flash.
 
 `make test` (including recovery-image hash refusal in
 [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py), sync, lock and overlay tests in
@@ -222,13 +256,16 @@ must print no partition or boot-file writes and leave output timestamps unchange
   account (untested).
 
 ## Actions
-- [ ] Agree the working-disk migration/build allocation and owner-run USB procedure — done when
-  separately approved and verified to preserve each target's own data with interruption recovery.
+- [ ] Owner flashes the expanded image and tests Lenovo/MSI — done when fresh setup, actual GPU
+  binding/renderer and MSI regression evidence are confirmed. No physical disk writes by the agent.
 - [ ] First physical use of `make update-usb JOBS=12` — done when the owner selects the existing
   USB, verifies OS and boot updates succeed, confirms data remains intact and sees a no-write
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Fresh enlarged A-only image, shared allocation/fit guards and new
+  disk path; logical B removed, physical B retained. Build/kABI/metadata, direct/UEFI QEMU and
+  two no-write repeats pass. Old disk/USB untouched; owner full flash/hardware retests pending.
 - 2026-11-03 (this commit) — Copy-only layout migration: 43 tests, all-A/read-back/outside-super
   preservation and full-hash/timestamp no-op checks pass. Enforcing UEFI setup/input inspected.
   Working disk/USB unchanged; normal Intel build allocation and deployment remain unimplemented.

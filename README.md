@@ -50,15 +50,20 @@ iteration and guest responsiveness separately; the graphics path is a runtime-pe
 ### Laptop test image
 
 ```sh
-make android-image JOBS=12       # updates out/android/disk.img, preserving Android data
+make android-image JOBS=12       # creates/updates out/android-expanded/disk.img
 make android-uefi-check JOBS=12  # disposable USB/UEFI boots in QEMU; no physical writes
 ```
 
 The Android image is **49.8 GiB (53,430,190,080 bytes)**, not the small diagnostic image below.
-Use a **64 GB or larger USB**, preferably USB 3. Flash [out/android/disk.img](out/android/disk.img)
+Use a **64 GB or larger USB**, preferably USB 3. Flash [out/android-expanded/disk.img](out/android-expanded/disk.img)
 with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
-For an existing Android USB, **update instead of reflashing**: a full flash would erase its
-Android accounts and data. Use the normal GRUB entry. The old framebuffer-free experiment
+The new image has larger slot-A logical partitions: system 2 GiB, vendor 1 GiB, product 3 GiB,
+system_ext 1 GiB and both module partitions 64 MiB. Logical B partitions are removed; physical
+B GPT entries remain for boot-control compatibility. See [super-layout.json](android/super-layout.json).
+The old local [disk image](out/android/disk.img) is left untouched as a fallback.
+**An older-layout USB needs a full reflash once**, erasing its accounts and data; the updater
+deliberately refuses mismatched layouts. Afterwards, **update instead of reflashing** to preserve
+Android data. Use the normal GRUB entry. The old framebuffer-free experiment
 panicked; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
 shows the earliest kernel messages for a black screen but adds about a minute to the boot.
 
@@ -71,7 +76,10 @@ The boot record names the selected native bridge, and a separate `crash.log*` re
 records independently of noisy desktop logs.
 
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on this MSI's
-`1002:15e7` GPU; QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
+`1002:15e7` GPU; an experimental Intel GLES/Iris profile selects only Broadwell `8086:1616`.
+The Intel profile and combined Mesa build are QEMU-checked, not hardware-verified; Lenovo boot
+and MSI regression tests remain. No Intel Vulkan support is claimed.
+QEMU keeps softpipe. The internal NVMe remains hidden on the laptop.
 Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm
 are included. The owner has confirmed the built-in microphone, camera preview and video recording.
 HDMI display performance feels fine, though its frame rate has not been measured. The brightness
@@ -87,6 +95,9 @@ for Linux retrieval. These are Android logs, separate from the optional diagnost
 
 Stop any VM using the image, plug in the Android USB and unmount its partitions (including
 **DALI-BOOT**) in the file manager. Then run as your normal user:
+
+This requires a USB already flashed with the expanded A-only layout above. It cannot upgrade
+the older layout in place.
 
 ```sh
 make update-usb JOBS=12
@@ -251,9 +262,9 @@ make qemu                # builds what changed, then boots; use a VNC viewer on 
 less out/qemu/kernel.log # kernel and Android init log of the last run
 ```
 
-Google's image is the read-only starting point. Only `system`, `system_ext` and `vendor` are
+Google's image is the read-only starting point. Only `system`, `system_ext`, `vendor` and `vendor_dlkm` are
 rebuilt, with the changes listed below. QEMU uses this laptop's CPU (`-cpu host`, KVM);
-its only disk is `out/android/disk.img`. The serial shell and QMP monitor are local Unix sockets
+its only disk is `out/android-expanded/disk.img`. The serial shell and QMP monitor are local Unix sockets
 under `out/qemu/`. Use Android's shutdown menu for an orderly shutdown; Ctrl-C stops QEMU.
 Virtual ACPI S3/S4 sleep is disabled for reliable development sessions. Input uses a standard
 virtio keyboard and relative mouse; the tablet's absolute pointer protocol is not used.
@@ -264,13 +275,13 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   virtio-gpu, input and network modules, then the boot settings: Google's
   plus [android/bootconfig.txt](android/bootconfig.txt), packed by
   [tools/bootconfig.py](tools/bootconfig.py).
-- **Disk** (`make android-disk`): `out/android/disk.img`, a copy of Google's recovery image,
-  instant and space-sharing on btrfs. [scripts/android-disk.sh](scripts/android-disk.sh) moves
+- **Disk** (`make android-disk`): `out/android-expanded/disk.img`, a new copy of Google's recovery image,
+  with expanded A-only super built by [tools/android_fresh.py](tools/android_fresh.py) using
+  upstream lpmake. [scripts/android-disk.sh](scripts/android-disk.sh) moves
   the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), marks
   slot A bootable, and merges Google's empty 64 MiB EFI-SYSTEM with the empty 512 MiB `KERN-A`
   beside it into one 576 MiB FAT32 partition labelled `DALI-BOOT` for the laptop's boot files
-  (the script refuses unless both are all zeros). Its partition table is written
-  next to it as `disk.img.layout.txt`. The disk holds Android's data, so it is never recreated
+  (the script refuses unless both are all zeros). The disk holds Android's data, so it is never recreated
   automatically.
 - **Boot files** (`make android-boot`): GRUB, the GKI kernel, the initrd and the menu
   [boot/android-menu.cfg](boot/android-menu.cfg) are written into that FAT32 partition with

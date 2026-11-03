@@ -1,7 +1,10 @@
 # Graphics
 
 **Status:** partial — QEMU softpipe works; the laptop desktop and camera work, and Chrome uses RADV.
-**Last verified:** 2026-11-02 — the owner reports working camera preview and recording
+**Last verified:** 2026-11-03 — Fresh expanded image builds; 92 focused tests and enforcing
+direct/UEFI QEMU setup/input checks pass. Iris/softpipe/Zink compile without shipping LLVM.
+The Lenovo GPU and MSI regression remain untested. [Evidence](../../out/intel-bringup/fresh/).
+Earlier, 2026-11-02: the owner reports working camera preview and recording
 ([logs](../../out/laptop-logs/20261102-231851-2bm_5yev/current/)). Earlier,
 `make test` (113 tests), `make mesa JOBS=12`,
 `make android-image JOBS=12` and `make qemu-check JOBS=12` pass; the inspected QEMU screenshot
@@ -23,6 +26,23 @@ Show Googlebook OS on screen. First correctness (softpipe),
 then speed (accelerated rendering), later the laptop's AMD GPU.
 
 ## Current state
+Broadwell candidate (2026-11-03, not hardware-verified): unchanged upstream Iris builds into
+Mesa alongside softpipe/Zink; native `mesa_clc`/`vtn_bindgen2` use builder-only LLVM 19.
+The [Intel profile](../../android/system_ext/graphics-intel.rc) selects GLES without Vulkan,
+software forcing or AMD overrides; GRUB selects it only for the Lenovo's `8086:1616` GPU.
+Signed i915/intel-gtt reuse Google's helpers; only that i915 alias is installed.
+The separate enlarged-layout vendor image is 354,205,696 B within its 387,108,864 B limit.
+All 1,622 vendor and 237 system_ext entries pass metadata/import checks; 69 focused tests pass.
+Repeat Mesa builds preserve published bytes/timestamps. Shared EGL/Gallium/GBM backend and RADV
+bytes changed; GLES entry libraries, Mesa GBM core and RadeonSI VA/helper remain identical.
+Direct-kernel and USB/UEFI QEMU reach inspected setup screens with stable services and enforcing
+SELinux; an injected tap opens accessibility (screens inspected), and the NVMe decoy stays
+unchanged. [Evidence](../../out/intel-bringup/).
+The subsequent owner-approved fresh expanded image now builds through the normal pipeline:
+vendor_dlkm has 64 MiB and logical B is removed, without changing the old local disk or USB.
+See [image spec](os-image.md). Lenovo i915/Iris binding and MSI hardware regression remain
+untested. No Intel Vulkan, audio or network support is claimed.
+
 Verified: source-built Mesa and minigbm work with Google's unchanged composer, allocator service
 and mapper on virtio-gpu. RADV/Zink and the AMD allocator backend build; all 49 gralloc and 22 GBM
 exports used by Google's clients are present. The prior laptop kernel loaded amdgpu as DRM minor 1,
@@ -235,6 +255,12 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Iris/exact-ID Intel GLES integrated into the normal fresh expanded
+  image; direct and USB/UEFI enforcing QEMU reach inspected setup. Old disk/USB untouched;
+  owner Lenovo GPU binding and MSI regression remain.
+- 2026-11-03 `uncommitted` — Iris and exact-ID Intel GLES profile built; 69 tests, separate
+  partition metadata/fit and enforcing direct/UEFI QEMU pass (screens and input response viewed).
+  Working disk/USB untouched; migration, Lenovo GPU binding and MSI regression still pending.
 - 2026-11-02 (this commit) — Corrected camera evidence and RADV patch scope; broad app-rendering
   regression checks and the webcam LED's cause remain unverified.
 - 2026-11-02 `a5befdb` — Owner confirms the camera works with native RADV capabilities for

@@ -122,6 +122,23 @@ def expected_update(before, root, table, logical):
 
 
 class AndroidTests(unittest.TestCase):
+    def test_declared_layout_mismatch_rejects_all_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image, table, partitions = make_sync_fixture(root, real_gpt=True)
+            before = image.read_bytes()
+            timestamp = image.stat().st_mtime_ns
+            sizes = {p.name: p.size for p in partitions}
+            for changed in ({**sizes, "vendor_dlkm_a": 4096},
+                            {**sizes, "system_b": 0}):
+                with self.subTest(changed=changed), \
+                        self.assertRaisesRegex(ValueError, "Disk layout differs"):
+                    sync(image, root, changed)
+                self.assertEqual(image.read_bytes(), before)
+                self.assertEqual(image.stat().st_mtime_ns, timestamp)
+            sync(image, root, sizes)
+            self.assertEqual(image.read_bytes(), expected_update(before, root, table, partitions))
+
     def test_vendor_dlkm_update_preserves_other_bytes_and_is_a_noop_when_equal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -44,3 +44,10 @@ RUN apt-get update \
         android-libbase-dev android-liblog-dev android-libsparse-dev \
         android-libext4-utils-dev android-libcutils-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Iris precompiles internal shaders with native Mesa tools. LLVM stays in the builder.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        clang-19 llvm-19-dev libclang-19-dev libclc-19-dev \
+        libllvmspirvlib-19-dev spirv-tools libdrm-dev libexpat1-dev zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*

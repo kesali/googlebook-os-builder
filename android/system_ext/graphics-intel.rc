@@ -1,0 +1,9 @@
+# Experimental Broadwell path: upstream Iris GLES, no Vulkan or AMD overrides.
+on early-init
+    setprop ro.hardware.egl mesa
+    setprop ro.hardware.vulkan none
+    setprop ro.hwui.use_vulkan false
+    setprop debug.hwui.renderer skiagl
+    setprop debug.renderengine.vulkan false
+    setprop debug.renderengine.backend skiaglthreaded
+    export GALLIUM_DRIVER iris

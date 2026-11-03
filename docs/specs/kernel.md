@@ -84,8 +84,8 @@ functionality; generic ACP migration and other machines remain untested.
   Google export or CRC.
 - New modules use the build's signing key to access protected GKI exports. Do not remove
   `TRIM_UNUSED_KSYMS`, change Google's ABI whitelist or publish the private key.
-- Vendor_dlkm uses Zstd to fit the additional modules without removing Google's drivers or
-  resizing partitions; its decompressor must be built in before that filesystem is mounted.
+- Vendor_dlkm uses Zstd without removing Google's drivers; the new fresh layout allocates 64 MiB
+  for AMD/i915 and future growth. Its decompressor must be built in before mounting it.
 - Keep the Renoir buffer compatibility patch separate from MSI routing and driver selection.
   A generic ACP driver migration is separate work; drop the patch when upstream accepts these
   buffers or the old driver is replaced and verified.
@@ -138,6 +138,18 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-03 (this commit) — Signed i915/intel-gtt and sole Broadwell alias included in the fresh
+  64 MiB vendor_dlkm; all 4,501 Google exports and image checks pass. Enforcing direct/UEFI QEMU
+  verified; physical i915 binding and MSI regression remain owner tests.
+- 2026-11-03 `uncommitted` — Final i915/intel-gtt metadata/signatures and sole 8086:1616 alias
+  pass checks in a separate 32 MiB vendor_dlkm; 69 focused tests and enforcing direct/UEFI QEMU
+  pass. Existing disk/USB untouched; old-layout builds remain blocked, physical GPUs untested.
+- 2026-11-03 `uncommitted` — Enlarged disposable vendor_dlkm allocation to 32 MiB; Zstd-9
+  i915 candidate fits at 19,636,224 B with 513 entries verified. Separate upstream-generated
+  super passes metadata/payload checks; no Iris, runtime test or working-disk/USB migration yet.
+- 2026-11-03 `uncommitted` — Broadwell i915/intel-gtt build preserves all 4501 Google exports;
+  signed modules pass unchanged-helper checks. Disposable vendor_dlkm verifies 513 entries but
+  exceeds its 18,096,128 B limit even at Zstd 22 (18,259,968 B). No disk/USB update; Intel blocked.
 - 2026-11-03 (this commit) — Vendored the exact cached Churro emulator patch after its source
   repository was deleted. All 16 `test_kernel_source` tests pass in the builder;
   `make -n sources JOBS=12` is a no-op, and bytes match the pinned SHA. No build, boot or USB write.

@@ -8,11 +8,26 @@ SYSTEM_EXT = REPO / "android/system_ext"
 
 
 class GraphicsProfileTests(unittest.TestCase):
+    def test_broadwell_profile_is_gl_only_and_does_not_select_amd_or_software(self):
+        profile = (SYSTEM_EXT / "graphics-intel.rc").read_text()
+        self.assertIn("setprop ro.hardware.egl mesa", profile)
+        self.assertIn("setprop ro.hardware.vulkan none", profile)
+        self.assertIn("setprop debug.renderengine.vulkan false", profile)
+        self.assertIn("export GALLIUM_DRIVER iris", profile)
+        for override in ("LIBGL_ALWAYS_SOFTWARE", "zink", "radv"):
+            self.assertNotIn(override, profile)
+        menu = (REPO / "boot/android-menu.cfg").read_text()
+        self.assertIn('setpci -d 8086:1616 -v dali_gpu VENDOR_ID', menu)
+        self.assertIn('if [ "$dali_gpu" = "8086" ]; then\n    set dali_graphics=intel\nfi', menu)
+        self.assertIn("setpci -d 1002:15e7", menu)
+        self.assertIn("set dali_graphics=softpipe", menu)
+
     def test_each_graphics_profile_sets_an_explicit_hwui_renderer(self):
         profiles = {
             "graphics-amd.rc": ("false", "skiagl"),
             "graphics-amd-vulkan.rc": ("true", "skiavk"),
             "graphics-softpipe.rc": ("false", "skiagl"),
+            "graphics-intel.rc": ("false", "skiagl"),
         }
         install_list = (SYSTEM_EXT / "install.list").read_text()
 

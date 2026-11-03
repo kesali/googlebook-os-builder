@@ -1,9 +1,27 @@
 """Validate Android update ranges without writing the disk or its metadata."""
 
+import argparse
+import json
+from pathlib import Path
+
 from lp import (
     LP_METADATA_GEOMETRY_SIZE, LP_PARTITION_RESERVED_BYTES, LP_SECTOR_SIZE,
     LP_TARGET_TYPE_LINEAR, LpMetadataGeometry, read_at,
 )
+
+ACTIVE_PARTITIONS = {
+    "system_a", "vendor_a", "product_a", "system_ext_a", "system_dlkm_a", "vendor_dlkm_a",
+}
+
+
+def load_allocations(path):
+    allocations = json.loads(path.read_text())
+    if not isinstance(allocations, dict) or allocations.keys() != ACTIVE_PARTITIONS:
+        raise ValueError("Layout must specify exactly the six slot-A logical partitions")
+    for name, size in allocations.items():
+        if type(size) is not int or size <= 0 or size % 4096:
+            raise ValueError(f"{name} allocation must be a positive, 4096-byte-aligned integer")
+    return allocations
 
 
 def validate_gpt_table(table):
@@ -52,3 +70,14 @@ def validate_super_extents(f, super_start, super_end, partitions):
         if offset + length > next_offset:
             raise ValueError("Overlapping liblp extents")
     return ranges, (super_start, ordered[0][0] - super_start)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Read a validated logical partition allocation")
+    parser.add_argument("layout", type=Path)
+    parser.add_argument("partition", choices=sorted(ACTIVE_PARTITIONS))
+    args = parser.parse_args()
+    try:
+        print(load_allocations(args.layout)[args.partition])
+    except (OSError, ValueError) as error:
+        parser.exit(1, f"Android layout: {error}\n")

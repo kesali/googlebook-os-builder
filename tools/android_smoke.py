@@ -92,13 +92,14 @@ def verify(logs, process):
 
 def main():
     out = Path(sys.argv[1]).resolve()
+    disk = Path(sys.argv[4]) if len(sys.argv) > 4 else out / "android/disk.img"
     logs = out / "qemu"
     logs.mkdir(exist_ok=True)
     console = logs / "console.sock"
     with (logs / "runner.log").open("w") as output:
         process = subprocess.Popen([
             "bash", "scripts/qemu.sh", str(out / "gki/bzImage"), str(out / "android/initrd.img"),
-            str(out / "android/disk.img"), "android/cmdline.txt", str(logs), sys.argv[2], sys.argv[3],
+            str(disk), "android/cmdline.txt", str(logs), sys.argv[2], sys.argv[3],
         ], stdout=output, stderr=subprocess.STDOUT)
         try:
             verify(logs, process)

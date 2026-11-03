@@ -2,11 +2,13 @@ Google blocks snd_hda_intel and forces Lenovo SOF codec options. Unblock legacy 
 the MSI's Realtek ALC256 and AMD HDMI codecs. Add upstream Renoir ACP microphone modules and
 their hotplug aliases. Preload PDM DMA and Google's DMIC codec before the machine driver;
 Android relies on ueventd aliases rather than the kernel's request_module fallback.
-Drop when Google supports this laptop.
+Add upstream i915/intel-gtt with only the verified Broadwell 8086:1616 hotplug alias.
+Do not let i915 claim newer Intel GPUs handled by Google's Xe driver.
+Drop when Google supports these laptops.
 
 --- a/lib/modules/modules.dep
 +++ b/lib/modules/modules.dep
-@@ -582,3 +582,16 @@
+@@ -582,3 +582,18 @@
  /vendor/lib/modules/igc.ko: /system/lib/modules/ptp.ko /system/lib/modules/pps_core.ko
  /vendor/lib/modules/snd-soc-sst-cht-bsw-rt5645.ko: /vendor/lib/modules/snd-soc-rt5645.ko /vendor/lib/modules/snd-soc-rl6231.ko
  /vendor/lib/modules/snd-sof-pci-intel-tng.ko: /vendor/lib/modules/snd-sof-intel-atom.ko /vendor/lib/modules/snd-sof-xtensa-dsp.ko /vendor/lib/modules/snd-sof-pci.ko /vendor/lib/modules/snd-sof.ko /vendor/lib/modules/snd-sof-utils.ko
@@ -23,9 +25,11 @@ Drop when Google supports this laptop.
 +/vendor/lib/modules/snd-rn-pci-acp3x.ko: /vendor/lib/modules/snd-acp-config.ko
 +/vendor/lib/modules/snd-acp3x-pdm-dma.ko:
 +/vendor/lib/modules/snd-acp3x-rn.ko:
++/vendor/lib/modules/i915.ko: /vendor/lib/modules/intel-gtt.ko /vendor/lib/modules/drm_buddy.ko /vendor/lib/modules/drm_display_helper.ko /vendor/lib/modules/video.ko /vendor/lib/modules/wmi.ko /vendor/lib/modules/i2c-algo-bit.ko /vendor/lib/modules/hwmon.ko
++/vendor/lib/modules/intel-gtt.ko:
 --- a/lib/modules/modules.alias
 +++ b/lib/modules/modules.alias
-@@ -7655,3 +7655,8 @@
+@@ -7655,3 +7655,9 @@
  alias pci:v00008086d000015FDsv*sd*bc*sc*i* igc
  alias platform:cht-bsw-rt5645 snd_soc_sst_cht_bsw_rt5645
  alias pci:v00008086d0000119Asv*sd*bc*sc*i* snd_sof_pci_intel_tng
@@ -34,6 +38,7 @@ Drop when Google supports this laptop.
 +alias pci:v00001022d000015E2sv*sd*bc04sc80i00* snd_rn_pci_acp3x
 +alias platform:acp_rn_pdm_dma snd_acp3x_pdm_dma
 +alias platform:acp_pdm_mach snd_acp3x_rn
++alias pci:v00008086d00001616sv*sd*bc03sc*i* i915
 --- a/lib/modules/modules.blocklist
 +++ b/lib/modules/modules.blocklist
 @@ -1 +0,0 @@

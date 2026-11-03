@@ -15,7 +15,7 @@ from pathlib import Path
 import stat
 import subprocess
 
-from android_layout import validate_gpt_table, validate_super_extents
+from android_layout import load_allocations, validate_gpt_table, validate_super_extents
 from lp import read_partitions
 
 CHUNK = 4 << 20
@@ -53,7 +53,7 @@ def disk_hash(disk, extents, size):
     return result.hexdigest()
 
 
-def sync(image, artifacts):
+def sync(image, artifacts, allocations=None):
     if image.is_symlink() or not stat.S_ISREG(image.stat().st_mode):
         raise ValueError("Android updates accept only a regular disk image, never a device/symlink")
     with Path(str(image) + ".lock").open("a") as lock:
@@ -71,6 +71,9 @@ def sync(image, artifacts):
         with image.open("r+b") as disk:
             partitions = read_partitions(disk, super_start)
             logical, _ = validate_super_extents(disk, super_start, super_end, partitions)
+            if allocations is not None and {p.name: p.size for p in partitions} != allocations:
+                raise ValueError("Disk layout differs from the declared allocations; "
+                                 "use a new image path, never overwrite its layout in place")
             updates = []
             for name in ("system_a", "vendor_a", "system_ext_a", "vendor_dlkm_a", "vbmeta_a"):
                 source = artifacts / f"{name}.img"
@@ -99,9 +102,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path)
     parser.add_argument("artifacts", type=Path)
+    parser.add_argument("--layout", type=Path, help="Require these exact logical partition allocations")
     args = parser.parse_args()
     try:
-        sync(args.image, args.artifacts)
+        allocations = load_allocations(args.layout) if args.layout else None
+        sync(args.image, args.artifacts, allocations)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"android-sync: {error}\n")
 

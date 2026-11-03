@@ -12,6 +12,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class MesaPublicationTests(unittest.TestCase):
+    def test_iris_uses_pinned_native_shader_tools_not_android_llvm(self):
+        native = (ROOT / "scripts/mesa-clc.sh").read_text()
+        self.assertIn("-Dgallium-drivers= -Dvulkan-drivers=", native)
+        self.assertIn("-Dmesa-clc=enabled", native)
+        self.assertIn("src/compiler/clc/mesa_clc src/compiler/spirv/vtn_bindgen2", native)
+        script = (ROOT / "scripts/mesa.sh").read_text()
+        self.assertIn("-Dmesa-clc=system", script)
+        self.assertIn('"$shader_tools/manifest"', script)
+        self.assertIn("-Dllvm=disabled -Damd-use-llvm=false", script)
+
     def test_render_build_exposes_native_vulkan_without_changing_va_configuration(self):
         script = (ROOT / "scripts/mesa.sh").read_text()
         render = script.split('setup "$build/mesa"', 1)[1].split('setup "$va_build"', 1)[0]
@@ -23,10 +33,15 @@ class MesaPublicationTests(unittest.TestCase):
     def test_stripping_unchanged_libraries_preserves_published_timestamps(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for name in ("bin", "mesa", "drm", "expat", "ndk", "out", "libva/va",
+            for name in ("bin", "mesa", "drm", "expat", "ndk", "out", "libva/va", "shader-tools/bin",
                          "ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"):
                 (root / name).mkdir(parents=True, exist_ok=True)
             (root / "libva/va/va.h").write_text("/* fixture header */\n")
+            for name in ("mesa_clc", "vtn_bindgen2"):
+                tool = root / "shader-tools/bin" / name
+                tool.write_text("#!/bin/sh\nexit 0\n")
+                tool.chmod(0o755)
+            (root / "shader-tools/manifest").write_text("fixture shader tool hash\n")
             readelf = root / "ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
             readelf.write_text(
                 "#!/bin/sh\n"
@@ -61,7 +76,8 @@ esac
             environment = dict(os.environ, PATH=f"{root / 'bin'}:{os.environ['PATH']}",
                                TRACE=str(trace))
             invocation = ["bash", str(ROOT / "scripts/mesa.sh")]
-            invocation.extend(str(root / name) for name in ("mesa", "drm", "expat", "ndk", "out", "libva"))
+            invocation.extend(str(root / name) for name in
+                              ("mesa", "drm", "expat", "ndk", "out", "libva", "shader-tools"))
             subprocess.run(invocation, env=environment, check=True, capture_output=True)
             cross = next((root / "out").glob("build-*/va-cross.ini"))
             dependency_key = hashlib.sha256(cross.read_bytes()).hexdigest()[:16]
@@ -87,7 +103,7 @@ esac
 
     def test_va_driver_is_explicitly_enabled_and_packaged_without_replacing_libva(self):
         script = (ROOT / "scripts/mesa.sh").read_text()
-        self.assertIn("-Dgallium-drivers=softpipe,zink -Dvulkan-drivers=amd", script)
+        self.assertIn("-Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd", script)
         self.assertIn("-Dgallium-drivers=radeonsi -Dvulkan-drivers=", script)
         self.assertIn("-Dgallium-va=enabled", script)
         self.assertIn("-Dvideo-codecs=jpegdec", script)

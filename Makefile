@@ -29,6 +29,8 @@ GKI := $(OUT)/gki
 LP_CORE := $(OUT)/src/lp-core-$(LP_CORE_REV)
 LP_EXTRAS := $(OUT)/src/lp-extras-$(LP_EXTRAS_REV)
 ANDROID := $(OUT)/android
+ANDROID_DISK := $(OUT)/android-expanded/disk.img
+ANDROID_LAYOUT := android/super-layout.json
 MESA := $(OUT)/mesa
 MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
 MESA_PATCH := android/mesa-drm-master.patch
@@ -78,7 +80,7 @@ help: ## Show this list
 
 # Device selection and mounts belong to the host, never a privileged builder container.
 update-usb: android-image ## Select an existing Android USB and update OS + boot files, preserving data
-	sudo -- python3 tools/update_usb.py "$(ANDROID)/disk.img" "$(ANDROID)/boot"
+	sudo -- python3 tools/update_usb.py "$(ANDROID_DISK)" "$(ANDROID)/boot"
 
 laptop-logs: ## Select an Android USB and read saved boot logs into out/laptop-logs/latest
 	python3 tools/laptop_logs.py "$(OUT)/laptop-logs"
@@ -215,9 +217,11 @@ $(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
 $(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh tools/lp.py
 	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super" "$(@D)"
 
-mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Zink, AMD Vulkan and VA-API
-$(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready $(LIBVA_SRC)/.ready scripts/mesa.sh
-	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)" "$(LIBVA_SRC)"
+$(OUT)/mesa-clc/manifest: FORCE $(MESA_SRC)/.ready scripts/mesa-clc.sh $(BUILD_READY)
+	$(BUILDER) bash scripts/mesa-clc.sh "$(MESA_SRC)" "$(OUT)/mesa-clc"
+mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Iris, Zink, AMD Vulkan and VA-API
+$(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready $(LIBVA_SRC)/.ready scripts/mesa.sh $(OUT)/mesa-clc/manifest
+	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)" "$(LIBVA_SRC)" "$(OUT)/mesa-clc"
 
 $(FIRMWARE_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(FIRMWARE_URL)" "$(FIRMWARE_SHA)" "$@"
@@ -301,8 +305,9 @@ ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID) 
 # $* is the partition name: system, vendor, system_ext or vendor_dlkm.
 $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vendor_dlkm_a.img: $(ANDROID)/%_a.img: \
 		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh \
-		scripts/check-replacements.sh tools/fs_metadata.py
-	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $* android/$* "$@" $(ANDROID_INPUTS)
+		scripts/check-replacements.sh tools/fs_metadata.py tools/android_layout.py $(ANDROID_LAYOUT)
+	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $* android/$* "$@" \
+		--layout "$(ANDROID_LAYOUT)" $(ANDROID_INPUTS)
 
 # The directories catch removed files; the wildcards catch edited ones.
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready
@@ -323,14 +328,18 @@ android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks and QEMU drivers, our
 $(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
 	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$(ANDROID)/modules.lz4" "$@"
 
-# Never rebuilt: the disk holds Android's data. Delete it to start over.
-android-disk: $(ANDROID)/disk.img ## Google's disk: bigger data partition, FAT32 boot partition
-$(ANDROID)/disk.img: | $(GOOGLE)/inventory.txt
-	$(BUILDER) bash scripts/android-disk.sh "$(RECOVERY_IMAGE)" $(ANDROID_DATA_GIB) "$@"
+# A new layout uses a new disk path; preserve the old out/android/disk.img as a fallback.
+# Once created, this disk holds Android's data and is updated, never regenerated.
+android-disk: $(ANDROID_DISK) ## Expanded slot-A layout, empty data, FAT32 boot partition (first build only)
+$(ANDROID_DISK): | $(GOOGLE)/inventory.txt $(OUT)/lp-tools/lpmake \
+		$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img \
+		$(ANDROID)/vendor_dlkm_a.img $(ANDROID)/vbmeta_a.img $(ANDROID)/boot/manifest.json
+	$(BUILDER) python3 tools/android_fresh.py "$(OUT)/lp-tools/lpmake" "$(RECOVERY_IMAGE)" \
+		"$(GOOGLE)" "$(ANDROID)" "$(ANDROID_LAYOUT)" $(ANDROID_DATA_GIB) "$@"
 
-android-sync: $(ANDROID)/disk.img $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img \
+android-sync: $(ANDROID_DISK) $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img \
 		$(ANDROID)/vendor_dlkm_a.img $(ANDROID)/vbmeta_a.img
-	$(BUILDER) python3 tools/android_sync.py "$(ANDROID)/disk.img" "$(ANDROID)"
+	$(BUILDER) python3 tools/android_sync.py "$(ANDROID_DISK)" "$(ANDROID)" --layout "$(ANDROID_LAYOUT)"
 
 # The laptop's boot files: the same kernel and initrd QEMU boots, plus GRUB and its menu.
 $(ANDROID)/boot/manifest.json: $(GKI)/bzImage $(ANDROID)/initrd.img $(OUT)/grub/BOOTX64.EFI \
@@ -340,20 +349,20 @@ $(ANDROID)/boot/manifest.json: $(GKI)/bzImage $(ANDROID)/initrd.img $(OUT)/grub/
 deploy-android: $(ANDROID)/boot/manifest.json ## Update Android boot files: make deploy-android USB=/mounted/USB
 	@test -n "$(USB)" || { echo "Set USB to the mounted DALI-BOOT partition; no raw devices." >&2; exit 1; }
 	python3 tools/deploy.py usb "$(ANDROID)/boot" "$(USB)"
-android-boot: $(ANDROID)/disk.img $(ANDROID)/boot/manifest.json ## Put the laptop's boot files into the disk's boot partition
-	$(BUILDER) bash scripts/android-boot.sh "$(ANDROID)/disk.img" "$(ANDROID)/boot"
+android-boot: $(ANDROID_DISK) $(ANDROID)/boot/manifest.json ## Put the laptop's boot files into the disk's boot partition
+	$(BUILDER) bash scripts/android-boot.sh "$(ANDROID_DISK)" "$(ANDROID)/boot"
 
 android-image: $(GKI)/bzImage $(ANDROID)/initrd.img android-sync android-boot ## Build/update the QEMU image and boot files, preserving Android data
 
 qemu: android-image ## Run Googlebook OS; connect a VNC viewer to localhost:5900
-	$(BUILDER) bash scripts/qemu.sh "$(GKI)/bzImage" "$(ANDROID)/initrd.img" "$(ANDROID)/disk.img" \
+	$(BUILDER) bash scripts/qemu.sh "$(GKI)/bzImage" "$(ANDROID)/initrd.img" "$(ANDROID_DISK)" \
 		android/cmdline.txt "$(OUT)/qemu" $(QEMU_CPUS) $(QEMU_MEMORY)
 
 qemu-check: android-image ## Verify full graphical Android startup in a bounded QEMU run
-	$(BUILDER) python3 tools/android_smoke.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY)
+	$(BUILDER) python3 tools/android_smoke.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY) "$(ANDROID_DISK)"
 
 android-uefi-check: android-image ## Test the laptop boot chain on a temporary USB image with a decoy NVMe
-	$(BUILDER) python3 tools/android_uefi_test.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY)
+	$(BUILDER) python3 tools/android_uefi_test.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY) --image "$(ANDROID_DISK)"
 
 console: ## Run a serial-shell command in the running VM: make console COMMAND='getprop'
 	python3 tools/android_console.py "$(OUT)/qemu/console.sock" "$(COMMAND)"

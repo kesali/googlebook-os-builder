@@ -237,10 +237,11 @@ def main():
     parser.add_argument("out", type=Path)
     parser.add_argument("cpus")
     parser.add_argument("memory")
+    parser.add_argument("--image", type=Path, help="Disk image to test instead of OUT/android/disk.img")
     args = parser.parse_args()
     try:
         for graphical in (False, True):
-            run(args.out / "android/disk.img", args.out, args.cpus, args.memory, graphical)
+            run(args.image or args.out / "android/disk.img", args.out, args.cpus, args.memory, graphical)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"android-uefi-check: {error}\n")
 
