@@ -126,6 +126,21 @@ class LaptopModuleTests(unittest.TestCase):
         self.assertEqual(LAPTOP_ALIASES["ath9k"], alias)
         self.assertIn(f"+alias {alias} ath9k\n", module_patch)
 
+    def test_elantech_ps2_module_is_packaged_with_hotplug_and_builtin_helpers(self):
+        config = (REPO / "kernel/gki.config").read_text()
+        self.assertIn("CONFIG_MOUSE_PS2=m\n", config)
+        self.assertIn("CONFIG_MOUSE_PS2_ELANTECH=y\n", config)
+        self.assertIn("CONFIG_MOUSE_PS2_ELANTECH_SMBUS=y\n", config)
+        self.assertIn("drivers/input/mouse/psmouse.ko",
+                      (REPO / "kernel/laptop-modules.list").read_text().splitlines())
+        installs = (REPO / "android/vendor_dlkm/install.list").read_text()
+        self.assertIn("gki/psmouse.ko", installs)
+        self.assertNotIn("gki/i2c-smbus.ko", installs)
+        module_patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        self.assertIn("+/vendor/lib/modules/psmouse.ko:\n", module_patch)
+        self.assertEqual(LAPTOP_ALIASES["psmouse"], "serio:ty01pr*id*ex*")
+        self.assertIn("+alias serio:ty01pr*id*ex* psmouse\n", module_patch)
+
     def test_sound_module_paths_keep_traversal_and_root_guards(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)

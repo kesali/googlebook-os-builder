@@ -39,7 +39,12 @@ four signed modules and the exact device alias; it passes compile/import/CRC che
 Googlebook's actual helpers. No new firmware is needed for this PCI ath9k path.
 Final image validation passes: 40 tests, unchanged Google exports, signed dependencies/alias,
 517 metadata entries, no-write repeat and enforcing QEMU setup/input (screens inspected).
-Physical Wi-Fi testing remains; touchpad integration follows Wi-Fi.
+Physical Wi-Fi testing remains. Owner then approved adding touchpad before the USB update:
+upstream psmouse/Elantech and normal protocol defaults, with AUX hotplug and built-in libps2/I2C
+helpers. Compiled psmouse has no module dependencies; libps2/I2C imports resolve in the kernel.
+The combined candidate passes 41 tests, ABI/module/image checks, no-write repeat of 35
+output/disk hashes/timestamps and enforcing QEMU setup/input (screens inspected).
+Physical Wi-Fi and touchpad tests remain. [Evidence](../../out/lenovo-touchpad/).
 
 Verified on the laptop: the normal framebuffer-handoff boot, setup over Wi-Fi, keyboard and
 touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86; this is an
@@ -277,6 +282,9 @@ metadata/logd starts still needs a screen photo.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
+- [ ] Owner tests Lenovo Wi-Fi and touchpad after `make update-usb JOBS=12` — done when
+  ath9k binds and connects, psmouse exposes the touchpad, and pointer/click/scroll work.
+  Retrieve logs after normal shutdown; no physical writes by the agent.
 - [ ] Remaining physical checks — done when the owner reports
   the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before). The
@@ -324,6 +332,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-03 (this commit) — Added upstream psmouse/Elantech after Wi-Fi as owner requested;
+  no source patch, MSI input change or DPI change. Combined image passes 41 tests, ABI/import/
+  metadata/no-write repeat and enforcing QEMU setup/input; owner Wi-Fi/touchpad retest remains.
 - 2026-11-03 (this commit) — Added unchanged upstream AR9565 ath9k with Googlebook's existing
   wireless helpers (LED APIs verified). 40 tests, ABI/import/image checks, no-write repeat and
   enforcing QEMU setup/input pass. Owner Wi-Fi test pending; PS/2 touchpad remains separate.

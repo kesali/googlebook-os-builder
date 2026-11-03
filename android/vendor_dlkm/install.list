@@ -7,6 +7,8 @@ lib/modules/hwmon.ko                   0644 0:0   vendor_kernel_modules gki/hwmo
 # Broadwell Lenovo only; reuse Google's display helpers unchanged.
 lib/modules/i915.ko                    0644 0:0   vendor_kernel_modules gki/i915.ko
 lib/modules/intel-gtt.ko               0644 0:0   vendor_kernel_modules gki/intel-gtt.ko
+# Lenovo PS/2 Elantech touchpad; libps2 and I2C core are already built in.
+lib/modules/psmouse.ko                 0644 0:0   vendor_kernel_modules gki/psmouse.ko
 lib/modules/mt76.ko                    0644 0:0   vendor_kernel_modules gki/mt76.ko
 lib/modules/mt76-connac-lib.ko         0644 0:0   vendor_kernel_modules gki/mt76-connac-lib.ko
 lib/modules/mt792x-lib.ko              0644 0:0   vendor_kernel_modules gki/mt792x-lib.ko

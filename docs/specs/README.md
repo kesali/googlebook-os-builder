@@ -9,13 +9,13 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial | Owner tests Lenovo AR9565 Wi-Fi; PS/2 touchpad follows |
+| [Kernel (GKI)](kernel.md) | partial | Owner tests Lenovo AR9565 Wi-Fi and PS/2 touchpad |
 | [Boot chain](boot.md) | partial | Berberis fixes tested laptop apps; retrieve logs after subsequent retests |
 | [OS image and disk](os-image.md) | working (expanded fresh image) | Owner retries larger-USB update after GPT compatibility fix |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Lenovo desktop/video owner-confirmed; original-profile freeze unresolved |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Bring up Lenovo AR9565 Wi-Fi, then PS/2 touchpad |
+| [Laptop hardware](laptop-hardware.md) | partial | Owner tests combined Lenovo Wi-Fi/touchpad candidate |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·

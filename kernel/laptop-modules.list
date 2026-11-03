@@ -7,6 +7,8 @@ drivers/hwmon/hwmon.ko
 # Broadwell display; publish only the Lenovo's 8086:1616 hotplug alias.
 drivers/gpu/drm/i915/i915.ko
 drivers/char/agp/intel-gtt.ko
+# Lenovo PS/2 Elantech touchpad; libps2 and the I2C core are built in.
+drivers/input/mouse/psmouse.ko
 # MT7922 Wi-Fi; cfg80211 and mac80211 are Google's.
 drivers/net/wireless/mediatek/mt76/mt76.ko
 drivers/net/wireless/mediatek/mt76/mt76-connac-lib.ko
