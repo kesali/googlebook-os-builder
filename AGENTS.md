@@ -32,6 +32,22 @@ The priority is that a person can understand how to build, update and deploy it,
   hardware fixes. Review the diff, exclude unrelated changes and generated/private files, and
   leave unverified work uncommitted. Do not push or rewrite history without permission.
 
+## Learning and choosing an approach
+
+- The owner values understanding and maintainable choices, not just achieving the immediate
+  goal. A passing test establishes behavior, not that the approach is the best fit.
+- During guided reviews, explain one decision at a time: why it exists, alternatives,
+  trade-offs and verification. Pause for feedback before edits.
+- Before adding custom integration, search upstream documentation, source, releases and
+  relevant external projects, as well as local references. Do not limit investigation to
+  the repository or send private code, logs or credentials to external services.
+- Present existing solutions first. Explain the verified compatibility gap before proposing
+  custom code; distinguish findings from assumptions.
+- Prefer adopting or minimally adapting maintained solutions over reinventing them.
+  Optimize for less code we must understand and maintain.
+- Preserve the working baseline. Recommend changes only for a concrete benefit; do not
+  chase perfection or turn reviews into unsolicited rewrites.
+
 ## Ground rules
 
 - **Upstream first; patch only when necessary.** Each patch or custom file must be maintained when
