@@ -15,7 +15,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Retest Lenovo desktop with primary-alpha candidate; wider RADV checks remain |
 | [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Owner checks brightness and Bluetooth |
+| [Laptop hardware](laptop-hardware.md) | partial | Bring up Lenovo AR9565 Wi-Fi, then PS/2 touchpad |
 | [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·

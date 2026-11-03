@@ -53,6 +53,21 @@ class LaptopLogTests(unittest.TestCase):
         del self.root_entries["previous"]
         self.assertFalse((self.retrieve() / "previous").exists())
 
+    def test_unfinished_snapshot_does_not_block_completed_logs(self):
+        self.entries["hardware.txt.tmp"] = (stat.S_IFREG | 0o600, 399)
+        destination = self.retrieve()
+        for boot in ("current", "previous"):
+            self.assertEqual((destination / boot / "hardware.txt").read_bytes(), b"card=acp\n")
+            self.assertFalse((destination / boot / "hardware.txt.tmp").exists())
+        self.assertEqual((self.output / "latest").resolve(), destination)
+
+    def test_temporary_snapshot_still_requires_safe_type_and_size(self):
+        for entry in ((stat.S_IFLNK | 0o777, 5), (stat.S_IFREG | 0o600, (10 << 20) + 1)):
+            with self.subTest(entry=entry):
+                self.entries["hardware.txt.tmp"] = entry
+                with self.assertRaisesRegex(ValueError, "Invalid temporary hardware snapshot"):
+                    self.retrieve()
+
     def test_rejects_symlinks_unknown_files_and_oversized_logs_before_reading(self):
         for name, entry in (("hardware.txt", (stat.S_IFLNK | 0o777, 5)),
                             ("private-state", (stat.S_IFREG | 0o600, 5)),

@@ -27,6 +27,15 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), following the working Chu
 with readable source changes and incremental USB updates.
 
 ## Current state
+Lenovo Broadwell (2026-11-03): owner reaches desktop in guest and another profile and reports
+good performance and working video; the first profile froze with flashing Caps Lock.
+[Recovered failure logs](../../out/laptop-logs/20261103-184303-hottd2ca/recovered-current/)
+contain no panic trace. The successful boot's
+[logs](../../out/laptop-logs/20261103-185854-21kebgv7/current/) show Atheros `168c:0036`
+Wi-Fi without ath9k, plus `ETD0630/PNP0F13` and an unbound PS/2 serio port; Google's config
+disables `MOUSE_PS2`. Owner confirms Wi-Fi/touchpad do not work. Upstream ath9k and
+psmouse/Elantech are the initial candidates, not yet integrated or hardware-verified.
+
 Verified on the laptop: the normal framebuffer-handoff boot, setup over Wi-Fi, keyboard and
 touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86; this is an
 impression, not a benchmark. Density 160 replaces 180 in the AMD profile only; QEMU keeps 240.
@@ -219,6 +228,10 @@ user; `out/laptop-logs/latest/current/` points to the newest successful retrieva
 log-retrieval/USB tests pass, including read-only extraction from a disposable ext4 image.
 The owner ran it successfully on the USB; the retrieved [boot logs](../../out/laptop-logs/20261102-203905-md1owaep/current/)
 are readable without chown. Manual recovery below remains available.
+An interrupted snapshot can leave `hardware.txt.tmp` in either boot. Retrieval reports and
+skips this known incomplete file after type/size checks; it never treats it as a finished
+snapshot or accepts arbitrary extra files. All 10 `test_laptop_logs` tests pass in the builder,
+including temporary-file safety and real ext4 read-only retrieval.
 
 After returning to Linux, use the checked USB by-id path, not an ambiguous `/dev/sdX`. Metadata
 is currently partition 17; verify the layout. Mount it `ro,noload` or read it with debugfs and
@@ -306,6 +319,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-03 (this commit) — Successful Lenovo desktop logs identify unbound AR9565 Wi-Fi
+  and PS/2 Elantech candidates; owner selects Wi-Fi first. Retrieval safely skips interrupted
+  hardware snapshots; 10 tests pass. Drivers not yet added; original-profile freeze unresolved.
 - 2026-11-02 (this commit) — Corrected current hardware status and separated the observed LED
   behavior from its unknown cause. Camera preview and recording are owner-confirmed.
 - 2026-11-02 `a5befdb` — Camera works (owner-confirmed): front-facing entry, VA initialization,

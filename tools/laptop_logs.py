@@ -98,6 +98,13 @@ def retrieve(selected, output):
             entries = directory(device, source)
             if "boot-id" not in entries:
                 raise ValueError(f"{boot} logs have no boot-id")
+            temporary_snapshot = entries.pop("hardware.txt.tmp", None)
+            if temporary_snapshot is not None:
+                mode, size = temporary_snapshot
+                if not stat.S_ISREG(mode) or size < 0 or size > 10 << 20:
+                    raise ValueError(f"Invalid temporary hardware snapshot: {boot}")
+                print(f"Skipping unfinished {boot}/hardware.txt.tmp; "
+                      "only completed hardware snapshots are retrieved.")
             for name, (mode, size) in entries.items():
                 if not LOG_NAME.fullmatch(name):
                     raise ValueError(f"Unexpected USB log entry: {boot}/{name}")
