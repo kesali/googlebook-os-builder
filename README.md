@@ -122,6 +122,25 @@ Host requirements are Python 3, sudo and util-linux (`lsblk`, `sfdisk`, `mount`,
 Builds still run inside the Debian builder; only explicit physical-device deployment runs on the host.
 Keep downloads, sources and build directories in `out/`; deleting them makes the next build slow.
 
+### Fresh USB installation (erases the USB)
+
+Unmount every partition of the USB, stop any VM using the source image, then run:
+
+```sh
+make install-usb JOBS=12
+```
+
+This builds the Android image, then runs the host [fresh flasher](tools/install_usb.py) with sudo.
+Select a USB by model, capacity and serial. Review the erase warning and type exactly
+`ERASE <serial>` as displayed. Enter or any other answer cancels without writing.
+Internal disks, missing serials, mounted/in-use, read-only and undersized devices are refused.
+The whole image is copied and SHA-256 read-back verified; **all existing USB data is lost**.
+Extra USB space is not allocated and partitions are not grown. Like a raw image flash, the
+backup GPT remains at the image boundary; partition tools may report that it is not at the
+end of a larger USB. Safely unplug/replug afterwards, then boot its UEFI entry.
+If interrupted or verification fails, rerun installation before booting; do not trust a partial USB.
+The agent tests this tool on regular files only; physical installation is your operation.
+
 For boot-only manual deployment, `make deploy-android JOBS=12 USB=/path/to/mounted/DALI-BOOT`
 remains available. **`make deploy` is for the separate diagnostic OS, not Android.**
 

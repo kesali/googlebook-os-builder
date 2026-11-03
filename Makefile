@@ -73,7 +73,7 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
 .PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki laptop-logs lp-tools \
-	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console update-usb FORCE
+	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console update-usb install-usb FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -81,6 +81,9 @@ help: ## Show this list
 # Device selection and mounts belong to the host, never a privileged builder container.
 update-usb: android-image ## Select an existing Android USB and update OS + boot files, preserving data
 	sudo -- python3 tools/update_usb.py "$(ANDROID_DISK)" "$(ANDROID)/boot"
+
+install-usb: android-image ## Select and ERASE a USB with the full Android image; verify read-back
+	sudo -- python3 tools/install_usb.py "$(ANDROID_DISK)"
 
 laptop-logs: ## Select an Android USB and read saved boot logs into out/laptop-logs/latest
 	python3 tools/laptop_logs.py "$(OUT)/laptop-logs"

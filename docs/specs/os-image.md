@@ -75,6 +75,10 @@ the old `out/android/disk.img` is never replaced. New userdata starts empty, not
 old disk. Later builds update only OS/boot files and enforce the declared logical allocations.
 To deploy, the owner must flash the fresh image once: this erases the USB's existing data.
 The unchanged USB updater rejects an old layout and works only after a matching full flash.
+`make install-usb JOBS=12` provides the owner-run full flash: reuse USB-only selection and
+identity/in-use checks, require exact `ERASE <serial>`, copy the entire image and verify SHA-256
+read-back. It does not grow partitions; larger USBs keep the backup GPT at the image boundary,
+as with a raw flash. Physical use is unverified; the agent never runs this target.
 
 Earlier disposable Intel-layout experiment (2026-11-03): upstream `lpmake` generates a separate
 12 GiB super image with `vendor_dlkm_a` enlarged to 32 MiB and every logical B entry retained
@@ -186,6 +190,8 @@ QEMU test used a reflinked copy.
   when /data is large and on fast storage. The laptop effect is not measured.
 
 ## Files
+- [tools/install_usb.py](../../tools/install_usb.py) — owner-run destructive fresh flash;
+  [tests/test_install_usb.py](../../tests/test_install_usb.py) — regular-file safety regressions.
 - [android/super-layout.json](../../android/super-layout.json) — shared A-only logical allocations.
 - [tools/android_fresh.py](../../tools/android_fresh.py) — guarded first creation of the expanded disk;
   [tests/test_android_fresh.py](../../tests/test_android_fresh.py).
@@ -263,6 +269,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-03 (this commit) — Added separate owner-run `install-usb`: explicit serial erase
+  confirmation, USB identity/in-use/capacity guards and full-image read-back. Regular-file
+  installer/shared updater tests pass; physical flash untested and never run by the agent.
 - 2026-11-03 (this commit) — Fresh enlarged A-only image, shared allocation/fit guards and new
   disk path; logical B removed, physical B retained. Build/kABI/metadata, direct/UEFI QEMU and
   two no-write repeats pass. Old disk/USB untouched; owner full flash/hardware retests pending.
