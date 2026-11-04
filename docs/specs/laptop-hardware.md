@@ -265,7 +265,7 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
    Its audio fixture changes the expected codec to `Generic` and uses QEMU's measured stereo
    Master (0–74), while production uses ALC256's mono Master (0–87). It captures WAV only,
    never host speaker output. A zero-filled WAV is **not** audio success.
-3. Follow the [Android update workflow](../../README.md#updating-the-existing-android-usb).
+3. Follow the [Android update workflow](../build-guide.md#updating-the-existing-android-usb).
    `make update-usb JOBS=12` updates the OS partitions and boot files together, including re-signed
    modules after kernel changes. Do not select the previous or framebuffer-free menu entry.
 4. Owner retest: start with low Android volume, play media, check speakers/headphones and move

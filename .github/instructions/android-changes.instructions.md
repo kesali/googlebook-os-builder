@@ -13,7 +13,8 @@ applyTo: ["android/**", "hardware/**/*.install", "hardware/**/*.remove", "hardwa
   Base lists include native `<partition>.install`, `<partition>.remove` and
   `<partition>[-group].patches` fragments at explicit positions. Recipe-local install sources
   start with `./` relative to the recipe directory; patch fragments name recipe-relative files.
-  Keep shared OS changes common and preserve application order. See [README](../../README.md#hardware-recipes).
+  Keep shared OS changes common and preserve application order.
+  See the [recipe guide](../../docs/build-guide.md#hardware-recipes).
 - Change Google's image only when QEMU or the laptop requires it. First try a setting, such as
   the kernel command line, bootconfig or QEMU options, that leaves Google's files unchanged.
   Every patch must be checked and may need updating when Google's image changes.

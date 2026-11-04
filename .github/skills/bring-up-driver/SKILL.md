@@ -36,7 +36,7 @@ A missing app feature does not prove a missing driver.
      `diff -u` from pristine originals; keep an explanatory header and removal condition.
      This combined source-derived patch is not automatically regenerated when selecting drivers.
    - Recipe-local firmware, Android assets and component patches where needed; keep shared OS
-     changes common. See the [recipe format](../../../README.md#hardware-recipes).
+     changes common. See the [recipe format](../../../docs/build-guide.md#hardware-recipes).
    - [module checker](../../../tools/laptop_module_check.py) and
      [tests](../../../tests/test_laptop_modules.py): cover changed behavior and safeguard failures.
 5. Distinguish module filenames from compiled names: hyphens and underscores can differ.

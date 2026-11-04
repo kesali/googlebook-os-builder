@@ -1,7 +1,10 @@
 # gbos-builder report: how it works, what changed, and how it compares
 
-Names and source links are aligned with the gbos-builder rename. Runtime evidence below
-predates that rename; current validation status is in the [component specs](specs/README.md).
+This is a historical report, not the current support matrix. Names and source links are aligned
+with the gbos-builder rename; most runtime evidence below predates it. Since then, the owner
+confirmed Lenovo Bluetooth, audio, microphone, camera, Chrome and smaller UI, plus the MSI
+regression check. Current status is in the [README](../README.md) and
+[component specs](specs/README.md); detailed commands are in the [build guide](build-guide.md).
 
 Written 2026-11-02 at commit `e7f7865`, after the owner confirmed that the laptop boots quickly
 with the important hardware working. The details are in the component specs

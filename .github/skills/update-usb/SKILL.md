@@ -9,7 +9,7 @@ description: "Use when preparing a gbos-builder Android USB OS update: build app
 
 This skill guides the owner; it does not authorize the agent to write block devices.
 Read [project rules](../../../AGENTS.md), the
-[update instructions](../../../README.md#updating-the-existing-android-usb) and the
+[update instructions](../../../docs/build-guide.md#updating-the-existing-android-usb) and the
 [image spec](../../../docs/specs/os-image.md).
 Never run physical-write commands, supply confirmation automatically, collect passwords,
 format a disk, resize partitions, reset Android data or weaken updater safeguards.
