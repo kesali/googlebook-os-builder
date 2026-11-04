@@ -10,11 +10,11 @@ All VMs exited; final hashes/timestamps confirm source image unchanged.
 Earlier, 2026-11-04 — New renamed image passes the existing bounded graphical
 verifier through a session harness: stable system/graphics/key-service PIDs, SELinux enforcing,
 softpipe, new collector domain and saved logs. Setup and Accessibility after an injected tap
-are inspected. `make android-uefi-check JOBS=12` passes both runs with the NVMe decoy unchanged.
+are inspected. `make android-uefi-check` passes both runs with the NVMe decoy unchanged.
 Optional renamed Berberis argument also checked. All test VMs exited.
 [Evidence](../../out/gbos-builder-validation/).
 
-Earlier, 2026-11-02 — `make qemu-check JOBS=12` PASS with `sys.boot_completed` at 20.5 s
+Earlier, 2026-11-02 — `make qemu-check` PASS with `sys.boot_completed` at 20.5 s
 (4 CPUs); [setup screen](../../out/qemu-boot-speed/qemu-check-screen.png) inspected. 2026-10-31: a
 VNC mouse click reached the language picker (`out/qemu/input-screen.png`).
 
@@ -52,7 +52,7 @@ Known noise: Bluetooth services crash-loop because no Bluetooth device exists.
 - [config.mk](../../config.mk) — CPUs, memory, data size, VNC port.
 
 ## Verify
-`make qemu-check JOBS=12` requires: boot completed, boot animation gone, stable system_server/
+`make qemu-check` requires: boot completed, boot animation gone, stable system_server/
 SurfaceFlinger/KeyMint/Gatekeeper PIDs for 30 s, SELinux enforcing, softpipe, 1280x720 scanout.
 Evidence in `out/qemu/`. Then **look at `screen.png`**. For input, use `make qemu` + a VNC viewer.
 

@@ -95,7 +95,7 @@ The pieces, with the files that implement them:
 **Updating the laptop:**
 
 1. Stop QEMU, connect the USB and unmount its partitions.
-2. Run `make update-usb JOBS=12` as your normal user. It builds first, then asks for sudo.
+2. Run `make update-usb` as your normal user. It builds first, then asks for sudo.
 3. Select the USB by model/capacity/serial, review the plan and type `y` or `yes`.
    The tracked updater verifies the layout, writes only changed OS partitions and boot files,
    and checks read-back. It preserves userdata and metadata, including a larger data partition.

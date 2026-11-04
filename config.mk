@@ -12,8 +12,8 @@ OUT ?= out
 # Name of the Docker image that holds the build tools (docker/Dockerfile).
 BUILDER_IMAGE ?= gbos-builder
 
-# Conservative default on this 16 GB laptop. Kbuild remains incremental.
-JOBS ?= 4
+# Parallel compile jobs: every CPU by default. Lower it (JOBS=4) if memory runs short.
+JOBS ?= $(shell nproc)
 
 # `make qemu`: Android's data partition size (GiB, sparse: uses only what Android writes),
 # and the virtual machine's CPUs and memory.

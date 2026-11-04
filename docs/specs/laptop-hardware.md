@@ -261,7 +261,7 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
   — selector failures, exact card-ID bytes and model-specific backlight naming.
 
 ## Verify
-1. `make test`, then `make android-image JOBS=12`. Check kABI/filesystem metadata and a repeat
+1. `make test`, then `make android-image`. Check kABI/filesystem metadata and a repeat
    build: unchanged outputs must preserve timestamps and write no partitions.
 2. Boot a disposable copy with enforcing SELinux; inspect setup and an actual input response.
    The [validation driver](../../out/hardware-fixes-validation/check.py) records this evidence.
@@ -269,7 +269,7 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
    Master (0–74), while production uses ALC256's mono Master (0–87). It captures WAV only,
    never host speaker output. A zero-filled WAV is **not** audio success.
 3. Follow the [Android update workflow](../build-guide.md#updating-the-existing-android-usb).
-   `make update-usb JOBS=12` updates the OS partitions and boot files together, including re-signed
+   `make update-usb` updates the OS partitions and boot files together, including re-signed
    modules after kernel changes. Do not select the previous or framebuffer-free menu entry.
 4. Owner retest: start with low Android volume, play media, check speakers/headphones and move
    the brightness slider. Confirm density/input/Wi-Fi remain usable. Retrieve the new snapshot
@@ -522,7 +522,7 @@ metadata/logd starts still needs a screen photo.
 - 2026-11-02 (this commit) — Owner's video retest crashes the desktop. Reused their earlier gbos
   YV12 findings as Mesa/minigbm source patches. 131 tests, vendor rebuild/ABI checks and enforcing
   QEMU pass; patches not deployed and new crash log not yet retrieved.
-- 2026-11-02 (this commit) — Main USB update workflow is now `make update-usb JOBS=12`: select
+- 2026-11-02 (this commit) — Main USB update workflow is now `make update-usb`: select
   the disk, confirm by serial, update OS and boot files without touching data. 129 fixture tests
   pass; first physical use of the new tool is pending. No USB write made.
 - 2026-11-02 (this commit) — Owner reports HDMI fine; Vulkan HWUI has no noticeable speed benefit.

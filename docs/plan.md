@@ -114,7 +114,7 @@ This is a flexible order, not a commitment to do every item.
    Brightness, MSI Bluetooth, headphones, HDMI audio, suspend and remaining regression checks
    stay in the component specs. Do not pursue them or speculative optimizations unless daily use
    exposes a practical problem or the owner resumes the work. For a new build, the owner runs
-   `make update-usb JOBS=12` and retrieves logs if needed. Measure any actual bottleneck before
+   `make update-usb` and retrieves logs if needed. Measure any actual bottleneck before
    changing its implementation; see [laptop hardware](specs/laptop-hardware.md) and
    [graphics](specs/graphics.md).
 

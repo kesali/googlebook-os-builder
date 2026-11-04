@@ -25,7 +25,7 @@ Do not treat a request to prepare an update as approval for unrelated code chang
    files; copying a new kernel alone can leave incompatible modules.
 3. Give the owner this host command:
    ```sh
-   make update-usb JOBS=12
+   make update-usb
    ```
    It builds the regular Android image and starts the existing
    [interactive updater](../../../tools/update_usb.py). Do not invoke it on the owner's behalf.

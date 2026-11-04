@@ -63,7 +63,7 @@ Not verified: stock-versus-portable performance or physical-laptop selection.
 - [android/bootconfig.txt](../../android/bootconfig.txt) — StrongBox disabled.
 
 ## Verify
-`make qemu-check JOBS=12` checks KeyMint (`android.hardware.security.keymint-service`) and
+`make qemu-check` checks KeyMint (`android.hardware.security.keymint-service`) and
 Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seconds.
 
 ## Pitfalls

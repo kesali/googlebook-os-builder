@@ -3,7 +3,7 @@
 **Status:** partial — opt-in diagnostics and default Berberis selection verified in QEMU;
 physical retest pending.
 **Last verified:** 2026-11-04 — 67 focused deploy/boot/menu tests pass;
-`grub-script-check` and `make android-uefi-check JOBS=12` pass. Disposable UEFI boots confirm
+`grub-script-check` and `make android-uefi-check` pass. Disposable UEFI boots confirm
 Berberis default and Houdini override both reach Android and persist the selected entry in the
 ESP-root environment block. Physical menu selection remains unverified; Houdini's failure cause
 is unknown.
@@ -34,19 +34,19 @@ logs were retrieved; Houdini's internal failure cause and broader app compatibil
 Earlier, the laptop's `95b3bf6` kernel log shows `earlycon=efifb` drawing
 686 early lines at 89 ms each: 60.8 s of its 104 s to `boot_completed`
 ([summary](../../out/earlycon-validation/summary.txt)). The normal entry now omits it;
-`make android-uefi-check JOBS=12` passed, the early [screen](../../out/earlycon-validation/uefi-early-screen.png)
+`make android-uefi-check` passed, the early [screen](../../out/earlycon-validation/uefi-early-screen.png)
 still shows the kernel's drm_log and the graphical run reached [setup](../../out/earlycon-validation/uefi-setup-screen.png).
 The laptop's shorter boot is not yet measured.
 Before that, an enforcing 12-vCPU QEMU boot kept the whole startup in
 `android-boot.log*`: 25,419 entries (4,010,284 bytes, no archive dropped) from logd's first
 entry to boot completion, after which the copy stopped; no `dali_*` denials (pre-rename)
-([summary](../../out/boot-window-log-validation/summary.txt)). `make qemu-check JOBS=12` passed
+([summary](../../out/boot-window-log-validation/summary.txt)). `make qemu-check` passed
 and its setup [screen](../../out/boot-window-log-validation/screen.png) was inspected.
 Before that, the snapshot gained display connectors and cpufreq
 policies. An enforcing 12-vCPU QEMU boot recorded the virtual connector's status and modes, the
 service exited 0 with no `dali_hardware_diag` denials (pre-rename), and QEMU correctly shows no cpufreq
 ([snapshot](../../out/snapshot-display-cpu-validation/hardware.txt),
-[service](../../out/snapshot-display-cpu-validation/service.txt)); `make qemu-check JOBS=12`
+[service](../../out/snapshot-display-cpu-validation/service.txt)); `make qemu-check`
 passed and its setup [screen](../../out/snapshot-display-cpu-validation/screen.png) was inspected.
 Before that, the owner retrieved the laptop's `/dali-bootlog/current/` from
 its `95b3bf6` boot ([snapshot](../../out/laptop-boot-2026-11-02-hdmi/current/hardware.txt)): it
@@ -54,7 +54,7 @@ records the eDP `backlight` device and labels, ALC256 on card1 and the loaded HD
 Before that, a readiness-gated snapshot was recovered from a disposable enforcing
 QEMU boot ([snapshot](../../out/hardware-fixes-validation/final-production-hardware.txt)).
 It exits successfully and does not run before boot-log preparation succeeds.
-Earlier, `make test` passed 87 tests; `make android-image JOBS=12` rebuilt
+Earlier, `make test` passed 87 tests; `make android-image` rebuilt
 the changed partitions with 0 missing/changed kABI exports, and the repeat wrote nothing. The
 graphical QEMU smoke test on a reflinked disk copy completed with SELinux enforcing; the setup
 screen was inspected and the snapshot file was recovered
@@ -210,13 +210,13 @@ cause; the game-controls loop was not established as the cause.
   snapshot safety, failure reporting and readiness gates.
 
 ## Verify
-`make android-initrd`, then `make qemu-check JOBS=12`. Kernel and init log: `out/qemu/kernel.log`.
+`make android-initrd`, then `make qemu-check`. Kernel and init log: `out/qemu/kernel.log`.
 To recheck EFI pstore without hardware writes, run the
 [validation driver](../../out/efi-pstore-validation/check.py):
 `scripts/builder.sh python3 out/efi-pstore-validation/check.py out/efi-pstore-validation/NEW-RUN`.
 Use a new evidence directory; the unguarded control runs only in an offline disposable guest.
 Focused tests: `scripts/builder.sh python3 -m unittest discover -s tests -p test_bootlog.py -v`
-and the same command with `test_overlay.py`. Rebuild with `make android-image JOBS=12`.
+and the same command with `test_overlay.py`. Rebuild with `make android-image`.
 The ignored [validation driver](../../out/bootlog-validation/check.py) boots three times,
 checks enforcing native collectors/NVMe preservation, and extracts only our logs with debugfs:
 `scripts/builder.sh python3 out/bootlog-validation/check.py out/bootlog-validation/NEW-RUN`.

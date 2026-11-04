@@ -22,9 +22,9 @@ The first build downloads Google's pinned Ruby recovery (7.8 GB ZIP, 19 GB extra
 source; the extracted image must match the existing SHA-256 pin before it is published.
 
 ```sh
-make qemu JOBS=12         # build changed components and run; VNC viewer: localhost:5900
+make qemu         # build changed components and run; VNC viewer: localhost:5900
 make console COMMAND='getprop sys.boot_completed'   # from another terminal
-make qemu-check JOBS=12   # bounded graphical check; shuts only the VM down afterwards
+make qemu-check   # bounded graphical check; shuts only the VM down afterwards
 ```
 
 `QEMU_VNC_PORT=5901` changes the localhost-only published port. Android has 4 virtual CPUs,
@@ -99,8 +99,8 @@ per-recipe runner.
 ### Laptop test image
 
 ```sh
-make android-image JOBS=12       # creates/updates out/gbos-builder/disk.img
-make android-uefi-check JOBS=12  # disposable USB/UEFI boots in QEMU; no physical writes
+make android-image       # creates/updates out/gbos-builder/disk.img
+make android-uefi-check  # disposable USB/UEFI boots in QEMU; no physical writes
 ```
 
 The Android image is **49.8 GiB (53,430,190,080 bytes)**.
@@ -163,7 +163,7 @@ This requires a USB already flashed with the expanded A-only layout above. It ca
 the older layout in place.
 
 ```sh
-make update-usb JOBS=12
+make update-usb
 ```
 
 This builds changed components, then asks for sudo to run the tracked
@@ -190,7 +190,7 @@ Keep downloads, sources and build directories in `out/`; deleting them makes the
 Unmount every partition of the USB, stop any VM using the source image, then run:
 
 ```sh
-make install-usb JOBS=12
+make install-usb
 ```
 
 This builds the Android image, then runs the host [fresh flasher](../tools/install_usb.py) with sudo.
@@ -304,7 +304,7 @@ below, from that kernel's source with Google's compilers.
 
 ```sh
 make toolchain           # Google's pinned clang, Rust and bindgen (about 7 GB) + pahole from source
-make gki JOBS=12         # about an hour the first time; incremental afterwards
+make gki                 # about an hour the first time; incremental afterwards
 ```
 
 This rebuilds Google's own kernel from source so that Google's unmodified modules still load.
@@ -334,7 +334,7 @@ modules for this same kernel, from its virtual-device build (`GKI_VIRT` in
 ## CPU-portable BoringSSL
 
 ```sh
-make boringssl JOBS=12
+make boringssl
 ```
 
 This builds upstream `libcrypto.so` and `libssl.so` into `out/boringssl/`; the standalone target
@@ -367,7 +367,7 @@ Not verified: measured CPU utilization or MSI regression with these libraries.
 
 ### HttpEngine crypto
 
-`make httpengine-crypto JOBS=12` builds the separate `libcrypto_httpengine.so` into
+`make httpengine-crypto` builds the separate `libcrypto_httpengine.so` into
 `out/httpengine-crypto/`; `make android-image` installs it and overlays Tethering's copy.
 HttpEngine/Cronet 150.0.7871.41 pins a different BoringSSL revision in
 [Chromium DEPS](https://chromium.googlesource.com/chromium/src/+/150.0.7871.41/DEPS).
@@ -436,7 +436,7 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
 
 ### Checking the laptop boot chain
 
-`make android-uefi-check JOBS=12` boots disposable copies through OVMF and GRUB, as USB storage
+`make android-uefi-check` boots disposable copies through OVMF and GRUB, as USB storage
 beside a writable NVMe decoy. It checks that Android finds the USB partitions, never enumerates
 the decoy and leaves its bytes unchanged. No physical drives are accessed.
 

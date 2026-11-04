@@ -10,7 +10,7 @@ description: "Use when validating a finished gbos-builder change: focused tests,
 - Read [project rules](../../../AGENTS.md), the [spec index](../../../docs/specs/README.md)
   and the affected component spec. Check the worktree and preserve unrelated changes.
 - Run validation only after the owner agrees the final implementation is ready. Ask before
-  long builds or downloads. Build inside the existing builder with `JOBS=12`.
+  long builds or downloads. Build inside the existing builder.
 - Never write physical disks, recreate `out/android/disk.img`, delete editable source trees,
   weaken checks or change SELinux enforcement. Stop a running VM before updating its image;
   stop only task-owned processes, otherwise ask the owner.
@@ -27,7 +27,7 @@ description: "Use when validating a finished gbos-builder change: focused tests,
    ```
    Select files/directories for the actual diff; the example is not a mandatory list.
    `make test` also discovers all recipe-local tests, regardless of build selection.
-3. For image changes, run `make android-image JOBS=12`. Keep output and timings under a
+3. For image changes, run `make android-image`. Keep output and timings under a
    task-specific ignored `out/` directory. Require the existing config/kABI checks,
    compiled-module checks, filesystem metadata read-back and partition-fit checks to pass.
    Never bypass a failed safeguard to obtain an image.
@@ -35,7 +35,7 @@ description: "Use when validating a finished gbos-builder change: focused tests,
    For incremental-build verification, record published artifact and disk sizes/timestamps,
    repeat the same build and compare them. Require no partition or boot-file writes and no
    published-output timestamp changes. Measure build time separately from guest startup.
-5. For boot/runtime changes, run `make qemu-check JOBS=12`. It checks boot completion,
+5. For boot/runtime changes, run `make qemu-check`. It checks boot completion,
    stable service PIDs, SELinux enforcing and softpipe; inspect the resulting
    [screenshot](../../../out/qemu/screen.png) yourself. A property or PNG dimensions alone
    do not establish a usable screen. Verify an actual input response before claiming input

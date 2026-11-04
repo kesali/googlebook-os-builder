@@ -26,8 +26,8 @@ direct/UEFI QEMU setup/input checks pass. Iris/softpipe/Zink compile without shi
 Hardware was not yet tested at that point. [Evidence](../../out/intel-bringup/fresh/).
 Earlier, 2026-11-02: the owner reports working camera preview and recording
 ([logs](../../out/laptop-logs/20261102-231851-2bm_5yev/current/)). Earlier,
-`make test` (113 tests), `make mesa JOBS=12`,
-`make android-image JOBS=12` and `make qemu-check JOBS=12` pass; the inspected QEMU screenshot
+`make test` (113 tests), `make mesa`,
+`make android-image` and `make qemu-check` pass; the inspected QEMU screenshot
 shows the setup screen. The owner completed setup on the laptop and finds apps and graphics fast.
 That boot's log ([android.log](../../out/laptop-boot-2026-11-02-hdmi/current/)) shows Chrome's
 ANGLE on `Vulkan 1.1.363 (AMD Radeon Graphics (RADV RENOIR) (0x000015E7))`; SurfaceFlinger and
@@ -153,7 +153,7 @@ ship only `libdrm_amdgpu.so`, using Google's unchanged `libdrm.so`. Both upstrea
 SONAMEs are unversioned (unlike the host Linux helper); rendering still links DRM statically.
 
 Verified: 20 focused tests pass, including dependency-keyed VA configuration and no-write
-publication. `make android-image JOBS=12` succeeds in 58.9 s; 1622 vendor metadata entries
+publication. `make android-image` succeeds in 58.9 s; 1622 vendor metadata entries
 pass and 349,450,240 B fits the 387,108,864 B limit. Installed bytes match both new libraries;
 all 195 driver and 66 helper strong imports resolve against shipping libraries. Google's libva
 and core libdrm, plus all seven rendering libraries, remain byte-identical to their baselines.
@@ -278,8 +278,8 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
   and planar pitch fixes based on the owner's earlier gbos findings.
 
 ## Verify
-`make test`, `make mesa JOBS=12`, `make android-image JOBS=12`, then
-`make qemu-check JOBS=12`. Open `out/qemu/screen.png` and look at it:
+`make test`, `make mesa`, `make android-image`, then
+`make qemu-check`. Open `out/qemu/screen.png` and look at it:
 a correctly sized image can still be QEMU's "Display output is not active" placeholder.
 `out/qemu/surfaceflinger.txt` should name softpipe and the QEMU Monitor display.
 
@@ -359,7 +359,7 @@ a correctly sized image can still be QEMU's "Display output is not active" place
   66 focused tests, image metadata, enforcing QEMU setup/mounts/crypto/HTTPS checks pass.
   Repeat preserves timestamps with no partition writes. Lenovo CPU and MSI regression await hardware.
 - 2026-11-04 uncommitted — Lenovo SHA-256 emulation reaches 49.7M traps in ~10 minutes.
-  Standalone `make boringssl JOBS=12` builds upstream with CPUID dispatch: all 2693 crypto/637 SSL
+  Standalone `make boringssl` builds upstream with CPUID dispatch: all 2693 crypto/637 SSL
   exports match system/vendor; 14 tests and no-write publication repeat pass. Not installed/tested in Android.
 - 2026-11-04 uncommitted — Owner confirms Chrome renders on the Lenovo with the hasvk patch.
 - 2026-11-04 uncommitted — Lenovo Chrome grey: GPU process logged "could not create backing" and

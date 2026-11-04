@@ -43,8 +43,8 @@ Everything compiles inside the Debian builder container.
 ```sh
 make                         # everyday commands; make help-all lists every target
 make test                    # fast unit tests; no physical disks or network
-make qemu JOBS=12            # build and boot; VNC at localhost:5900
-make qemu-check JOBS=12      # bounded regression check, then stop the VM
+make qemu                    # build and boot; VNC at localhost:5900
+make qemu-check              # bounded regression check, then stop the VM
 ```
 
 Inspect the saved [QEMU screenshot](out/qemu/screen.png); a printed PASS alone is not proof
@@ -59,7 +59,7 @@ Disable Secure Boot and select the USB's UEFI entry. The internal NVMe is hidden
 For a fresh USB (**erases all existing USB data**):
 
 ```sh
-make install-usb JOBS=12
+make install-usb
 ```
 
 The host tool asks you to select a USB by model, capacity and serial, confirm the erase,
@@ -68,7 +68,7 @@ and verifies the copied image. Physical deployment is the owner's operation, not
 For an existing compatible gbos-builder USB (**preserves apps, accounts and data**):
 
 ```sh
-make update-usb JOBS=12
+make update-usb
 ```
 
 Before either command, stop any VM using the image and unmount the USB's partitions.
@@ -76,7 +76,7 @@ The updater checks the layout, writes only changed OS/boot content and verifies 
 it does not repartition or format. Older Dali or incompatible-layout media need an explicit
 fresh flash, not an update. If interrupted, rerun the operation before booting.
 
-For build-only, use `make android-image JOBS=12`; it updates the regular file
+For build-only, use `make android-image`; it updates the regular file
 [out/gbos-builder/disk.img](out/gbos-builder/disk.img), not a physical disk.
 Never delete that image to repair a failed build: it holds persistent Android data.
 See the [deployment guide](docs/build-guide.md#laptop-test-image) for layouts and safeguards.

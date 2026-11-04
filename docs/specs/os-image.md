@@ -29,7 +29,7 @@ No new QEMU or physical boot: runtime bytes match the existing baseline.
 [Evidence](../../out/hardware-recipes/).
 
 Earlier, 2026-11-03 — 92 focused tests pass; fresh expanded slot-A image builds with
-`make android-image JOBS=12`;
+`make android-image`;
 all rebuilt filesystem metadata/import checks and all 4,501 Google exports pass. The exact six
 A allocations and absence of logical B partitions/group are verified. Direct and USB/UEFI QEMU
 reach inspected setup screens with enforcing SELinux; input opens accessibility in the direct
@@ -44,7 +44,7 @@ Enforcing UEFI/QEMU reaches the inspected setup screen and responds to an inject
 The working disk and physical USB remain unchanged; normal Intel builds/deployment are blocked.
 [Evidence](../../out/intel-bringup/migration/).
 Earlier the same day: 28 focused image/USB tests pass in the builder. Cached
-`make android-image JOBS=12` runs took 18 and 19 seconds; both verified the GPT and wrote no
+`make android-image` runs took 18 and 19 seconds; both verified the GPT and wrote no
 partitions or boot files. All 76 recorded output files kept their metadata and non-disk hashes;
 GPT, liblp, the metadata partition and sampled userdata matched. The entire disk was not hashed.
 No QEMU boot or physical USB update was performed for this change.
@@ -67,12 +67,12 @@ grew `userdata` from 32 GiB to 215.1 GiB (451,151,872 sectors), read back a blan
 the rest of the table identical to the image
 ([update-os.log](../../out/usb-flash-android/update-os.log),
 [grow-data.log](../../out/usb-flash-android/grow-data.log)). The owner subsequently booted it. Before that,
-`make android-image JOBS=12` rebuilt only vendor (24 s) with zram writeback off. A QEMU boot of a
+`make android-image` rebuilt only vendor (24 s) with zram writeback off. A QEMU boot of a
 copy with userdata grown to 64 GiB and its first MiB zeroed (what
 `grow-data.sh` leaves) formatted `/data` at 61 GiB, reached setup with SELinux enforcing and had no
 8 GiB writeback device in the kernel log, where the previous vendor image had one
 ([evidence](../../out/data-growth-validation/)); `make test` passes 113 tests. Earlier the same day:
-`make android-image JOBS=12` (54 s) rebuilt system, vendor, system_ext and vendor_dlkm; every
+`make android-image` (54 s) rebuilt system, vendor, system_ext and vendor_dlkm; every
 replaced Google file passed
 [check-replacements.sh](../../scripts/check-replacements.sh) and the full metadata comparison;
 the updater wrote only OS partitions. A repeat build took 16 s and left `disk.img` unmodified.
@@ -121,7 +121,7 @@ the old `out/android/disk.img` is never replaced. New userdata starts empty, not
 old disk. Later builds update only OS/boot files and enforce the declared logical allocations.
 To deploy, the owner must flash the fresh image once: this erases the USB's existing data.
 The unchanged USB updater rejects an old layout and works only after a matching full flash.
-`make install-usb JOBS=12` provides the owner-run full flash: reuse USB-only selection and
+`make install-usb` provides the owner-run full flash: reuse USB-only selection and
 identity/in-use checks, require exact `ERASE <serial>`, copy the entire image and verify SHA-256
 read-back. It does not grow partitions; larger USBs keep the backup GPT at the image boundary,
 as with a raw flash. Owner's larger USB boots, but the subsequent updater rejected this
@@ -141,7 +141,7 @@ are verified by [super_candidate.py](../../tools/super_candidate.py). Six focuse
 pass; a second generated super matches every byte, and an unchanged `make lp-tools` preserves
 the tool/build metadata timestamps. The working disk/USB and their layouts remain unchanged.
 This first super-only candidate was not boot-tested and is not accepted by the existing updater.
-Build the host tool with `make lp-tools JOBS=12`; the candidate builder's `--help` documents
+Build the host tool with `make lp-tools`; the candidate builder's `--help` documents
 its explicit inputs. [Evidence](../../out/intel-bringup/super-32m.log).
 The subsequent Iris candidate also passes enforcing direct-kernel and USB/UEFI QEMU with
 inspected setup/input screens; see [graphics](graphics.md). This does not establish Intel
@@ -271,16 +271,16 @@ QEMU test used a reflinked copy.
 - [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py) — mismatch and early-failure safety.
 
 ## Verify
-`make android-image JOBS=12` creates the fresh expanded disk once, then updates it without
+`make android-image` creates the fresh expanded disk once, then updates it without
 recreating data. The first USB flash is the owner's operation and erases the selected USB;
-later `make update-usb JOBS=12` preserves data only on a matching layout.
+later `make update-usb` preserves data only on a matching layout.
 
 `make test` (including recovery-image hash refusal in
 [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py), sync, lock and overlay tests in
 [tests/test_overlay.py](../../tests/test_overlay.py);
 disk layout in [tests/test_android_disk.py](../../tests/test_android_disk.py); boot files in
 [tests/test_android_boot.py](../../tests/test_android_boot.py)),
-then `make android-image JOBS=12`. A second run
+then `make android-image`. A second run
 must print no partition or boot-file writes and leave output timestamps unchanged.
 
 ## Pitfalls
@@ -309,7 +309,7 @@ must print no partition or boot-file writes and leave output timestamps unchange
 ## Actions
 - [ ] Owner flashes the expanded image and tests Lenovo/MSI — done when fresh setup, actual GPU
   binding/renderer and MSI regression evidence are confirmed. No physical disk writes by the agent.
-- [ ] First physical use of `make update-usb JOBS=12` — done when the owner selects the existing
+- [ ] First physical use of `make update-usb` — done when the owner selects the existing
   USB, verifies OS and boot updates succeed, confirms data remains intact and sees a no-write
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 

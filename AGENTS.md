@@ -107,12 +107,12 @@ the host needs Docker, make, Python 3 and `/dev/kvm`.
 ```sh
 make                       # everyday commands; make help-all lists every target
 make test                  # unit tests: fast, no disks, no network
-make qemu JOBS=12          # build what changed and boot; VNC on localhost:5900
-make qemu-check JOBS=12    # bounded full boot; evidence in out/qemu/
+make qemu                  # build what changed and boot; VNC on localhost:5900
+make qemu-check            # bounded full boot; evidence in out/qemu/
 make console COMMAND='getprop sys.boot_completed'   # while the VM runs
 ```
 
-- This machine has 12 CPUs: use `JOBS=12`. A first GKI build takes about an hour; ask before
+- `JOBS` defaults to every CPU. A first GKI build takes about an hour; ask before
   starting long builds or downloads.
 - Stop the VM before `make android-image`: the disk lock rejects updates while it runs.
 - Unchanged inputs must rebuild nothing and write no disk partitions — keep it that way.

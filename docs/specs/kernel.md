@@ -14,7 +14,7 @@ No new physical hardware test. [Evidence](../../out/gbos-builder-validation/).
 
 Earlier, 2026-11-04 — Automatic kernel patch recipes: 40 focused source/recipe/module
 tests pass. All four moved patches match `4504b6b` byte-for-byte, in the same order, keeping
-the existing source-cache hash; `make -n sources JOBS=12` is a no-op. The image build passes
+the existing source-cache hash; `make -n sources` is a no-op. The image build passes
 all 4,501 Google exports and signed-module/518-entry metadata/fit checks; all 37 recorded output
 hashes/sizes match the baseline. Initial vendor_dlkm rebuild changes only its output timestamp;
 the 21.2 s repeat preserves all 37 output timestamps too. Neither build writes disk partitions
@@ -45,15 +45,15 @@ enforcing QEMU reaches setup and accessibility after input (screens inspected); 
 [Evidence](../../out/lenovo-wifi/). Physical Wi-Fi scanning/connection remains untested.
 
 Earlier, 2026-11-03 — primary-alpha candidate: 33 focused tests and
-`make android-image JOBS=12` pass; 4,501 Google exports unchanged, module signatures/imports
+`make android-image` pass; 4,501 Google exports unchanged, module signatures/imports
 and 513 vendor_dlkm metadata entries verified. Repeat preserves all 30 recorded output/disk
 hashes and timestamps with no partition/boot writes. Disposable QEMU reaches inspected setup
 and responds to an accessibility tap, SELinux enforcing; VM exited.
 [Evidence](../../out/intel-primary-alpha/). Lenovo hardware retest remains.
 
-Earlier, 2026-11-02 — `make android-image JOBS=12` with the Renoir buffer patch: `kABI:
+Earlier, 2026-11-02 — `make android-image` with the Renoir buffer patch: `kABI:
 4501 Google exports, 0 missing, 0 changed`; 44 focused source/module/audio/overlay tests pass.
-`make qemu-check JOBS=12` reaches setup with enforcing SELinux and stable service PIDs
+`make qemu-check` reaches setup with enforcing SELinux and stable service PIDs
 ([screen](../../out/qemu/screen.png), inspected). The owner's boot of `95b3bf6` had sound, and its
 snapshot shows the panel as `backlight` (`sysfs_leds`, 51750 of 62451, so the HAL wrote it);
 a visible brightness change was not reported. Earlier: all 5507 prior symbol versions unchanged
@@ -213,7 +213,7 @@ functionality; generic ACP migration and other machines remain untested.
 - [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [kernel/laptop-modules.list](../../kernel/laptop-modules.list) — explicit signed-module publication.
 
 ## Verify
-`make gki JOBS=12` (about an hour first time, incremental afterwards). It fails on any config,
+`make gki` (about an hour first time, incremental afterwards). It fails on any config,
 compiler, release-string or ABI mismatch. Focused source checks:
 `scripts/builder.sh python3 -m unittest discover -s tests -p test_kernel_source.py`. The one-off
 [offline handoff check](../../out/framebuffer-handoff-check.py) uses a short, fresh output
@@ -285,7 +285,7 @@ Inspect the screenshots; this does not verify AMD hardware.
   exceeds its 18,096,128 B limit even at Zstd 22 (18,259,968 B). No disk/USB update; Intel blocked.
 - 2026-11-03 (this commit) — Vendored the exact cached Churro emulator patch after its source
   repository was deleted. All 16 `test_kernel_source` tests pass in the builder;
-  `make -n sources JOBS=12` is a no-op, and bytes match the pinned SHA. No build, boot or USB write.
+  `make -n sources` is a no-op, and bytes match the pinned SHA. No build, boot or USB write.
 - 2026-11-02 `uncommitted` — Owner confirms microphone works after the Renoir buffer update.
   Driver, named InternalMic route and isolated buffer patch now have owner hardware confirmation;
   no new capture logs or recording-quality measurements supplied.
