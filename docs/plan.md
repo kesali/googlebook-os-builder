@@ -1,7 +1,8 @@
 # Project plan
 
-Updated: 2026-11-04. Current focus: daily testing on Lenovo and MSI, then improving the
-recipe-driven builder and device bring-up workflow. QEMU is the regression check.
+Updated: 2026-11-04. Current focus: polish the existing builder and make adding your own
+hardware recipes understandable. Further hardware enablement and tuning are deferred unless
+daily use exposes a practical problem. QEMU is the regression check.
 
 ## Priorities
 
@@ -68,21 +69,33 @@ Both reference ports boot this laptop. This project follows Churro's working bas
 
 This is a flexible order, not a commitment to do every item.
 
-1. **Daily testing and remaining laptop checks — next.**
-   Use the Lenovo daily for testing; check brightness, headphones, suspend and broader apps.
-   MSI Bluetooth pairing remains separate. For a new build, the
-   owner updates OS and boot files together with `make update-usb JOBS=12`, then retrieves the
-   snapshot and logs if needed. See [laptop hardware](specs/laptop-hardware.md).
+1. **Reconcile TODOs and component specs — next.**
+   Close only checks already established by evidence or owner confirmation. Keep genuinely
+   unverified hardware checks visible but deferred, rather than treating them as current blockers.
 
-2. **Remaining laptop hardware — one device at a time.**
-   Done: AMD display, keyboard/touchpad, Wi-Fi, speakers, built-in microphone and camera.
-   Next candidates: brightness, MSI Bluetooth, headphone output, HDMI audio and suspend.
+2. **Explain adding a hardware recipe.**
+   Walk through an existing laptop from hardware IDs to reused drivers, device-specific files,
+   validation and physical results. Explain shared-driver versus device ownership using the
+   existing [recipe format](build-guide.md#hardware-recipes), not a new configuration format.
+   Use the walkthrough to identify actual usability gaps before adding tools.
 
-3. **Improve performance — current.**
-   Measure build time, startup time and UI responsiveness separately. Identify the main bottleneck
-   and compare simple options before changing the graphics path. See [graphics](specs/graphics.md).
+3. **Polish the build and update workflow.**
+   Improve readability, actionable errors and progress one focused change at a time.
+   The existing USB progress TODO covers separate write/read-back progress, bytes, percentage,
+   throughput and estimated remaining time; preserve device selection and verification safeguards.
+   Compact installation images remain deferred.
 
-4. **Understand and simplify the build — alongside the laptop work.**
+4. **Make recipe composition inspectable and maintainable.**
+   - Summarize selected recipes and their patches, modules and firmware through existing tooling.
+   - Assess `make hardware-check` before adding checks for concrete gaps such as conflicting
+     installs or incompatible selections; fail before expensive builds.
+   - Keep concise per-device verification evidence, limitations and workarounds beside recipes.
+     A successful build is not physical hardware verification.
+   - Record upstream status and removal conditions beside carried fixes, without a new framework.
+   Read-only hardware detection, missing-driver guidance and device-contribution guidance remain
+   follow-up ideas; detection must be advisory, not automatic modification or a support promise.
+
+5. **Understand and simplify the build — alongside polish.**
    Follow one build path at a time, starting with image changes and partition rebuilding. Prefer
    explaining and simplifying existing code over adding features. Keep incremental builds fast and
    verify that Android data is preserved. See [OS image](specs/os-image.md) and [boot](specs/boot.md).
@@ -93,15 +106,17 @@ This is a flexible order, not a commitment to do every item.
    new tag or patch recompiles only the files that changed; optionally add ccache. Checking it
    needs one full kernel rebuild.
 
-5. **Make QEMU useful for development — parked.**
+6. **Make QEMU useful for development — parked.**
    Finish setup, reach the desktop and verify network access. Check that the VM can restart
    without losing Android data. See [QEMU](specs/qemu.md) and [security](specs/security.md).
 
-6. **Improve device bring-up after hardware testing.**
-   Keep the builder readable through native hardware recipes. Track better automatic hardware
-   detection, guidance for missing-driver fixes and a device-contribution workflow as follow-up
-   work. Users should be able to test locally and optionally report or upstream their findings;
-   this is not an automatic installer or a promise of support for arbitrary laptops.
+7. **Hardware enablement and performance tuning — deferred.**
+   Brightness, MSI Bluetooth, headphones, HDMI audio, suspend and remaining regression checks
+   stay in the component specs. Do not pursue them or speculative optimizations unless daily use
+   exposes a practical problem or the owner resumes the work. For a new build, the owner runs
+   `make update-usb JOBS=12` and retrieves logs if needed. Measure any actual bottleneck before
+   changing its implementation; see [laptop hardware](specs/laptop-hardware.md) and
+   [graphics](specs/graphics.md).
 
 ## How we track progress
 
