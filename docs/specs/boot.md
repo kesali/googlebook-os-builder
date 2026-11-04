@@ -233,6 +233,11 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   successful laptop tests. The current default remains unchanged.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Lenovo post-update logs retain normal collectors and no
+  `touchpad.log`; temporary input capture retirement confirmed on hardware.
+- 2026-11-04 uncommitted — Removed the temporary touchpad service/script/input policy.
+  50 focused tests, image rebuild and inspected enforcing QEMU pass; hardware retest pending.
+  Native logs and older-capture retrieval remain. FAT32 export is discussed, not implemented.
 - 2026-11-04 (this commit) — Rename arguments, services, readiness gate and log directory.
   Regenerate source-derived SELinux patches with unchanged permissions. Enforcing direct/UEFI,
   saved logs, input response and optional Berberis selection pass; no physical retest.

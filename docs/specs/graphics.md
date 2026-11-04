@@ -292,6 +292,15 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Owner confirms faster Lenovo Chrome launch/page loads.
+  Logs `20261104-185222`: 284,898 SHA-256 traps/~160 s versus 49,743,288/~605 s before;
+  not matched workloads or a CPU benchmark. Conscrypt storm absent; MSI crypto regression pending.
+- 2026-11-04 uncommitted — Integrated portable BoringSSL into system/vendor and Conscrypt only;
+  66 focused tests, image metadata, enforcing QEMU setup/mounts/crypto/HTTPS checks pass.
+  Repeat preserves timestamps with no partition writes. Lenovo CPU and MSI regression await hardware.
+- 2026-11-04 uncommitted — Lenovo SHA-256 emulation reaches 49.7M traps in ~10 minutes.
+  Standalone `make boringssl JOBS=12` builds upstream with CPUID dispatch: all 2693 crypto/637 SSL
+  exports match system/vendor; 14 tests and no-write publication repeat pass. Not installed/tested in Android.
 - 2026-11-04 uncommitted — Owner confirms Chrome renders on the Lenovo with the hasvk patch.
 - 2026-11-04 uncommitted — Lenovo Chrome grey: GPU process logged "could not create backing" and
   restarted; root cause hasvk's AHB format query. Added the one-condition Mesa patch; 271 tests,

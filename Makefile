@@ -48,6 +48,11 @@ NDK_ZIP := $(DL)/android-ndk-$(NDK_SHA).zip
 NDK := $(TOOLCHAIN)/ndk-$(NDK_SHA)
 ANDROID_EMU_ZIP := $(DL)/emulator-$(ANDROID_EMU_SHA).zip
 ANDROID_EMU := $(OUT)/emulator-$(ANDROID_EMU_SHA)
+BORINGSSL_TAR := $(DL)/boringssl-$(BORINGSSL_SHA).tar.gz
+BORINGSSL_SRC := $(OUT)/src/boringssl-$(BORINGSSL_SHA)
+BORINGSSL_GO_TAR := $(DL)/go-$(BORINGSSL_GO_SHA).tar.gz
+BORINGSSL_GO := $(TOOLCHAIN)/go-$(BORINGSSL_GO_SHA)
+BORINGSSL := $(OUT)/boringssl
 FIRMWARE_TAR := $(DL)/linux-firmware-$(FIRMWARE_SHA).tar.xz
 FIRMWARE := $(OUT)/firmware-$(FIRMWARE_SHA)
 MINIGBM := $(OUT)/minigbm
@@ -235,6 +240,20 @@ $(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
 $(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh tools/lp.py
 	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super" "$(@D)"
 
+.PHONY: boringssl
+boringssl: $(BORINGSSL)/manifest ## Build CPU-portable Android crypto libraries and check Google's ABI; no image changes
+$(BORINGSSL_TAR): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(BORINGSSL_URL)" "$(BORINGSSL_SHA)" "$@"
+$(BORINGSSL_GO_TAR): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(BORINGSSL_GO_URL)" "$(BORINGSSL_GO_SHA)" "$@"
+$(BORINGSSL_SRC)/.ready: | $(BORINGSSL_TAR)
+	$(BUILDER) bash scripts/source.sh "$(BORINGSSL_TAR)" "$(@D)"
+$(BORINGSSL_GO)/.ready: | $(BORINGSSL_GO_TAR)
+	$(BUILDER) bash scripts/source.sh "$(BORINGSSL_GO_TAR)" "$(@D)"
+$(BORINGSSL)/manifest: FORCE $(BORINGSSL_SRC)/.ready $(BORINGSSL_GO)/.ready $(NDK)/.ready \
+		$(GOOGLE)/inventory.txt scripts/boringssl.sh tools/crypto_abi.py scripts/boringssl-platform-cxx.h
+	$(BUILDER) bash scripts/boringssl.sh "$(BORINGSSL_SRC)" "$(NDK)" "$(BORINGSSL_GO)" "$(GOOGLE)" "$(BORINGSSL)"
+
 $(OUT)/mesa-clc/manifest: FORCE $(MESA_SRC)/.ready scripts/mesa-clc.sh $(BUILD_READY)
 	$(BUILDER) bash scripts/mesa-clc.sh "$(MESA_SRC)" "$(OUT)/mesa-clc"
 mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Iris, Zink, AMD Vulkan and VA-API
@@ -319,7 +338,7 @@ $(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
 # See scripts/android-overlay.sh for the native formats and metadata safeguards.
 # install.list sources start with one of these names, e.g. emulator/vendor/bin/...
 ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID) \
-	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules hardware=hardware
+	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules hardware=hardware crypto=$(BORINGSSL)
 # $* is the partition name: system, vendor, system_ext or vendor_dlkm.
 $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vendor_dlkm_a.img: $(ANDROID)/%_a.img: \
 		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh \
@@ -330,11 +349,11 @@ $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(AN
 # The directories catch removed files; the wildcards catch edited ones.
 android_recipe_inputs = $(call recipe_inputs,$(1).install $(1).remove $(1)*.patches $(1) $(1)/*)
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready \
-		$(call android_recipe_inputs,system)
+		$(call android_recipe_inputs,system) $(BORINGSSL)/manifest
 $(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*) $(call android_recipe_inputs,system_ext)
 $(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
 		$(call android_recipe_inputs,vendor) \
-		$(ANDROID_EMU)/.ready $(MESA)/manifest $(MINIGBM)/manifest $(FIRMWARE)/manifest $(ANDROID)/crossystem
+		$(ANDROID_EMU)/.ready $(MESA)/manifest $(MINIGBM)/manifest $(FIRMWARE)/manifest $(ANDROID)/crossystem $(BORINGSSL)/manifest
 $(ANDROID)/vendor_dlkm_a.img: android/vendor_dlkm $(wildcard android/vendor_dlkm/*) \
 		$(GKI)/modules/manifest tools/laptop_module_check.py $(call android_recipe_inputs,vendor_dlkm) \
 		$(call recipe_inputs,aliases)

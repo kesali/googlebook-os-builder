@@ -13,7 +13,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Boot chain](boot.md) | partial | Renamed direct/UEFI boots verified; physical retest remains |
 | [OS image and disk](os-image.md) | working; recipe image byte-identical | Owner tests combined image; old media still need a fresh flash |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial; Lenovo fixes and MSI regression owner-confirmed | Continue daily-use testing; retain failure logs |
+| [Graphics](graphics.md) | partial; portable crypto improves Lenovo Chrome, owner-confirmed | MSI crypto regression; measure sustained Lenovo CPU use |
 | [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
 | [Laptop hardware](laptop-hardware.md) | partial; Lenovo fixes and MSI regression owner-confirmed | Remaining headphone, brightness and suspend checks |
 | [USB diagnostics](usb-diagnostic.md) | parked; moved inputs byte-verified | Separate diagnostic build/smoke not repeated |

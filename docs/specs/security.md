@@ -37,6 +37,9 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
   only firmware command left is a source-built `crossystem` stand-in that accepts the boot HAL's
   success values and rejects everything else.
 - No SELinux permissive domains or broad policy changes.
+- CPU-portable BoringSSL replaces the system/vendor pair and overlays only Conscrypt's two
+  library files at post-fs-data. Its signed APEX remains unchanged. Init gains only file
+  `mounton` on `system_lib_file` (type-scoped, not path-scoped); other APEX copies are untouched.
 
 ## Files
 - [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts; API check.
@@ -61,6 +64,12 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Lenovo owner confirms faster Chrome with portable crypto;
+  new saved logs show no earlier Conscrypt trap storm or detected crypto loader/integrity errors.
+  Remaining HttpEngine/other-APEX emulation unchanged; MSI crypto regression untested.
+- 2026-11-04 uncommitted — ABI-checked portable crypto integrated into system/vendor/Conscrypt.
+  66 focused tests; enforcing QEMU mount hashes/namespaces, integrity/self-tests and local HTTPS
+  pass; hardware CPU/app/Wi-Fi/Bluetooth regression pending. Other APEX crypto remains unchanged.
 - 2026-11-04 (this commit) — Rename policy identifiers/init filename and regenerate Android
   patches; permission comparison unchanged. Enforcing direct/UEFI runs keep key services stable
   and save renamed logs with no project-domain denials. Hardware-only audio policy untested.

@@ -11,3 +11,8 @@ system/lib64/bootstrap/libdl.so               0644 0:0    system_bootstrap_lib_f
 system/lib64/bootstrap/libdl_android.so       0644 0:0    system_bootstrap_lib_file emulator/system/system/lib64/bootstrap/libdl_android.so
 system/bin/bootstrap/linker64                 0755 0:2000 system_linker_exec        emulator/system/system/bin/bootstrap/linker64
 system/apex/com.android.runtime.apex          0644 0:0    system_file               emulator/system/system/apex/com.android.runtime.apex
+
+# CPU-portable BoringSSL; Google's build uses SHA-NI even on CPUs without it.
+system/lib64/libcrypto.so                     0644 0:0    system_lib_file           crypto/libcrypto.so
+system/lib64/libssl.so                        0644 0:0    system_lib_file           crypto/libssl.so
+system/etc/init/gbos-builder-crypto.rc         0644 0:0    system_file               ./crypto.rc

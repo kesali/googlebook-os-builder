@@ -30,6 +30,9 @@ Headphones, brightness controls and suspend/resume still need checks.
 MSI Bluetooth pairing is unconfirmed; HDMI audio is not implemented.
 See the [component specs](docs/specs/README.md) for evidence and device-specific limitations.
 
+CPU-portable BoringSSL makes Chrome launch and load pages faster on the Lenovo (owner report);
+temporary touchpad capture is retired. QEMU checks pass; MSI regression after crypto is pending.
+
 ## Build and try in QEMU
 
 Host requirements: Linux, Docker, GNU make, Python 3, `/dev/kvm` and a VNC viewer.

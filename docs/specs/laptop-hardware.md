@@ -294,27 +294,9 @@ Each boot contains `boot-id`, `boot.txt`, rotated kernel/Android logs, `hardware
 The snapshot records backlight values/permissions/SELinux labels, ALSA IDs/codecs and modules.
 Keep app/account logs private; share only relevant filtered excerpts.
 
-The initial [touchpad collector](../../android/system_ext/touchpad-capture.sh) passes 54 focused
-tests and an image build. It was deployed to the Lenovo: the owner confirms a stall during
-the captured interval. At boot completion it selects only the exact
-`ETPS/2 Elantech Touchpad` name, never the keyboard or all input devices. It records numeric
-timestamped events and capability metadata in `touchpad.log`, stopping after 180 seconds or
-32,768 events (under 2 MiB of event text), whichever comes first, with a two-second kill grace
-if `getevent` does not exit on timeout. It does not grab the device,
-change settings or inject events. The approved extension (validated locally, not yet deployed)
-first runs a five-second-bounded `getevent -p` query on that same device. It records axis ranges,
-fuzz, flat and resolutions; capture refuses to start if position, width or pressure metadata
-is missing, even if `getevent` exits successfully. Its separate enforcing domain permits
-input reads and identification/capability/axis/state-query ioctls only, not device grabs,
-axis setters, event injection or clock-setting ioctls.
-An interrupted capture remains retrievable, with `status=capturing` rather than a completion
-marker. A successful ending says `event-limit` or `time-limit`; failures retain their status.
-Once deployed, move one finger continuously during this early window and note when the cursor
-stalls. Then shut down normally and run `make laptop-logs`. Continuing raw motion events during
-a visible stall point above the kernel; gaps alone are inconclusive without continuous movement.
-Remove the collector and its policy after this diagnosis; it captures touch coordinates/buttons,
-not keyboard input. Enforcing QEMU reaches setup, responds to an injected accessibility tap
-(screens inspected), and saves `status=not-present` without opening an input device.
+The temporary Elantech event collector is retired at the owner's request after the working
+touchpad fix. Its service, script and raw-input SELinux domain are removed; the device calibration
+stays unchanged. Old `touchpad.log` files remain supported by retention and Linux retrieval.
 The initial physical-device read path is now verified by the
 [owner's capture](../../out/laptop-logs/20261103-202734-f4936ex7/current/touchpad.log):
 11,729 events over 40.64 seconds, no `SYN_DROPPED`, typical frame spacing about 10 ms.
@@ -382,10 +364,6 @@ metadata/logd starts still needs a screen photo.
 
 ## Actions
 - [x] Owner tests the rebuilt combined image on MSI and Lenovo — both reported working.
-- [ ] Owner updates the USB and tests the bounded Lenovo touchpad diagnostic — done when
-  the owner retrieves a capture made while continuously moving through a cursor stall
-  during the first three minutes after boot completion (or before the event limit).
-  Wi-Fi is owner-confirmed; do not change its working driver. No agent physical writes.
 - [ ] Remaining physical checks — done when the owner reports
   the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before). The
@@ -435,6 +413,12 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Owner reports faster Lenovo Chrome launch and page loads.
+  [Logs](../../out/laptop-logs/20261104-185222-9fwya0v7/current/) confirm retired touchpad capture and
+  sharply lower SHA-256 trapping; CPU utilization unmeasured, MSI crypto regression still pending.
+- 2026-11-04 uncommitted — Retired temporary raw touchpad capture and its dedicated policy;
+  50 focused tests, image metadata checks and enforcing QEMU pass (setup screen inspected, VM exited).
+  Lenovo CPU stays high after Chrome closes (owner report); fresh CPU/process evidence needed.
 - 2026-11-04 (this commit) — Owner reports MSI is fine after the requested speaker, microphone
   and camera regression check on the updated combined image. Shared hda-audio regression closed;
   Lenovo fixes and smaller density were already owner-confirmed.

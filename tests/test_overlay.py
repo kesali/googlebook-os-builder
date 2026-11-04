@@ -351,6 +351,54 @@ class ChangeDataTests(unittest.TestCase):
                 with self.subTest(path=path.parent.name, entry=entry[0]):
                     self.assertEqual(len(entry), 5)
 
+    def test_portable_crypto_replaces_both_namespaces_without_replacing_apex(self):
+        for partition, prefix, label in (("system", "system/", "system_lib_file"),
+                                          ("vendor", "", "vendor_file")):
+            changes = REPO / "android" / partition
+            installs = entries(changes / "install.list")
+            removed = (changes / "remove.list").read_text().splitlines()
+            for library in ("crypto", "ssl"):
+                path = f"{prefix}lib64/lib{library}.so"
+                self.assertIn(path, removed)
+                self.assertIn([path, "0644", "0:0", label, f"crypto/lib{library}.so"], installs)
+            self.assertNotIn(f"{prefix}apex/com.google.android.conscrypt.apex", removed)
+        init = (REPO / "android/system/crypto.rc").read_text()
+        mounts = [line.strip() for line in init.splitlines() if line.strip().startswith("mount ")]
+        self.assertIn("on post-fs-data\n", init)
+        self.assertEqual(mounts, [
+            f"mount none /system/lib64/lib{library}.so "
+            f"/apex/com.android.conscrypt/lib64/lib{library}.so bind"
+            for library in ("crypto", "ssl")
+        ])
+        policy = (REPO / "android/system/crypto-policy.patch").read_text()
+        added_rules = [line for line in policy.splitlines() if line.startswith("+(allow ")]
+        self.assertEqual(added_rules, ["+(allow init system_lib_file (file (mounton)))"])
+
+    def test_crypto_policy_applies_after_logging_policy_without_fuzz(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            policy = root / "system/etc/selinux/plat_sepolicy.cil"
+            policy.parent.mkdir(parents=True)
+            policy.write_text(
+                "(role object_r)\n(typeattribute cil_gen_require)\n"
+                "(roleattribute cil_gen_require)\n(handleunknown deny)\n"
+                "(mls true)\n(policycap network_peer_controls)\n\n"
+                "(typeattributeset gpu_sphal_domain (hal_graphics_allocator))\n"
+                "(typeattributeset gpu_sphal_domain (hal_graphics_composer))\n"
+                "(typeattributeset gpu_sphal_domain (hal_neuralnetworks))\n"
+            )
+            for name in ("bootlog-policy.patch", "crypto-policy.patch"):
+                result = subprocess.run(
+                    ["patch", "--batch", "--fuzz=0", "-p1", "-d", str(root)],
+                    input=(REPO / "android/system" / name).read_text(),
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            text = policy.read_text()
+            self.assertIn("(allow init system_lib_file (file (mounton)))", text)
+            self.assertIn("(type gbos_builder_bootlog)", text)
+            self.assertNotIn("gbos_builder_touchpad_diag", text)
+
     def test_every_file_in_a_change_directory_is_used(self):
         for changes in sorted(path for path in (REPO / "android").iterdir() if path.is_dir()):
             install = changes / "install.list"

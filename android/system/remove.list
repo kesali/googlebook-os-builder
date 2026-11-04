@@ -26,3 +26,7 @@ system/bin/bootstrap/linker64
 # bionic for everything else: the whole runtime APEX, with the same name, version and file list.
 # apexd trusts APEX files on /system; this module is not updated through the Play Store.
 system/apex/com.android.runtime.apex
+
+# Source-built BoringSSL restores runtime CPUID dispatch; emulator prebuilts lack required ABI.
+system/lib64/libcrypto.so
+system/lib64/libssl.so

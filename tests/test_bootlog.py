@@ -9,7 +9,6 @@ import unittest
 REPO = Path(__file__).resolve().parents[1]
 PREPARE = REPO / "android/system_ext/bootlog-prepare.sh"
 SNAPSHOT = REPO / "android/system_ext/hardware-snapshot.sh"
-TOUCHPAD = REPO / "android/system_ext/touchpad-capture.sh"
 BOOT_ONE = "11111111-1111-1111-1111-111111111111"
 BOOT_TWO = "22222222-2222-2222-2222-222222222222"
 BOOT_THREE = "33333333-3333-3333-3333-333333333333"
@@ -184,7 +183,6 @@ class BootlogTests(unittest.TestCase):
         self.assertIn("on property:sys.gbos_builder.bootlog.ready=1", text)
         self.assertIn("on property:sys.boot_completed=1 && property:sys.gbos_builder.bootlog.ready=1\n"
                       "    start gbos_builder_hardware_snapshot\n"
-                      "    start gbos_builder_touchpad_capture\n"
                       "    stop gbos_builder_android_boot_log\n", text)
         self.assertIn("seclabel u:r:gbos_builder_hardware_diag:s0", text)
         commands = [line.split() for line in text.splitlines()
@@ -216,6 +214,16 @@ class BootlogTests(unittest.TestCase):
         self.assertNotIn("stop gbos_builder_crash_log", text)
         for command in commands:
             self.assertIn(f"    start {command[1]}\n", text)
+
+    def test_retired_touchpad_capture_has_no_runtime_or_policy_access(self):
+        init = (REPO / "android/system_ext/bootlog.rc").read_text()
+        installs = (REPO / "android/system_ext/install.list").read_text()
+        policy = (REPO / "android/system/bootlog-policy.patch").read_text()
+        self.assertNotIn("touchpad", init)
+        self.assertNotIn("touchpad-capture", installs)
+        self.assertFalse((REPO / "android/system_ext/touchpad-capture.sh").exists())
+        self.assertNotIn("gbos_builder_touchpad_diag", policy)
+        self.assertNotIn("input_device", policy)
 
     def test_policy_allows_rotation_only_in_our_directory_type(self):
         policy = (REPO / "android/system/bootlog-policy.patch").read_text()

@@ -1,0 +1,18 @@
+Conscrypt's signed APEX keeps a Panther Lake libcrypto that traps on Broadwell.
+Init bind-mounts the ABI-checked CPU-portable pair over its library files before zygote.
+Permit only file mount targets of the system library type, not vendor/system files generally.
+Drop with the Conscrypt overlay once Google's crypto uses runtime CPU detection.
+
+--- a/system/etc/selinux/plat_sepolicy.cil
++++ b/system/etc/selinux/plat_sepolicy.cil
+@@ -1,6 +1,10 @@
+ (role object_r)
+ (typeattribute cil_gen_require)
+ (roleattribute cil_gen_require)
++
++; Init overlays CPU-portable crypto on Conscrypt's two signed-APEX library files.
++(allow init system_lib_file (file (mounton)))
++
+ (handleunknown deny)
+ (mls true)
+ (policycap network_peer_controls)

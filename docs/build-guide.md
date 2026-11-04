@@ -306,6 +306,41 @@ QEMU's virtio GPU, input and network drivers are not compiled here: they are Goo
 modules for this same kernel, from its virtual-device build (`GKI_VIRT` in
 [sources.mk](../sources.mk)). Output: `out/gki/bzImage`.
 
+## CPU-portable BoringSSL
+
+```sh
+make boringssl JOBS=12
+```
+
+This builds upstream `libcrypto.so` and `libssl.so` into `out/boringssl/`; the standalone target
+does not update the image. `make android-image` installs the pair into system/vendor.
+Google's crypto uses SHA-NI instructions that Broadwell must emulate.
+The pinned emulator libraries cannot replace it: they lack required exports.
+
+The source pin and official host Go tool are in [sources.mk](../sources.mk).
+[boringssl.sh](../scripts/boringssl.sh) builds unchanged upstream with `-march=x86-64-v3`,
+runtime CPU detection and upstream's FIPS integrity machinery (not a certification claim).
+It links Google's platform libc++, like minigbm, rather than adding a custom C++ shim.
+[crypto_abi.py](../tools/crypto_abi.py) requires all original system/vendor/Conscrypt exports with matching
+types, bindings, visibility and data-object sizes before publishing either library.
+This does not prove opaque structure layouts or runtime compatibility.
+
+[crypto.rc](../android/system/crypto.rc) bind-mounts the system pair over Conscrypt's copies
+after APEX activation and before zygote starts. The signed APEX stays unchanged. Its
+[policy patch](../android/system/crypto-policy.patch) adds only init file-mount permission on
+`system_lib_file`; this is type-scoped, not restricted to the two target paths.
+
+Verified in enforcing QEMU: setup screen, mounts inherited by zygote/system_server, upstream
+integrity/crypto self-tests, 10,000 SHA-256 known-answer checks, TLS context creation and
+certificate-verified HTTPS against a temporary local server through system and Conscrypt paths.
+The local server avoids QEMU's unfinished DNS/default-route setup. Repeat image builds preserve
+published timestamps and write no partitions.
+The owner confirms faster Chrome launches and page loads on Lenovo. Its new logs show
+284,898 SHA-256 traps over about 160 seconds versus 49,743,288 over about 605 seconds before;
+these are different sessions, not a controlled benchmark. The Conscrypt trap storm is absent.
+Not verified: measured CPU utilization or MSI regression with these libraries.
+Other APEX copies and HttpEngine's different crypto build remain unchanged.
+
 ## Googlebook OS in QEMU
 
 ```sh

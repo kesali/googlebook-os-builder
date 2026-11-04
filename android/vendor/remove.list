@@ -42,10 +42,14 @@ bin/crossystem
 # generic build. See android/system/remove.list.
 lib64/libz.so
 
+# Replace Google's unconditional SHA-NI crypto with runtime-dispatched upstream builds.
+lib64/libcrypto.so
+lib64/libssl.so
+
 # recipe: amdgpu/vendor.remove
 
 # Compile the changed platform policy instead of using Google's unchanged binary.
-# Keep enforcing; remove this group when the dedicated boot logger is no longer needed.
+# Keep enforcing; remove this group only when no project policy changes remain.
 etc/selinux/precompiled_sepolicy
 etc/selinux/precompiled_sepolicy.plat_sepolicy_and_mapping.sha256
 etc/selinux/precompiled_sepolicy.product_sepolicy_and_mapping.sha256

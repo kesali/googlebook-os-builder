@@ -1,0 +1,5 @@
+# Google's main post-fs-data action activates APEXes in the default namespace before this
+# action runs, ahead of zygote-start. Keep the signed Conscrypt APEX itself unchanged.
+on post-fs-data
+    mount none /system/lib64/libcrypto.so /apex/com.android.conscrypt/lib64/libcrypto.so bind
+    mount none /system/lib64/libssl.so /apex/com.android.conscrypt/lib64/libssl.so bind
