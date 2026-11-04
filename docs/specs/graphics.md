@@ -1,7 +1,12 @@
 # Graphics
 
 **Status:** partial — QEMU softpipe works; the laptop desktop and camera work, and Chrome uses RADV.
-**Last verified:** 2026-11-04 — Recipe refactor: 263 tests, exact patch/profile/input equality,
+**Last verified:** 2026-11-04 — HttpEngine crypto candidate: 29 tests, exact ABI, image metadata,
+no-write repeat and enforcing QEMU/native checks pass; subsequent Lenovo test owner-accepted.
+Dedicated HttpEngine requests and MSI regression remain unverified.
+[Evidence](../../out/httpengine-investigation/).
+
+Earlier, 2026-11-04 — Recipe refactor: 263 tests, exact patch/profile/input equality,
 image metadata and 38-output byte equality pass; 23.8 s no-write repeat preserves timestamps.
 Direct and USB-UEFI softpipe setup screens inspected under enforcing SELinux; direct tap opens
 inspected Accessibility. Physical AMD/Intel regression remains. [Evidence](../../out/full-hardware-recipes/).
@@ -292,6 +297,12 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Owner accepts Lenovo test; saved `193204` logs show no HttpEngine
+  trap samples, with 190,311 SHA/148,506 GFNI/5,654 VNNI maxima over ~351 s, not CPU measurements.
+  Video raises CPU; playback decoder, dedicated HttpEngine HTTP/TLS and MSI regression unverified.
+- 2026-11-04 (this commit) — Separate portable HttpEngine crypto builds from Chromium's exact pin;
+  29 tests, 323 exact exports, image/metadata/no-write repeat and enforcing QEMU/native probe pass.
+  Actual HTTP/TLS request, Lenovo trap reduction and MSI regression remain unverified.
 - 2026-11-04 (this commit) — Owner confirms faster Lenovo Chrome launch/page loads.
   Logs `20261104-185222`: 284,898 SHA-256 traps/~160 s versus 49,743,288/~605 s before;
   not matched workloads or a CPU benchmark. Conscrypt storm absent; MSI crypto regression pending.

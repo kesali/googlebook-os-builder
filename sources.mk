@@ -135,3 +135,11 @@ BORINGSSL_SHA := d9d20cb1df6a717908eda2340bd222f547d2fe6e3fc46900449da6d214c5bf5
 BORINGSSL_GO_VERSION := 1.25.14
 BORINGSSL_GO_URL := https://go.dev/dl/go$(BORINGSSL_GO_VERSION).linux-amd64.tar.gz
 BORINGSSL_GO_SHA := a21ae5633a269bcd7e90cf767e48225633795e99d831742cbf3397064fee7712
+
+# HttpEngine 150.0.7871.41 has a different BoringSSL/C++ ABI from platform crypto.
+# Pin verified against chromium/src's 150.0.7871.41 DEPS, not inferred from exported symbols.
+# No compatible official prebuilt; restore upstream CPU dispatch without patching its source.
+HTTPENGINE_VERSION := 150.0.7871.41
+HTTPENGINE_CRYPTO_REV := 3a9254f16eda7a4c5d2260039ff23456a0a34de4
+HTTPENGINE_CRYPTO_URL := https://codeload.github.com/google/boringssl/tar.gz/$(HTTPENGINE_CRYPTO_REV)
+HTTPENGINE_CRYPTO_SHA := d5e7a5068527ac857c0b84f816c439cca7a8d63659393a54d540f33b12d2747d

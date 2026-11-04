@@ -16,3 +16,4 @@ system/apex/com.android.runtime.apex          0644 0:0    system_file           
 system/lib64/libcrypto.so                     0644 0:0    system_lib_file           crypto/libcrypto.so
 system/lib64/libssl.so                        0644 0:0    system_lib_file           crypto/libssl.so
 system/etc/init/gbos-builder-crypto.rc         0644 0:0    system_file               ./crypto.rc
+system/lib64/libcrypto_httpengine.so          0644 0:0    system_lib_file           httpengine/libcrypto_httpengine.so

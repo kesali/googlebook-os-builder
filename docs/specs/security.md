@@ -1,7 +1,12 @@
 # Security services
 
 **Status:** working (software keys) — renamed policy enforcing; key services stable.
-**Last verified:** 2026-11-04 — 246 tests, source-derived policy comparison (identity changes
+**Last verified:** 2026-11-04 — HttpEngine candidate: 29 focused tests, exact versioned ABI,
+enforcing QEMU/native crypto checks; no added permission. Subsequent Lenovo test owner-accepted;
+dedicated HttpEngine requests and MSI regression remain unverified.
+[Evidence](../../out/httpengine-investigation/).
+
+Earlier, 2026-11-04 — 246 tests, source-derived policy comparison (identity changes
 only), image metadata checks and enforcing direct/UEFI QEMU pass. KeyMint/Gatekeeper PIDs stable;
 renamed collectors persist logs and hardware snapshot without project-domain denials.
 [Evidence](../../out/gbos-builder-validation/).
@@ -38,8 +43,10 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
   success values and rejects everything else.
 - No SELinux permissive domains or broad policy changes.
 - CPU-portable BoringSSL replaces the system/vendor pair and overlays only Conscrypt's two
-  library files at post-fs-data. Its signed APEX remains unchanged. Init gains only file
-  `mounton` on `system_lib_file` (type-scoped, not path-scoped); other APEX copies are untouched.
+  library files at post-fs-data. HttpEngine uses a separate exact-ABI build overlaid on
+  Tethering's crypto file. Both signed APEXes remain unchanged. Init gains only file
+  `mounton` on `system_lib_file` (type-scoped, not path-scoped); no additional HttpEngine
+  permission. Wi-Fi and other APEX copies are untouched.
 
 ## Files
 - [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts; API check.
@@ -64,6 +71,12 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Owner accepts Lenovo hardware test; saved `193204` logs have no
+  HttpEngine trap samples. Remaining sampled SHA is in Bluetooth crypto, not replaced here.
+  Dedicated HttpEngine HTTP/TLS request and MSI regression remain unverified.
+- 2026-11-04 (this commit) — HttpEngine: exact 323-symbol ABI, 29 focused tests, image metadata,
+  enforcing QEMU boot/mount propagation and native library/SHA/refcount probe pass.
+  No new policy permission; actual HttpEngine requests and hardware regression unverified.
 - 2026-11-04 (this commit) — Lenovo owner confirms faster Chrome with portable crypto;
   new saved logs show no earlier Conscrypt trap storm or detected crypto loader/integrity errors.
   Remaining HttpEngine/other-APEX emulation unchanged; MSI crypto regression untested.

@@ -27,7 +27,7 @@ def exports(path):
     return symbols
 
 
-def check(original, replacement):
+def check(original, replacement, exact=False):
     expected = exports(original)
     actual = exports(replacement)
     missing = sorted(name for name, signature in expected.items()
@@ -35,14 +35,40 @@ def check(original, replacement):
     if missing:
         raise ValueError(f"{replacement}: {len(missing)} missing or incompatible exports "
                          f"from {original}:\n" + "\n".join(missing))
+    extra = sorted(actual.keys() - expected.keys())
+    if exact and extra:
+        raise ValueError(f"{replacement}: unexpected exports:\n" + "\n".join(extra))
     print(f"{original}: all {len(expected)} exports match; "
           f"{len(actual.keys() - expected.keys())} additional exports")
 
 
+def httpengine_version_script(original):
+    symbols = exports(original)
+    if any(not name.endswith("@@INTERSECTED_SYMBOLS") for name in symbols):
+        raise ValueError(f"{original}: expected only @@INTERSECTED_SYMBOLS exports")
+    names = sorted(name.split("@")[0] for name in symbols)
+    return ("INTERSECTED_SYMBOLS {\n  global:\n"
+            + "".join(f"    {name};\n" for name in names)
+            + "  local: *;\n};\n")
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: crypto_abi.py ORIGINAL REPLACEMENT")
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--exact", action="store_true")
+    parser.add_argument("--httpengine-version-script", action="store_true")
+    parser.add_argument("original", type=Path)
+    parser.add_argument("replacement", nargs="?", type=Path)
+    args = parser.parse_args()
+    if not args.httpengine_version_script and args.replacement is None:
+        parser.error("REPLACEMENT is required unless generating the HttpEngine version script")
+    if args.httpengine_version_script and (args.replacement or args.exact):
+        parser.error("version script generation takes only ORIGINAL")
     try:
-        check(Path(sys.argv[1]), Path(sys.argv[2]))
+        if args.httpengine_version_script:
+            print(httpengine_version_script(args.original), end="")
+        else:
+            check(args.original, args.replacement, exact=args.exact)
     except (ValueError, subprocess.CalledProcessError) as error:
         raise SystemExit(str(error)) from error

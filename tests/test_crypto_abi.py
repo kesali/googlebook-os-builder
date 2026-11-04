@@ -17,12 +17,12 @@ def symbol(name="SHA256", kind="FUNC", binding="GLOBAL", size=16, section="12"):
 
 
 class CryptoAbiTests(unittest.TestCase):
-    def compare(self, original, replacement):
+    def compare(self, original, replacement, exact=False):
         outputs = [subprocess.CompletedProcess([], 0, stdout=text)
                    for text in (original, replacement)]
         with patch.object(crypto_abi.subprocess, "run", side_effect=outputs):
             with contextlib.redirect_stdout(io.StringIO()):
-                crypto_abi.check("original", "replacement")
+                crypto_abi.check("original", "replacement", exact=exact)
 
     def test_function_code_size_and_additional_exports_can_differ(self):
         self.compare(symbol(), symbol(size=32) + symbol("extra"))
@@ -30,6 +30,27 @@ class CryptoAbiTests(unittest.TestCase):
     def test_missing_export_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "SHA256"):
             self.compare(symbol(), symbol("different"))
+
+    def test_exact_mode_rejects_extra_exports(self):
+        self.compare(symbol(), symbol(size=32), exact=True)
+        with self.assertRaisesRegex(ValueError, "unexpected exports.*\nextra"):
+            self.compare(symbol(), symbol() + symbol("extra"), exact=True)
+
+    def test_httpengine_version_script_uses_only_original_names(self):
+        output = symbol("SHA256@@INTERSECTED_SYMBOLS") + symbol("_ZN4bssl3fooEv@@INTERSECTED_SYMBOLS")
+        with patch.object(crypto_abi.subprocess, "run",
+                          return_value=subprocess.CompletedProcess([], 0, stdout=output)):
+            self.assertEqual(crypto_abi.httpengine_version_script("original"),
+                             "INTERSECTED_SYMBOLS {\n  global:\n"
+                             "    SHA256;\n    _ZN4bssl3fooEv;\n  local: *;\n};\n")
+
+    def test_httpengine_version_script_rejects_unexpected_or_unversioned_exports(self):
+        for name in ("SHA256", "SHA256@@DIFFERENT", "SHA256@INTERSECTED_SYMBOLS"):
+            with self.subTest(name=name):
+                with patch.object(crypto_abi.subprocess, "run",
+                                  return_value=subprocess.CompletedProcess([], 0, stdout=symbol(name))):
+                    with self.assertRaisesRegex(ValueError, "expected only"):
+                        crypto_abi.httpengine_version_script("original")
 
     def test_binding_kind_visibility_and_object_size_must_match(self):
         cases = [

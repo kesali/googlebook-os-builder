@@ -3,3 +3,4 @@
 on post-fs-data
     mount none /system/lib64/libcrypto.so /apex/com.android.conscrypt/lib64/libcrypto.so bind
     mount none /system/lib64/libssl.so /apex/com.android.conscrypt/lib64/libssl.so bind
+    mount none /system/lib64/libcrypto_httpengine.so /apex/com.android.tethering/lib64/libcrypto_httpengine.so bind

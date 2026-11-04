@@ -53,6 +53,9 @@ BORINGSSL_SRC := $(OUT)/src/boringssl-$(BORINGSSL_SHA)
 BORINGSSL_GO_TAR := $(DL)/go-$(BORINGSSL_GO_SHA).tar.gz
 BORINGSSL_GO := $(TOOLCHAIN)/go-$(BORINGSSL_GO_SHA)
 BORINGSSL := $(OUT)/boringssl
+HTTPENGINE_CRYPTO_TAR := $(DL)/httpengine-crypto-$(HTTPENGINE_CRYPTO_SHA).tar.gz
+HTTPENGINE_CRYPTO_SRC := $(OUT)/src/httpengine-crypto-$(HTTPENGINE_CRYPTO_SHA)
+HTTPENGINE_CRYPTO := $(OUT)/httpengine-crypto
 FIRMWARE_TAR := $(DL)/linux-firmware-$(FIRMWARE_SHA).tar.xz
 FIRMWARE := $(OUT)/firmware-$(FIRMWARE_SHA)
 MINIGBM := $(OUT)/minigbm
@@ -254,6 +257,16 @@ $(BORINGSSL)/manifest: FORCE $(BORINGSSL_SRC)/.ready $(BORINGSSL_GO)/.ready $(ND
 		$(GOOGLE)/inventory.txt scripts/boringssl.sh tools/crypto_abi.py scripts/boringssl-platform-cxx.h
 	$(BUILDER) bash scripts/boringssl.sh "$(BORINGSSL_SRC)" "$(NDK)" "$(BORINGSSL_GO)" "$(GOOGLE)" "$(BORINGSSL)"
 
+.PHONY: httpengine-crypto
+httpengine-crypto: $(HTTPENGINE_CRYPTO)/manifest ## Build ABI-matched CPU-portable HttpEngine crypto
+$(HTTPENGINE_CRYPTO_TAR): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(HTTPENGINE_CRYPTO_URL)" "$(HTTPENGINE_CRYPTO_SHA)" "$@"
+$(HTTPENGINE_CRYPTO_SRC)/.ready: | $(HTTPENGINE_CRYPTO_TAR)
+	$(BUILDER) bash scripts/source.sh "$(HTTPENGINE_CRYPTO_TAR)" "$(@D)"
+$(HTTPENGINE_CRYPTO)/manifest: FORCE $(HTTPENGINE_CRYPTO_SRC)/.ready $(NDK)/.ready \
+		$(GOOGLE)/inventory.txt scripts/httpengine-crypto.sh scripts/httpengine-cxx.h tools/crypto_abi.py
+	$(BUILDER) bash scripts/httpengine-crypto.sh "$(HTTPENGINE_CRYPTO_SRC)" "$(NDK)" "$(GOOGLE)" "$(HTTPENGINE_CRYPTO)" "$(HTTPENGINE_VERSION)"
+
 $(OUT)/mesa-clc/manifest: FORCE $(MESA_SRC)/.ready scripts/mesa-clc.sh $(BUILD_READY)
 	$(BUILDER) bash scripts/mesa-clc.sh "$(MESA_SRC)" "$(OUT)/mesa-clc"
 mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Iris, Zink, AMD Vulkan and VA-API
@@ -338,7 +351,8 @@ $(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
 # See scripts/android-overlay.sh for the native formats and metadata safeguards.
 # install.list sources start with one of these names, e.g. emulator/vendor/bin/...
 ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID) \
-	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules hardware=hardware crypto=$(BORINGSSL)
+	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules hardware=hardware crypto=$(BORINGSSL) \
+	httpengine=$(HTTPENGINE_CRYPTO)
 # $* is the partition name: system, vendor, system_ext or vendor_dlkm.
 $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vendor_dlkm_a.img: $(ANDROID)/%_a.img: \
 		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh \
@@ -349,7 +363,7 @@ $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(AN
 # The directories catch removed files; the wildcards catch edited ones.
 android_recipe_inputs = $(call recipe_inputs,$(1).install $(1).remove $(1)*.patches $(1) $(1)/*)
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready \
-		$(call android_recipe_inputs,system) $(BORINGSSL)/manifest
+		$(call android_recipe_inputs,system) $(BORINGSSL)/manifest $(HTTPENGINE_CRYPTO)/manifest
 $(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*) $(call android_recipe_inputs,system_ext)
 $(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
 		$(call android_recipe_inputs,vendor) \

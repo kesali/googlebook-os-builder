@@ -369,7 +369,15 @@ class ChangeDataTests(unittest.TestCase):
             f"mount none /system/lib64/lib{library}.so "
             f"/apex/com.android.conscrypt/lib64/lib{library}.so bind"
             for library in ("crypto", "ssl")
-        ])
+        ] + ["mount none /system/lib64/libcrypto_httpengine.so "
+             "/apex/com.android.tethering/lib64/libcrypto_httpengine.so bind"])
+        self.assertIn(
+            ["system/lib64/libcrypto_httpengine.so", "0644", "0:0", "system_lib_file",
+             "httpengine/libcrypto_httpengine.so"],
+            entries(REPO / "android/system/install.list"),
+        )
+        self.assertNotIn("system/apex/com.google.android.tethering.apex",
+                         (REPO / "android/system/remove.list").read_text().splitlines())
         policy = (REPO / "android/system/crypto-policy.patch").read_text()
         added_rules = [line for line in policy.splitlines() if line.startswith("+(allow ")]
         self.assertEqual(added_rules, ["+(allow init system_lib_file (file (mounton)))"])

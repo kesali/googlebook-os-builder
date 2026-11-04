@@ -328,7 +328,7 @@ This does not prove opaque structure layouts or runtime compatibility.
 [crypto.rc](../android/system/crypto.rc) bind-mounts the system pair over Conscrypt's copies
 after APEX activation and before zygote starts. The signed APEX stays unchanged. Its
 [policy patch](../android/system/crypto-policy.patch) adds only init file-mount permission on
-`system_lib_file`; this is type-scoped, not restricted to the two target paths.
+`system_lib_file`; this is type-scoped, not restricted to specific target paths.
 
 Verified in enforcing QEMU: setup screen, mounts inherited by zygote/system_server, upstream
 integrity/crypto self-tests, 10,000 SHA-256 known-answer checks, TLS context creation and
@@ -339,7 +339,35 @@ The owner confirms faster Chrome launches and page loads on Lenovo. Its new logs
 284,898 SHA-256 traps over about 160 seconds versus 49,743,288 over about 605 seconds before;
 these are different sessions, not a controlled benchmark. The Conscrypt trap storm is absent.
 Not verified: measured CPU utilization or MSI regression with these libraries.
-Other APEX copies and HttpEngine's different crypto build remain unchanged.
+
+### HttpEngine crypto
+
+`make httpengine-crypto JOBS=12` builds the separate `libcrypto_httpengine.so` into
+`out/httpengine-crypto/`; `make android-image` installs it and overlays Tethering's copy.
+HttpEngine/Cronet 150.0.7871.41 pins a different BoringSSL revision in
+[Chromium DEPS](https://chromium.googlesource.com/chromium/src/+/150.0.7871.41/DEPS).
+[httpengine-crypto.sh](../scripts/httpengine-crypto.sh) checks the engine version and requires
+exactly the original 323 versioned exports, including Chromium's `std::__Cr` helpers.
+It builds unchanged upstream, non-FIPS, with runtime CPU dispatch. The
+[header](../scripts/httpengine-cxx.h) uses libc++'s supported fatal-abort hook instead of a
+hand-written Chromium C++ shim. Signed Tethering bytes and SELinux permissions are unchanged.
+Wi-Fi and other APEX crypto copies are not replaced.
+
+Verified: 29 focused tests, image metadata/fit, enforcing QEMU setup screen and inherited
+mount hashes; the real HttpEngine native library loads with immediate symbol resolution.
+10,000 SHA-256 known answers and Chromium reference-count cycles pass. An unchanged image
+repeat preserves published timestamps and writes no partitions or boot files.
+The Java request probe failed during standalone ART startup, before calling HttpEngine;
+successful HttpEngine HTTP/TLS requests and physical trap reduction remain unverified.
+Evidence: [HttpEngine investigation](../out/httpengine-investigation/).
+
+Subsequent Lenovo test: owner accepts the image for continued use; video plays but raises CPU.
+[Saved logs](../out/laptop-logs/20261104-193204-2vm8v68i/current/) contain no HttpEngine trap
+samples. Highest logged counters over about 351 seconds are 190,311 SHA-256, 148,506 GFNI
+and 5,654 VNNI; these are rate-limited counters, not exact totals or CPU measurements.
+The last sampled SHA trap is in Bluetooth's separate crypto copy. Intel VA initializes and
+advertises H.264/VP8 decoders, but playback's selected codec/decoder is not retained.
+No dedicated successful HttpEngine HTTP/TLS request or MSI regression test is established.
 
 ## Googlebook OS in QEMU
 
