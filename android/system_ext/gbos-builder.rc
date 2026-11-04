@@ -3,7 +3,7 @@ import /system_ext/etc/gbos-builder/graphics-${ro.boot.gbos_builder.graphics:-so
 
 on early-init
     # ro.* properties cannot change once set; the system patch leaves this one to init.
-    setprop ro.dalvik.vm.native.bridge ${ro.boot.gbos_builder.native_bridge:-libhoudini.so}
+    setprop ro.dalvik.vm.native.bridge ${ro.boot.gbos_builder.native_bridge:-libndk_translation.so}
     setprop trusty.security_vm.enabled 0
     setprop remote_provisioning.tee.rkp_only 0
     setprop remote_provisioning.strongbox.rkp_only 0

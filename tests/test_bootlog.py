@@ -59,7 +59,7 @@ class BootlogTests(unittest.TestCase):
                   'case "$1" in\n'
                   'ro.build.fingerprint) echo test/fingerprint ;;\n'
                   'ro.boot.gbos_builder.graphics) echo amd ;;\n'
-                  'ro.dalvik.vm.native.bridge) echo "${NATIVE_BRIDGE:-libhoudini.so}" ;;\n'
+                  'ro.dalvik.vm.native.bridge) echo "${NATIVE_BRIDGE:-libndk_translation.so}" ;;\n'
                   'ro.boot.bootreason) echo cold ;;\n'
                   '*) exit 1 ;;\n'
                   'esac\n')
@@ -89,13 +89,13 @@ class BootlogTests(unittest.TestCase):
         self.assertEqual((current / "boot-id").read_text(), BOOT_ONE + "\n")
         self.assertIn("fingerprint=test/fingerprint\n", (current / "boot.txt").read_text())
         self.assertIn("graphics_boot_property=amd\n", (current / "boot.txt").read_text())
-        self.assertIn("native_bridge=libhoudini.so\n", (current / "boot.txt").read_text())
+        self.assertIn("native_bridge=libndk_translation.so\n", (current / "boot.txt").read_text())
         self.assertEqual(current.stat().st_mode & 0o777, 0o700)
         self.assertFalse((self.logs / "previous").exists())
 
     def test_selected_native_bridge_is_recorded(self):
-        self.assert_ready(self.prepare(NATIVE_BRIDGE="libndk_translation.so"))
-        self.assertIn("native_bridge=libndk_translation.so\n",
+        self.assert_ready(self.prepare(NATIVE_BRIDGE="libhoudini.so"))
+        self.assertIn("native_bridge=libhoudini.so\n",
                       (self.logs / "current/boot.txt").read_text())
 
     def test_same_boot_restart_preserves_streams(self):

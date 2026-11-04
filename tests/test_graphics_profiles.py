@@ -56,19 +56,16 @@ class GraphicsProfileTests(unittest.TestCase):
             installs,
         )
 
-    def test_berberis_entry_changes_only_the_native_bridge(self):
+    def test_berberis_is_default_without_a_translator_specific_grub_entry(self):
         menu = (REPO / "boot/android-menu.cfg").read_text()
         self.assertIn('menuentry "Googlebook OS" {\n    boot_android\n}', menu)
-        self.assertIn(
-            'menuentry "Googlebook OS (test: Berberis ARM translation)" {\n'
-            '    boot_android androidboot.gbos_builder.native_bridge=libndk_translation.so\n}',
-            menu,
-        )
+        self.assertNotIn("native_bridge=", menu)
+        self.assertNotIn("Berberis ARM translation", menu)
         self.assertIn("set default=0\n", menu)
         init = (SYSTEM_EXT / "gbos-builder.rc").read_text()
         early_init = init.split("on early-init\n", 1)[1]
         self.assertIn("    setprop ro.dalvik.vm.native.bridge "
-                      "${ro.boot.gbos_builder.native_bridge:-libhoudini.so}\n", early_init)
+                      "${ro.boot.gbos_builder.native_bridge:-libndk_translation.so}\n", early_init)
         patch = (REPO / "android/system/native-bridge.patch").read_text()
         changes = [line for line in patch.splitlines()
                    if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))]

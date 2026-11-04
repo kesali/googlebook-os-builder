@@ -1,12 +1,16 @@
 # Boot chain
 
-**Status:** partial — opt-in diagnostics verified in QEMU; physical menu retest pending.
-**Last verified:** 2026-11-04 — 57 focused boot/logging/overlay tests pass. Image rebuild
-changes only system_ext and boot files; repeat preserves published timestamps and writes nothing.
-Direct diagnostic boot saves fresh streams/snapshot; normal boot leaves all saved file bytes
-and inode timestamps unchanged. Actual diagnostic GRUB entry boots under enforcing UEFI/QEMU,
-with NVMe decoy unchanged. Setup and injected-tap Accessibility screenshots inspected; no
-project-domain denials. [Evidence](../../out/optin-logs/). Physical retest/performance unmeasured.
+**Status:** partial — opt-in diagnostics and default Berberis selection verified in QEMU;
+physical retest pending.
+**Last verified:** 2026-11-04 — 4 focused translator/profile tests pass; `make qemu-check JOBS=12`
+passes and a direct guest property query confirms `libndk_translation.so` is the default.
+Translator selection on the laptop remains unverified; Houdini's failure cause is unknown.
+Earlier, 57 focused boot/logging/overlay tests pass. Image rebuild changes only system_ext and
+boot files; repeat preserves published timestamps and writes nothing. Direct diagnostic boot
+saves fresh streams/snapshot; normal boot leaves saved bytes and inode timestamps unchanged.
+Actual diagnostic GRUB entry boots under enforcing UEFI/QEMU, with NVMe decoy unchanged. Setup
+and injected-tap Accessibility screenshots inspected; no project-domain denials.
+[Evidence](../../out/optin-logs/). Physical retest/performance unmeasured.
 
 Earlier, 2026-11-04 — Rename: 246 tests and enforcing direct/UEFI QEMU pass.
 Setup and Accessibility after an injected tap are inspected. New collector domains, saved
@@ -116,9 +120,10 @@ limits; Google's base policy already lets every domain read the cpufreq files.
 `android.log` rolls within about a minute of boot, so a third collector writes
 `android-boot.log*` until boot completes; QEMU's startup took 4.0 MB of its 8 MiB.
 
-Verified in QEMU: the optional Berberis ARM64 boot entry and independent `crash.log*` collector.
-The normal entry retains Houdini; the test uses Google's existing `libndk_translation.so`
-and its ARM64-library/executable-registration init hooks. `boot.txt` records the selected bridge.
+Previously verified in QEMU: the Berberis ARM64 test entry and independent `crash.log*` collector.
+The entry used Google's existing `libndk_translation.so` and its ARM64-library/executable-
+registration init hooks. `boot.txt` records the selected bridge. The default now selects
+Berberis in direct QEMU; laptop selection has not yet been retested.
 Before the switch, the owner reported Besiege closing back to the desktop and many other apps
 failing. The retrieved
 [logs](../../out/laptop-boot-2026-11-02-apps/dali-bootlog/current/) retain only about ten seconds
@@ -164,9 +169,12 @@ cause; the game-controls loop was not established as the cause.
   after boot, so desktop transition spam cannot evict fatal records. All four streams together
   budget 14 MiB per boot, plus record-size overshoot and the small snapshots.
   Collection begins at `post-fs`, not first-stage init; an earlier hang still needs a photo.
-- Keep Houdini as the default native bridge. An explicit Berberis test entry changes only
-  `androidboot.gbos_builder.native_bridge`; early-init sets the read-only bridge property before zygote.
-  Use Google's bundled translators and existing init hooks unchanged; no new security permissions.
+- Use Google's bundled Berberis (`libndk_translation.so`) as the default native bridge; retain
+  Houdini in the image. Early-init sets the read-only bridge property before zygote, with an
+  optional `androidboot.gbos_builder.native_bridge` kernel argument for another bootloader to
+  select a different translator. No translator-specific GRUB entry is needed. The reason some
+  apps fail under Houdini remains unknown; use Google's existing translator hooks unchanged.
+  No new security permissions.
 - A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.gbos_builder.bootlog.ready=1`
   may read backlight, ALSA and loaded-module metadata
   into the current boot log directory. It must not read sound device nodes or write sysfs, and it
@@ -239,11 +247,10 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
 - [ ] After each laptop retest, retrieve `/gbos-builder-bootlog/current/` from the metadata partition —
   done when its snapshot and logs are reviewed for that build.
 
-### Ideas (not approved)
-- Make Berberis the default and retain Houdini as an optional fallback, following the owner's
-  successful laptop tests. The current default remains unchanged.
-
 ## Handoff log
+- 2026-11-04 (this commit) — Make Berberis the default and remove its translator-specific GRUB
+  entry. Four focused tests, QEMU smoke check and direct property query pass; laptop retest and
+  Houdini failure cause remain unknown.
 - 2026-11-04 (this commit) — Persistent capture is opt-in through the diagnostic GRUB entry.
   57 tests, enforcing direct/UEFI boots and no-write repeat pass; normal boot preserves saved
   bytes/inodes. Recovery docs/AI skill updated; physical retest remains.

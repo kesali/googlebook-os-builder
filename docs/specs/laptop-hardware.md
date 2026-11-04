@@ -77,7 +77,8 @@ Verified on the laptop: the normal framebuffer-handoff boot, setup over Wi-Fi, k
 touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86; this is an
 impression, not a benchmark. Density 160 replaces 180 in the AMD profile only; QEMU keeps 240.
 Video works after the source-level YV12 fixes. The owner reports the previously failing game,
-another native app and Hearthstone work with Berberis; normal boot still selects Houdini.
+another native app and Hearthstone work with Berberis. The default is now configured to use
+Berberis; that default has not yet been retested on the laptop.
 See [boot](boot.md) for the translator comparison and its limits.
 Chrome logs show ANGLE on RADV; SurfaceFlinger/HWUI, Bluetooth, headset microphone and suspend
 have not been independently verified.
