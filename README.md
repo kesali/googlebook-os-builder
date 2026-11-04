@@ -41,7 +41,7 @@ The first build downloads large pinned inputs and may take hours; repeat builds 
 Everything compiles inside the Debian builder container.
 
 ```sh
-make                         # list targets
+make                         # everyday commands; make help-all lists every target
 make test                    # fast unit tests; no physical disks or network
 make qemu JOBS=12            # build and boot; VNC at localhost:5900
 make qemu-check JOBS=12      # bounded regression check, then stop the VM

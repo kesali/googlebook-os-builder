@@ -6,7 +6,8 @@ applyTo: ["Makefile", "*.mk", "hardware/**/*.mk", "docker/**"]
 
 - Keep Make recipes tab-indented and target dependencies explicit. Prefer named variables and
   simple rules over nested Make functions; explain non-obvious automatic variables where used.
-- Every user-facing target has `## help text`; `make` lists them.
+- Every user-facing target has `## help text`. `## @daily`, `@usb` or `@more` puts it in the
+  short `make` menu; untagged targets are build steps shown by `make help-all`.
 - Anything that compiles or runs tools goes through `$(BUILDER)`, not the host.
 - Pin by something a person can read: a release tag or version. A Git source with a release tag
   gets `*_TAG` plus its commit in `*_REV`; the build checks they match, because tags can move.

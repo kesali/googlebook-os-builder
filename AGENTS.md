@@ -105,7 +105,7 @@ Everything compiles inside the Debian builder container ([scripts/builder.sh](sc
 the host needs Docker, make, Python 3 and `/dev/kvm`.
 
 ```sh
-make                       # list targets
+make                       # everyday commands; make help-all lists every target
 make test                  # unit tests: fast, no disks, no network
 make qemu JOBS=12          # build what changed and boot; VNC on localhost:5900
 make qemu-check JOBS=12    # bounded full boot; evidence in out/qemu/

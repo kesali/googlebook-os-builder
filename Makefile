@@ -82,24 +82,38 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
-.PHONY: help builder unpack sources shell test toolchain gki laptop-logs lp-tools \
+.PHONY: help help-all builder unpack sources shell test toolchain gki laptop-logs lp-tools \
 	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm qemu qemu-check console update-usb install-usb FORCE
 
-help: ## Show this list
-	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
+# A target's `## @group text` places it in the short menu; untagged targets are build steps.
+show_targets = awk -v tag='$(1)' -v title='$(2)' 'BEGIN { print title ":" } \
+	/^[a-z-]+:.*\#\# / { name = $$0; sub(/:.*/, "", name); text = $$0; sub(/.*\#\# /, "", text); \
+	group = ""; if (text ~ /^@/) { group = text; sub(/ .*/, "", group); sub(/^@[a-z]+ /, "", text) } \
+	if (group == tag && name !~ /^help/) printf "  make %-19s %s\n", name, text } END { print "" }' $(MAKEFILE_LIST)
+
+help: ## Show the everyday commands
+	@$(call show_targets,@daily,Everyday)
+	@$(call show_targets,@usb,Laptop USB)
+	@$(call show_targets,@more,Occasional)
+	@echo "make help-all also lists the single build steps."
+help-all: ## Show every target, including single build steps
+	@$(call show_targets,@daily,Everyday)
+	@$(call show_targets,@usb,Laptop USB)
+	@$(call show_targets,@more,Occasional)
+	@$(call show_targets,,Build steps)
 
 .PHONY: hardware-check
-hardware-check: $(BUILD_READY) ## Check selected hardware recipes without building an image
+hardware-check: $(BUILD_READY) ## @more Check hardware recipe wiring without an image build
 	$(BUILDER) python3 tools/hardware_recipes.py
 
 # Device selection and mounts belong to the host, never a privileged builder container.
-update-usb: android-image ## Select an existing Android USB and update OS + boot files, preserving data
+update-usb: android-image ## @usb Update a selected Android USB; keeps its data
 	sudo -- python3 tools/update_usb.py "$(ANDROID_DISK)" "$(ANDROID)/boot"
 
-install-usb: android-image ## Select and ERASE a USB with the full Android image; verify read-back
+install-usb: android-image ## @usb ERASE a selected USB and write the full image
 	sudo -- python3 tools/install_usb.py "$(ANDROID_DISK)"
 
-laptop-logs: ## Select an Android USB and read saved boot logs into out/laptop-logs/latest
+laptop-logs: ## @usb Read saved boot logs from a USB into out/laptop-logs/
 	python3 tools/laptop_logs.py "$(OUT)/laptop-logs"
 
 builder: $(BUILD_READY) ## Build the Debian tool environment
@@ -124,7 +138,7 @@ $(KERNEL_SRC)/.ready: | $(KERNEL_PATCHES) $(EMU_PATCH) $(BUILD_READY)
 	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_TAG)" "$(KERNEL_REV)" \
 		"$(KERNEL_CACHE)" "$(KERNEL_SRC)" "$(EMU_PATCH)" $(KERNEL_PATCHES)
 
-sources: $(KERNEL_SRC)/.ready ## Fetch the pinned kernel source tree (editable under out/src/)
+sources: $(KERNEL_SRC)/.ready ## Fetch the pinned kernel source (editable under out/src/)
 
 $(LP_CORE)/.ready: | $(BUILD_READY)
 	$(BUILDER) bash scripts/git-fetch.sh "$(LP_CORE_URL)" "$(LP_CORE_REV)" "$(@D)" fs_mgr/liblp
@@ -143,7 +157,7 @@ $(OUT)/grub/BOOTX64.EFI: boot/loader.cfg $(BUILD_READY)
 		--modules="part_gpt fat normal linux configfile regexp probe serial test setpci" \
 		--output="$@" "boot/grub/grub.cfg=boot/loader.cfg"
 
-test: $(BUILD_READY) ## Run focused update/safety tests (no physical disks)
+test: $(BUILD_READY) ## @daily Run the unit tests (no disks, no network)
 	$(BUILDER) python3 tools/run_tests.py
 shell: $(BUILD_READY) ## Open a shell inside the builder
 	$(BUILDER) bash
@@ -162,7 +176,7 @@ $(TOOLCHAIN)/pahole-$(DWARVES_REV)/pahole: $(DWARVES_SRC)/.ready $(KERNEL_SRC)/.
 	$(BUILDER) bash scripts/pahole.sh "$(DWARVES_SRC)" "$(KERNEL_SRC)" "$(@D)"
 
 # Stable names for the pinned versions: out/toolchain/{clang,rust,bindgen,pahole}.
-toolchain: $(TOOLCHAIN)/.ready ## Fetch Google's kernel compilers (about 7 GB), build pahole
+toolchain: $(TOOLCHAIN)/.ready ## Fetch Google's kernel compilers (about 7 GB)
 $(TOOLCHAIN)/.ready: $(TOOLCHAIN)/clang-$(CLANG_REV)/.ready $(TOOLCHAIN)/rust-$(RUST_REV)/.ready \
 		$(TOOLCHAIN)/bindgen-$(BINDGEN_REV)/.ready $(TOOLCHAIN)/pahole-$(DWARVES_REV)/pahole
 	ln -sfn clang-$(CLANG_REV)/$(CLANG_DIR) $(TOOLCHAIN)/clang
@@ -178,7 +192,7 @@ $(GKI_ABI_LIST): | $(BUILD_READY)
 $(GKI_VIRT): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(GKI_VIRT_URL)" "$(GKI_VIRT_SHA)" "$@"
 
-gki: $(GKI)/bzImage ## Rebuild Google's kernel with the instruction emulator, check kABI
+gki: $(GKI)/bzImage ## @more Rebuild Google's kernel and check its ABI
 $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) $(GKI_ABI_LIST) \
 		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py \
 		$(call recipe_inputs,gki.config)
@@ -214,7 +228,7 @@ $(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulat
 	$(BUILDER) bash scripts/emulator.sh "$<" "$(GOOGLE)/super" "$(@D)"
 
 .PHONY: boringssl
-boringssl: $(BORINGSSL)/manifest ## Build CPU-portable Android crypto libraries and check Google's ABI; no image changes
+boringssl: $(BORINGSSL)/manifest ## Build CPU-portable platform crypto with ABI checks
 $(BORINGSSL_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(BORINGSSL_URL)" "$(BORINGSSL_SHA)" "$@"
 $(BORINGSSL_GO_TAR): | $(BUILD_READY)
@@ -228,7 +242,7 @@ $(BORINGSSL)/manifest: FORCE $(BORINGSSL_SRC)/.ready $(BORINGSSL_GO)/.ready $(ND
 	$(BUILDER) bash scripts/boringssl.sh "$(BORINGSSL_SRC)" "$(NDK)" "$(BORINGSSL_GO)" "$(GOOGLE)" "$(BORINGSSL)"
 
 .PHONY: httpengine-crypto
-httpengine-crypto: $(HTTPENGINE_CRYPTO)/manifest ## Build ABI-matched CPU-portable HttpEngine crypto
+httpengine-crypto: $(HTTPENGINE_CRYPTO)/manifest ## Build CPU-portable HttpEngine crypto
 $(HTTPENGINE_CRYPTO_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(HTTPENGINE_CRYPTO_URL)" "$(HTTPENGINE_CRYPTO_SHA)" "$@"
 $(HTTPENGINE_CRYPTO_SRC)/.ready: | $(HTTPENGINE_CRYPTO_TAR)
@@ -239,7 +253,7 @@ $(HTTPENGINE_CRYPTO)/manifest: FORCE $(HTTPENGINE_CRYPTO_SRC)/.ready $(NDK)/.rea
 
 $(OUT)/mesa-clc/manifest: FORCE $(MESA_SRC)/.ready scripts/mesa-clc.sh $(BUILD_READY)
 	$(BUILDER) bash scripts/mesa-clc.sh "$(MESA_SRC)" "$(OUT)/mesa-clc"
-mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Iris, Zink and AMD Vulkan
+mesa: $(MESA)/manifest ## Build Mesa (softpipe, Iris, Zink, AMD Vulkan)
 $(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready scripts/mesa.sh $(OUT)/mesa-clc/manifest
 	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)" "$(OUT)/mesa-clc"
 
@@ -300,7 +314,7 @@ $(HEADERS)/.ready: $(CORE_HEADERS)/.ready $(LOG_HEADERS)/.ready $(HARDWARE_HEADE
 	printf '%s\n' $(ANDROID_CORE_REV) $(ANDROID_LOGGING_REV) $(ANDROID_HARDWARE_REV) \
 		$(ANDROID_NATIVE_REV) $(ANDROID_DMABUF_REV) $(ANDROID_BASE_REV) $(ANDROID_INTERFACES_REV) > "$@"
 
-minigbm: $(MINIGBM)/manifest ## Build the Android allocator with AMD Mesa support and ABI checks
+minigbm: $(MINIGBM)/manifest ## Build the Android buffer allocator with ABI checks
 $(MINIGBM)/manifest: FORCE $(MINIGBM_SRC)/.ready $(HEADERS)/.ready $(NDK)/.ready \
 		$(MESA)/manifest $(GOOGLE)/inventory.txt $(AIDL) scripts/minigbm.sh \
 		hardware/drivers/amdgpu/minigbm-platform-cxx.h tools/minigbm_abi.py
@@ -344,13 +358,13 @@ $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
 $(ANDROID)/modules.lz4: $(GOOGLE)/inventory.txt $(GKI_VIRT) scripts/android-modules.sh scripts/android-overlay.sh tools/hardware_recipes.py \
 		android/module_ramdisk $(wildcard android/module_ramdisk/*) $(call android_recipe_inputs,module_ramdisk)
 	$(BUILDER) fakeroot bash scripts/android-modules.sh "$(GOOGLE)" android/module_ramdisk "$(GKI_VIRT)" "$@"
-android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks and QEMU drivers, our boot settings
+android-initrd: $(ANDROID)/initrd.img ## Build the initrd: Google's ramdisks, modules, our settings
 $(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
 	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$(ANDROID)/modules.lz4" "$@"
 
 # A new layout uses a new disk path; preserve the old out/android/disk.img as a fallback.
 # Once created, this disk holds Android's data and is updated, never regenerated.
-android-disk: $(ANDROID_DISK) ## Expanded slot-A layout, empty data, FAT32 boot partition (first build only)
+android-disk: $(ANDROID_DISK) ## Create the disk image once: layout, empty data, boot partition
 $(ANDROID_DISK): | $(GOOGLE)/inventory.txt $(OUT)/lp-tools/lpmake \
 		$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img \
 		$(ANDROID)/vendor_dlkm_a.img $(ANDROID)/vbmeta_a.img $(ANDROID)/boot/manifest.json
@@ -366,20 +380,20 @@ $(ANDROID)/boot/manifest.json: $(GKI)/bzImage $(ANDROID)/initrd.img $(OUT)/grub/
 		boot/android-menu.cfg android/cmdline.txt tools/deploy.py
 	$(BUILDER) python3 tools/deploy.py bundle --kind android --cmdline android/cmdline.txt "$(GKI)/bzImage" \
 		"$(ANDROID)/initrd.img" "$(OUT)/grub/BOOTX64.EFI" boot/android-menu.cfg "$(ANDROID)/boot"
-android-boot: $(ANDROID_DISK) $(ANDROID)/boot/manifest.json ## Put the laptop's boot files into the disk's boot partition
+android-boot: $(ANDROID_DISK) $(ANDROID)/boot/manifest.json ## Update the disk's laptop boot files
 	$(BUILDER) bash scripts/android-boot.sh "$(ANDROID_DISK)" "$(ANDROID)/boot"
 
-android-image: $(GKI)/bzImage $(ANDROID)/initrd.img android-sync android-boot ## Build/update the QEMU image and boot files, preserving Android data
+android-image: $(GKI)/bzImage $(ANDROID)/initrd.img android-sync android-boot ## @daily Build what changed; keeps Android data
 
-qemu: android-image ## Run Googlebook OS; connect a VNC viewer to localhost:5900
+qemu: android-image ## @daily Build and run in QEMU; VNC on localhost:5900
 	$(BUILDER) bash scripts/qemu.sh "$(GKI)/bzImage" "$(ANDROID)/initrd.img" "$(ANDROID_DISK)" \
 		android/cmdline.txt "$(OUT)/qemu" $(QEMU_CPUS) $(QEMU_MEMORY)
 
-qemu-check: android-image ## Verify full graphical Android startup in a bounded QEMU run
+qemu-check: android-image ## @daily Build and check a full graphical boot in QEMU
 	$(BUILDER) python3 tools/android_smoke.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY) "$(ANDROID_DISK)"
 
-android-uefi-check: android-image ## Test the laptop boot chain on a temporary USB image with a decoy NVMe
+android-uefi-check: android-image ## @more Test the laptop UEFI boot chain on a disposable copy
 	$(BUILDER) python3 tools/android_uefi_test.py "$(OUT)" $(QEMU_CPUS) $(QEMU_MEMORY) --image "$(ANDROID_DISK)"
 
-console: ## Run a serial-shell command in the running VM: make console COMMAND='getprop'
+console: ## @daily Run a command in the running VM: COMMAND='getprop'
 	python3 tools/android_console.py "$(OUT)/qemu/console.sock" "$(COMMAND)"

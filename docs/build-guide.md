@@ -244,7 +244,7 @@ regression test, not proof of working laptop audio, brightness or GPU accelerati
 
 | File | Responsibility |
 |---|---|
-| [Makefile](../Makefile) | Dependencies and commands; `make` lists targets |
+| [Makefile](../Makefile) | Dependencies and commands; `make` shows everyday commands, `make help-all` every target |
 | [tools/update_usb.py](../tools/update_usb.py) | Select and update an existing Android USB; preserve data and verify writes |
 | [config.mk](../config.mk) | Output path, jobs, recovery path, USB mountpoint, QEMU sizes |
 | [sources.mk](../sources.mk) | Source URLs, exact revisions and SHA-256 pins |
