@@ -46,6 +46,11 @@ on the MSI. [Refactor evidence](../out/full-hardware-recipes/).
 
 Recipes contain only the native files they need:
 
+Config-only support stays in the shared [kernel config](../kernel/gki.config), grouped with
+short reasons, rather than a directory for a handful of options. Device-only settings belong
+to the laptop recipe. Dedicated driver recipes are useful when support also needs patches,
+firmware, module packaging or tests; a source patch is not required.
+
 | Fragment | Purpose |
 |---|---|
 | `kernel.mk`, `mesa.mk`, `minigbm.mk` | Explicit, ordered source patches appended to component lists |

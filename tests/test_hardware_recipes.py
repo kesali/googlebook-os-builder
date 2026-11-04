@@ -16,7 +16,7 @@ class HardwareRecipeTests(unittest.TestCase):
         hardware_recipes.validate()
         self.assertEqual(hardware_recipes.drivers(), [
             "cpu-vex", "drm-handoff", "amdgpu", "renoir-acp", "hda-audio", "i915",
-            "amd-i2c-hid", "mt7922", "elantech-ps2", "ar9565",
+            "mt7922", "elantech-ps2", "ar9565",
             "laptop-modules", "qemu-virtio",
         ])
         self.assertEqual(len(hardware_recipes.aliases()), 9)

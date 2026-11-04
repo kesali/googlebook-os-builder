@@ -5,7 +5,6 @@ amdgpu
 renoir-acp
 hda-audio
 i915
-amd-i2c-hid
 mt7922
 elantech-ps2
 ar9565
