@@ -50,6 +50,11 @@ Verified: graphics source patches/header now belong to DRM handoff/amdgpu recipe
 Intel and QEMU profiles belong to their driver recipes. AMD profiles stay MSI-owned because
 they include the owner's panel density. Asset/patch bytes and ordering match the baseline;
 build, ABI, image equality and softpipe QEMU checks pass above. No new physical GPU test.
+AMD minigbm now tests upstream `DRV_GBM_MESA` property fallback
+(`ro.hardware.vulkan=radeon`) without the AMD-specific minigbm patch; only the separate
+planar-YUV pitch patch remains. The owner reports the MSI works; the saved 22:47 diagnostic
+boot selects `gbm_mesa` and ANGLE/RADV. Three Chrome GPU page-fault reports remain unexplained.
+This predates fast-flips and two-queue removal; those hardware retests remain pending.
 
 Lenovo hardware attempt (2026-11-03): [saved boot](../../out/laptop-logs/20261103-181307-7gwlz7mk/current/boot.txt)
 selects Intel; i915 binds and EGL reports `Mesa Intel(R) HD Graphics 5500 (BDW GT2)`,
@@ -222,14 +227,15 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 - The laptop menu selects AMD only for PCI `1002:15e7`; otherwise softpipe is the default.
   [graphics-amd.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc) selects Google's ANGLE GLES,
   RADV Vulkan RenderEngine and Mesa GBM/Zink, with GL HWUI like QEMU. The AMD-only Vulkan HWUI
-  entry is opt-in. The RADV queue patch is compiled into the driver used by both AMD profiles;
-  it maps logical queues onto hardware rings and serializes submissions per context. Keep GL as
-  the default; the owner saw no noticeable improvement with the optional profile.
+  entry is opt-in. Trial upstream RADV's single graphics queue without the logical-queue
+  override; both AMD profiles need hardware retesting. Keep GL as the default; the owner saw
+  no noticeable improvement with the optional profile.
 - Preserve Google's base `debug.renderengine.*` properties; each selected early-init graphics
   profile explicitly chooses its RenderEngine Vulkan setting and backend.
-- LineageOS minigbm's Mesa backend needs the small AMD/FD/mapping fixes in
-  [minigbm-amd.patch](../../hardware/drivers/amdgpu/minigbm-amd.patch). Its C++ interface links to Google's actual
-  platform libraries, not NDK libc++; an ABI gate checks Google's clients whenever either image or library changes.
+- LineageOS minigbm's Mesa backend uses upstream property-based selection without the former
+  AMD compatibility patch; the owner reports the MSI works and saved logs show `gbm_mesa`.
+  Its C++ interface links to Google's actual platform libraries, not NDK libc++;
+  an export gate checks Google's clients whenever either image or library changes, not C++ layout.
 - [mesa-drm-master.patch](../../hardware/drivers/drm-handoff/mesa-drm-master.patch): Mesa drops DRM master after
   opening the primary node, so the composer can drive the display. A source patch, no added privileges.
 - Reuse the owner's gbos video findings at source level, not its binary patches.
@@ -247,9 +253,8 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 
 ## Files
 - [scripts/mesa.sh](../../scripts/mesa.sh) — Mesa/libdrm/Expat build; build cache keyed by inputs.
-- [mesa-radv-two-queues.patch](../../hardware/drivers/amdgpu/mesa-radv-two-queues.patch) and
-  [graphics-amd-vulkan.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd-vulkan.rc) — opt-in Vulkan HWUI
-  test candidate.
+- [graphics-amd-vulkan.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd-vulkan.rc) — opt-in
+  Vulkan HWUI test candidate.
 - [scripts/minigbm.sh](../../scripts/minigbm.sh), [tools/minigbm_abi.py](../../tools/minigbm_abi.py) — incremental allocator build and platform ABI gate.
 - [tests/gbm-wrapper.c](../../tests/gbm-wrapper.c), [tests/test_mesa.py](../../tests/test_mesa.py) — FD/error handling and unchanged-output publication.
 - [scripts/ndk.sh](../../scripts/ndk.sh), [scripts/source.sh](../../scripts/source.sh) — NDK and patched source trees.
@@ -305,6 +310,13 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Remove RADV's two-logical-queue override; retain AMD
+  profiles and YUV patches. 14 focused tests, image metadata and enforcing QEMU pass (setup
+  screen inspected); [logs](../../out/amd-single-queue/), build 4m8s. MSI default/Vulkan HWUI
+  and earlier fast-flips HDMI retests remain separate owner checks; repeat writes nothing.
+- 2026-11-04 (this commit) — Remove the AMD-specific minigbm patch; retain planar-YUV pitch.
+  Owner confirms MSI works; saved `20261104-225221-_0g2tl0g/current` logs show Mesa fallback
+  and RADV. Chrome GPU faults remain unexplained; ABI/image and enforcing QEMU checks pass.
 - 2026-11-04 (this commit) — Remove the camera-only RadeonSI VA-API build, libva pin, shared AMD
   DRM helper and camera-service override. 289 tests, image fit/metadata and enforcing QEMU pass;
   repeat writes nothing. Zink/RADV remain; camera software fallback and hardware retest await owner.

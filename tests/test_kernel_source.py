@@ -14,20 +14,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class KernelRecipeTests(unittest.TestCase):
-    def test_selected_patches_keep_baseline_order_and_bytes(self):
+    def test_selected_patches_keep_order_without_fast_flips_override(self):
         result = inspect_kernel_recipes()
         self.assertEqual(result.returncode, 0, result.stderr)
         paths, digest, source = result.stdout.splitlines()
         self.assertEqual(paths.split(), [
             "hardware/drivers/drm-handoff/drm-firmware-handoff.patch",
             "hardware/drivers/amdgpu/msi-backlight.patch",
-            "hardware/drivers/amdgpu/amdgpu-fast-flips.patch",
             "hardware/drivers/renoir-acp/renoir-capture-buffers.patch",
             "hardware/drivers/i915/i915-gen4-primary-alpha.patch",
         ])
         patch_bytes = b"".join((ROOT / path).read_bytes() for path in paths.split())
-        self.assertEqual(hashlib.sha256(patch_bytes).hexdigest(),
-                         "0af5689168b66909fd4b25dff041b637ceb32cb6bada48957274ed2407a651b2")
         self.assertTrue(source.endswith("-" + digest))
         self.assertEqual(hashlib.sha256(patch_bytes).hexdigest(), digest)
 

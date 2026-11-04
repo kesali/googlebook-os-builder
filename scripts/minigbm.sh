@@ -50,7 +50,8 @@ for directory in core/libcutils/include core/libsystem/include core/libsync/incl
     includes+=" -I$headers/$directory"
 done
 flags="-O2 -fPIC -Wall -Wno-unused-parameter -Wno-sign-compare -Wno-unused-function"
-flags+=" -DDRV_MESA_AMDGPU -DDRV_I915 -DDRV_XE -DHAS_DMABUF_SYSTEM_HEAP -DANDROID_API_LEVEL=37"
+flags+=" -DDRV_GBM_MESA -DDRV_I915 -DDRV_XE"
+flags+=" -DHAS_DMABUF_SYSTEM_HEAP -DANDROID_API_LEVEL=37"
 flags+=" -D_GNU_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D__ANDROID_VNDK__ -D__ANDROID_VENDOR__"
 cat > "$build/build.ninja.partial" <<EOF
 rule cc

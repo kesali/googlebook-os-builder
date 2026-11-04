@@ -133,9 +133,9 @@ framebuffer before a PCI display driver takes a DRM minor. It works with virtio 
 based on the owner's working Churro setup; the owner subsequently reached physical setup.
 [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) changes only the first panel's registered
 name on the exact MSI model so Google's unchanged lights HAL can discover it.
-[amdgpu-fast-flips.patch](../../hardware/drivers/amdgpu/amdgpu-fast-flips.patch) keeps page flips on amdgpu's fast
-path when an HDMI monitor is connected (owner saw the frame rate halve); the owner subsequently
-retested the updated stick and reports HDMI performance is now fine (frame rate not instrumented).
+The earlier fast-flips override is removed for an upstream-baseline trial. Previous owner
+reports of improved HDMI performance were not instrumented comparisons; panel/HDMI smoothness,
+mode changes and hotplug without the override still need a physical retest.
 
 Initial driver build: four unchanged upstream Renoir ACP microphone modules, with
 signatures, imports, PCI/platform aliases and dependency metadata checked against the compiled
@@ -207,7 +207,6 @@ functionality; generic ACP migration and other machines remain untested.
   framebuffer handoff before DRM minor allocation.
 - [hardware/kernel.mk](../../hardware/kernel.mk) — ordered combined-image kernel recipe selection.
 - [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) — exact-model panel naming.
-- [amdgpu-fast-flips.patch](../../hardware/drivers/amdgpu/amdgpu-fast-flips.patch) — no full update for plain flips on DCN < 3.2.
 - [renoir-capture-buffers.patch](../../hardware/drivers/renoir-acp/renoir-capture-buffers.patch) — isolated
   Renoir capture-period compatibility candidate for the desktop audio HAL.
 - [tests/test_kernel_source.py](../../tests/test_kernel_source.py) — source preparation and patch checks.
@@ -244,6 +243,11 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Remove only the AMD fast-flips override and its compiled-model
+  test. 13 focused tests, 4,501-export kABI, module/metadata checks and enforcing QEMU pass
+  (setup screen inspected). Owner panel/HDMI smoothness/hotplug retest remains pending.
+  Build evidence: [logs](../../out/amd-fast-flips-removal/); image build took 14m4s.
+  Fakeroot emitted a payload error during vendor replacement checks; metadata read-back passed.
 - 2026-11-04 uncommitted — Recipe validation passes: 263 tests, exact inputs/patches, 4,501
   unchanged exports, image/module checks, 38-output equality and 23.8 s no-write repeat.
   Inspected enforcing direct/USB-UEFI boots and direct input; owner tests both laptops next.
