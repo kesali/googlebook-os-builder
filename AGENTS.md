@@ -31,8 +31,9 @@ The priority is that a person can understand how to build, update and deploy it,
 - Commit focused, verified milestones without a separate reminder, including owner-confirmed
   hardware fixes. Review the diff, exclude unrelated changes and generated/private files, and
   leave unverified work uncommitted. Do not push or rewrite history without permission.
-- Keep commit subjects around 50 characters and no longer than 72; wrap body prose at
-  72 characters. Separate the subject and body with a blank line; leave URLs and trailers intact.
+- Aim for descriptive commit subjects around 60-72 characters and body lines around 80.
+  These are guidelines, not hard limits: favor natural phrasing, but avoid very long lines.
+  Separate the subject and body with a blank line; leave URLs and trailers intact.
 
 ## Learning and choosing an approach
 
