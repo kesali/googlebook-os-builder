@@ -50,13 +50,19 @@ Verified: graphics source patches/header now belong to DRM handoff/amdgpu recipe
 Intel and QEMU profiles belong to their driver recipes. AMD profiles stay MSI-owned because
 they include the owner's panel density. Asset/patch bytes and ordering match the baseline;
 build, ABI, image equality and softpipe QEMU checks pass above. No new physical GPU test.
-AMD minigbm now tests upstream `DRV_GBM_MESA` property fallback
+AMD minigbm now uses upstream `DRV_GBM_MESA` property fallback
 (`ro.hardware.vulkan=radeon`) without the AMD-specific minigbm patch; only the separate
-planar-YUV pitch patch remains. On the post-removal build, the owner reports no visible issues.
+planar-YUV pitch patch remains. The owner reports no visible issues on the post-removal build.
 The [23:19 capture](../../out/laptop-logs/20261104-232157-3_frsj47/current/) confirms AMD boot,
 `gbm_mesa` fallback and ANGLE/RADV; eDP is active, HDMI disconnected. Repeated Chrome GPU
-permission-fault logs also appear in the older boot, so they are not new to these removals and
-remain unexplained. HDMI and optional Vulkan-HWUI retests remain unverified.
+permission-fault logs also appear in the older boot and remain unexplained.
+The MSI profile retains GL HWUI. The Vulkan-default trial produced a black screen with a
+cursor: [23:33 logs](../../out/laptop-logs/20261104-233439-pct13ekd/current/android-boot.log)
+show SystemUI and desktop login aborting because HWUI requires two graphics queues and upstream
+RADV exposes one. The separate Vulkan GRUB choice is removed. Owner confirms recovery works;
+the fresh [23:43 boot](../../out/laptop-logs/20261104-234521-s8wpk13w/current/) has no retained
+queue assertions, native fatal-signal reports or AMD page faults. The separate GMS
+`update_engine` exceptions persist.
 
 Lenovo hardware attempt (2026-11-03): [saved boot](../../out/laptop-logs/20261103-181307-7gwlz7mk/current/boot.txt)
 selects Intel; i915 binds and EGL reports `Mesa Intel(R) HD Graphics 5500 (BDW GT2)`,
@@ -228,10 +234,9 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
   That profile also skips shader priming and the boot animation, which softpipe draws too slowly ([QEMU spec](qemu.md)).
 - The laptop menu selects AMD only for PCI `1002:15e7`; otherwise softpipe is the default.
   [graphics-amd.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc) selects Google's ANGLE GLES,
-  RADV Vulkan RenderEngine and Mesa GBM/Zink, with GL HWUI like QEMU. The AMD-only Vulkan HWUI
-  entry is opt-in. Trial upstream RADV's single graphics queue without the logical-queue
-  override; both AMD profiles need hardware retesting. Keep GL as the default; the owner saw
-  no noticeable improvement with the optional profile.
+  RADV Vulkan RenderEngine and GL HWUI, plus Mesa GBM/Zink. Upstream RADV exposes one graphics
+  queue, while Google's Vulkan HWUI requires two and aborts without them. Keep GL HWUI instead
+  of restoring the queue override; remove the unsupported Vulkan GRUB choice.
 - Preserve Google's base `debug.renderengine.*` properties; each selected early-init graphics
   profile explicitly chooses its RenderEngine Vulkan setting and backend.
 - LineageOS minigbm's Mesa backend uses upstream property-based selection without the former
@@ -255,8 +260,8 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 
 ## Files
 - [scripts/mesa.sh](../../scripts/mesa.sh) — Mesa/libdrm/Expat build; build cache keyed by inputs.
-- [graphics-amd-vulkan.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd-vulkan.rc) — opt-in
-  Vulkan HWUI test candidate.
+- [graphics-amd.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc) — AMD renderer
+  profile, including GL HWUI and Vulkan RenderEngine.
 - [scripts/minigbm.sh](../../scripts/minigbm.sh), [tools/minigbm_abi.py](../../tools/minigbm_abi.py) — incremental allocator build and platform ABI gate.
 - [tests/gbm-wrapper.c](../../tests/gbm-wrapper.c), [tests/test_mesa.py](../../tests/test_mesa.py) — FD/error handling and unchanged-output publication.
 - [scripts/ndk.sh](../../scripts/ndk.sh), [scripts/source.sh](../../scripts/source.sh) — NDK and patched source trees.
@@ -312,6 +317,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Keep GL HWUI and remove the unsupported Vulkan menu/profile.
+  11 focused tests and image/metadata checks pass; owner confirms recovery. Fresh 23:43 logs
+  have no queue aborts or AMD page faults; separate GMS updater exceptions persist.
 - 2026-11-04 (this commit) — Owner reports no visible issues on the post-removal AMD boot.
   Boot ID `9b11a38a-63a9-445e-9238-46cc77afb626` uses kernel `2063e20e…`; logs confirm
   `gbm_mesa`/RADV. HDMI was disconnected; Chrome GPU permission faults recur in both boots.

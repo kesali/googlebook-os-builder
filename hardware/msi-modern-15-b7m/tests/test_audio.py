@@ -50,7 +50,7 @@ class AudioTests(unittest.TestCase):
     def test_msi_service_is_laptop_only_and_restarts_hal_after_its_codec(self):
         text = (REPO / "hardware/msi-modern-15-b7m/vendor/audio-msi.rc").read_text()
         self.assertIn("on boot && property:ro.boot.gbos_builder.graphics=amd", text)
-        self.assertIn("on boot && property:ro.boot.gbos_builder.graphics=amd-vulkan", text)
+        self.assertNotIn("amd-vulkan", text)
         self.assertIn("/vendor/bin/get_variant_audio /sys ALC256", text)
         self.assertIn("on property:vendor.audio.gbos_builder.ready=ALC256\n    restart vendor.audio-hal-aidl", text)
         self.assertNotIn("mount", text)

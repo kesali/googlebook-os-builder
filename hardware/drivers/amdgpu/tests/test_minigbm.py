@@ -23,10 +23,8 @@ class MinigbmBuildTests(unittest.TestCase):
         self.assertIn("minigbm-yuv-pitch.patch", recipe)
 
     def test_amd_profiles_select_mesa_through_upstream_vulkan_property(self):
-        for profile in ("graphics-amd.rc", "graphics-amd-vulkan.rc"):
-            with self.subTest(profile=profile):
-                settings = (ROOT / "hardware/msi-modern-15-b7m/system_ext" / profile).read_text()
-                self.assertIn("setprop ro.hardware.vulkan radeon", settings)
+        profile = (ROOT / "hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc").read_text()
+        self.assertIn("setprop ro.hardware.vulkan radeon", profile)
 
 
 if __name__ == "__main__":

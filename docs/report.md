@@ -205,10 +205,9 @@ SurfaceFlinger and HWUI renderers have not been independently measured on the la
   the composer can drive the display.
 - **minigbm:** LineageOS minigbm with [minigbm-amd.patch](../hardware/drivers/amdgpu/minigbm-amd.patch). An ABI
   gate ([minigbm_abi.py](../tools/minigbm_abi.py)) checks it.
-- **Vulkan HWUI is an opt-in test only.** An AMD-only GRUB entry selects the `skiavk` profile;
-  the RADV two-queue patch is compiled into the driver used by both AMD profiles. The owner saw
-  no noticeable performance difference; GL remains the default. QEMU exercises only softpipe,
-  and broader laptop app regression testing is still needed.
+- **GL HWUI is the MSI AMD default.** Vulkan HWUI aborts in SystemUI and desktop login
+  because it requires two graphics queues and upstream RADV exposes one. The unsupported
+  Vulkan GRUB choice is removed; Vulkan RenderEngine remains unchanged.
 
 ## 7. Security model
 
@@ -379,7 +378,7 @@ safer to run.
 
 | Gap | Who has it | Comment |
 |---|---|---|
-| Vulkan HWUI | Churro had a RADV two-queue patch | The owner noticed no performance difference with the opt-in profile; GL remains the default. |
+| Vulkan HWUI | Churro had a RADV two-queue patch | Requires two graphics queues; keep GL HWUI with upstream single-queue RADV. |
 | HDMI audio | Churro generates HDMI routes | Still pending; built-in ACP microphone now owner-confirmed. |
 | Fewer instruction traps | gbos-x86 redirects SHA-NI/Adler in libcrypto/libz | Only with binary patches, which we refuse; our generic-library swap covers libz/bionic. Measure the remaining traps first. |
 | Installer, internal-disk boot | both | Out of scope for now; the USB works. |

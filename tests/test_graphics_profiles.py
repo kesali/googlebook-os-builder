@@ -1,4 +1,4 @@
-"""Keep the renderer choices explicit and the Vulkan HWUI option opt-in."""
+"""Keep the renderer choices explicit for each hardware profile."""
 
 from pathlib import Path
 import unittest
@@ -22,7 +22,6 @@ class GraphicsProfileTests(unittest.TestCase):
     def test_each_graphics_profile_sets_an_explicit_hwui_renderer(self):
         profiles = {
             "graphics-amd.rc": ("false", "skiagl"),
-            "graphics-amd-vulkan.rc": ("true", "skiavk"),
             "graphics-softpipe.rc": ("false", "skiagl"),
             "graphics-intel.rc": ("false", "skiagl"),
         }
@@ -34,11 +33,11 @@ class GraphicsProfileTests(unittest.TestCase):
                 self.assertIn(f"setprop ro.hwui.use_vulkan {vulkan}", profile)
                 self.assertIn(f"setprop debug.hwui.renderer {renderer}", profile)
                 self.assertIn(f"etc/gbos-builder/{name}", install_list)
+        self.assertNotIn("graphics-amd-vulkan.rc", install_list)
 
     def test_each_graphics_profile_overrides_google_renderengine_defaults(self):
         profiles = {
             "graphics-amd.rc": ("true", "skiavkthreaded"),
-            "graphics-amd-vulkan.rc": ("true", "skiavkthreaded"),
             "graphics-softpipe.rc": ("false", "skiaglthreaded"),
             "graphics-intel.rc": ("false", "skiaglthreaded"),
         }

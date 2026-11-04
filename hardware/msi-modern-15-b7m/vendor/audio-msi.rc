@@ -2,9 +2,6 @@
 on boot && property:ro.boot.gbos_builder.graphics=amd
     start vendor.gbos_builder.audio
 
-on boot && property:ro.boot.gbos_builder.graphics=amd-vulkan
-    start vendor.gbos_builder.audio
-
 service vendor.gbos_builder.audio /vendor/bin/get_variant_audio /sys ALC256
     user root
     group root
