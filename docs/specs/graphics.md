@@ -52,9 +52,11 @@ they include the owner's panel density. Asset/patch bytes and ordering match the
 build, ABI, image equality and softpipe QEMU checks pass above. No new physical GPU test.
 AMD minigbm now tests upstream `DRV_GBM_MESA` property fallback
 (`ro.hardware.vulkan=radeon`) without the AMD-specific minigbm patch; only the separate
-planar-YUV pitch patch remains. The owner reports the MSI works; the saved 22:47 diagnostic
-boot selects `gbm_mesa` and ANGLE/RADV. Three Chrome GPU page-fault reports remain unexplained.
-This predates fast-flips and two-queue removal; those hardware retests remain pending.
+planar-YUV pitch patch remains. On the post-removal build, the owner reports no visible issues.
+The [23:19 capture](../../out/laptop-logs/20261104-232157-3_frsj47/current/) confirms AMD boot,
+`gbm_mesa` fallback and ANGLE/RADV; eDP is active, HDMI disconnected. Repeated Chrome GPU
+permission-fault logs also appear in the older boot, so they are not new to these removals and
+remain unexplained. HDMI and optional Vulkan-HWUI retests remain unverified.
 
 Lenovo hardware attempt (2026-11-03): [saved boot](../../out/laptop-logs/20261103-181307-7gwlz7mk/current/boot.txt)
 selects Intel; i915 binds and EGL reports `Mesa Intel(R) HD Graphics 5500 (BDW GT2)`,
@@ -310,6 +312,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Owner reports no visible issues on the post-removal AMD boot.
+  Boot ID `9b11a38a-63a9-445e-9238-46cc77afb626` uses kernel `2063e20e…`; logs confirm
+  `gbm_mesa`/RADV. HDMI was disconnected; Chrome GPU permission faults recur in both boots.
 - 2026-11-04 (this commit) — Remove RADV's two-logical-queue override; retain AMD
   profiles and YUV patches. 14 focused tests, image metadata and enforcing QEMU pass (setup
   screen inspected); [logs](../../out/amd-single-queue/), build 4m8s. MSI default/Vulkan HWUI
