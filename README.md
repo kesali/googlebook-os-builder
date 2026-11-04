@@ -104,6 +104,7 @@ laptop builds or a runtime driver installer.
 - [Component specs](docs/specs/README.md): verified behavior, decisions and remaining checks.
 - [Project plan](docs/plan.md): daily testing and the builder direction.
 - [Design report](docs/report.md): historical explanation and comparison with the reference ports.
+- [Patch audit](docs/patch-audit.md): each source patch checked against current upstream.
 - [Agent guide](AGENTS.md): workflow and safety rules for AI-assisted work.
 
 ## License and sources
