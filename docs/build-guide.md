@@ -78,6 +78,19 @@ add only the required native fragments, select the recipe and place its includes
 appropriate base lists. `make hardware-check` checks this wiring without building the image.
 A recipe declaration is not hardware verification; see the [hardware spec](../docs/specs/laptop-hardware.md).
 
+Device- and driver-specific tests live in each recipe's `tests/` directory, beside the code
+they verify. Shared tool/safety and cross-recipe integration tests stay in [tests/](../tests/).
+`make test` runs both generic tests and every recipe's tests, including unselected recipes;
+it does not build an image. For a focused run, pass files or directories:
+
+```sh
+scripts/builder.sh python3 tools/run_tests.py hardware/lenovo-e50-80/tests tests/test_overlay.py
+```
+
+Tests use local fixtures, never physical devices. Shared fixture helpers live in
+[recipe_support.py](../tests/recipe_support.py); recipe tests need no package boilerplate or
+per-recipe runner.
+
 ### Laptop test image
 
 ```sh

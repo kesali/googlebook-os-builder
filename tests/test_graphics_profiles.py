@@ -18,20 +18,6 @@ def profile_path(name):
 
 
 class GraphicsProfileTests(unittest.TestCase):
-    def test_broadwell_profile_renders_with_gl_and_offers_hasvk_to_apps(self):
-        profile = profile_path("graphics-intel.rc").read_text()
-        self.assertIn("setprop ro.hardware.egl mesa", profile)
-        self.assertIn("setprop ro.hardware.vulkan intel_hasvk", profile)
-        self.assertIn("setprop ro.hwui.use_vulkan false", profile)
-        self.assertIn("setprop debug.renderengine.vulkan false", profile)
-        self.assertIn("export GALLIUM_DRIVER iris", profile)
-        for override in ("LIBGL_ALWAYS_SOFTWARE", "zink", "radv"):
-            self.assertNotIn(override, profile)
-        menu = (REPO / "boot/android-menu.cfg").read_text()
-        self.assertIn('setpci -d 8086:1616 -v gbos_builder_gpu VENDOR_ID', menu)
-        self.assertIn('if [ "$gbos_builder_gpu" = "8086" ]; then\n    set gbos_builder_graphics=intel\nfi', menu)
-        self.assertIn("setpci -d 1002:15e7", menu)
-        self.assertIn("set gbos_builder_graphics=softpipe", menu)
 
     def test_each_graphics_profile_sets_an_explicit_hwui_renderer(self):
         profiles = {
@@ -55,12 +41,6 @@ class GraphicsProfileTests(unittest.TestCase):
         self.assertNotIn("+ro.hwui.use_vulkan=", patch)
         self.assertNotIn("+debug.hwui.renderer=", patch)
 
-    def test_vulkan_hwui_menu_entry_is_opt_in_for_the_amd_gpu(self):
-        menu = (REPO / "boot/android-menu.cfg").read_text()
-        entry = 'if [ "$gbos_builder_graphics" = amd ]; then\n    menuentry "Googlebook OS (test: Vulkan HWUI)"'
-        self.assertIn(entry, menu)
-        self.assertIn("set gbos_builder_graphics=amd-vulkan", menu)
-        self.assertIn("set default=0", menu)
 
     def test_software_codec_sandbox_allows_only_the_mesa_affinity_query(self):
         vendor = REPO / "android/vendor"

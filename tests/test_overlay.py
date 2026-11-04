@@ -321,29 +321,7 @@ class ReplacementTests(unittest.TestCase):
 
 
 class ChangeDataTests(unittest.TestCase):
-    def test_vendor_dlkm_unblocks_msi_hda_audio(self):
-        patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
-        self.assertIn("-blocklist snd_hda_intel", patch)
-        self.assertNotIn("+blocklist snd_hda_intel", patch)
-        self.assertIn(
-            "-options snd_sof_intel_hda_generic hda_model=alc-2024y-chromebook dmic_num=4",
-            patch,
-        )
-        self.assertIn(
-            "+softdep snd_hda_intel pre: snd_hda_codec_alc269 snd_hda_codec_atihdmi",
-            patch,
-        )
 
-    def test_laptop_density_is_set_only_for_the_laptop_panels(self):
-        amd = (REPO / "hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc").read_text()
-        lenovo = (REPO / "hardware/lenovo-e50-80/system_ext/display-lenovo.rc").read_text()
-        softpipe = (REPO / "hardware/drivers/qemu-virtio/system_ext/graphics-softpipe.rc").read_text()
-        self.assertIn("setprop qemu.sf.lcd_density 160", amd)
-        self.assertIn("on early-init && property:ro.boot.gbos_builder.graphics=intel\n"
-                      "    setprop qemu.sf.lcd_density 160\n", lenovo)
-        self.assertNotIn("qemu.sf.lcd_density", softpipe)
-        self.assertIn("etc/init/zz-gbos-builder-display-lenovo.rc",
-                      expand(REPO / "android/system_ext/install.list"))
 
     def test_install_lists_have_five_columns(self):
         for path in sorted(REPO.glob("android/*/install.list")):
@@ -416,16 +394,6 @@ class ChangeDataTests(unittest.TestCase):
                     self.assertTrue(path.name in ("remove.list", "install.list", "patches.list")
                                     or path.suffix == ".patch" or f"./{path.name}" in sources,
                                     "not a list or patch, and not a source in install.list")
-
-    def test_first_stage_modules_are_loaded_in_install_order(self):
-        changes = REPO / "android/module_ramdisk"
-        patch = (REPO / "hardware/drivers/qemu-virtio/module_ramdisk/modules.patch").read_text()
-        # Android reads a trailing space in modules.dep as an empty dependency.
-        self.assertNotRegex(patch, r"(?m)[ \t]$")
-        installed = [Path(entry[0]).name for entry in entries(changes / "install.list")]
-        load = patch.split("+++ b/lib/modules/modules.load\n", 1)[1]
-        added = [line[1:] for line in load.splitlines() if line.startswith("+")]
-        self.assertEqual(added, installed)
 
 
 if __name__ == "__main__":

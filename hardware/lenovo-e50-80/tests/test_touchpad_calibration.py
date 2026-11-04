@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 import unittest
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "tools"))
 from hardware_recipes import expand
 

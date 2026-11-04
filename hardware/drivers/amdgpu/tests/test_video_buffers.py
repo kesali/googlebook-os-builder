@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[4]
 
 
 def additions(name):

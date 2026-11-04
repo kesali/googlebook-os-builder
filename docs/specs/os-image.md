@@ -175,6 +175,10 @@ the OS partitions named above; Android userdata, metadata and layout were preser
 QEMU test used a reflinked copy.
 
 ## Decisions
+- Tests follow ownership: device/driver checks and local fixtures live in recipe `tests/`
+  directories; generic tool/safety and cross-recipe integration tests remain central.
+  `make test` runs all recipes, including unselected ones, through
+  [run_tests.py](../../tools/run_tests.py); focused runs accept files or directories.
 - Clean-break gbos-builder rename: new boot/Android identities, no legacy aliases or migration.
   Use a separate new disk path; preserve older images, editable source caches and history.
 - Pin the local Google recovery image by SHA-256 in [config.mk](../../config.mk). Verify it before
@@ -324,6 +328,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Relocated hardware checks beside recipes; 282 tests pass,
+  preserving all 273 original methods with split checks and discovery regressions added.
+  Focused device/driver run passes; no image/runtime changes or image rebuild needed.
 - 2026-11-04 uncommitted — Combined image rebuilt/verified for MSI and Lenovo. 263 tests,
   38-output byte equality and no-write repeat pass; disposable direct/UEFI boots inspected.
   No physical writes or source-tree replacement; physical regression remains with the owner.

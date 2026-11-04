@@ -170,7 +170,7 @@ deploy: $(OUT)/boot/manifest.json ## Update changed boot files: make deploy USB=
 	python3 tools/deploy.py usb "$(OUT)/boot" "$(USB)"
 
 test: $(BUILD_READY) ## Run focused update/safety tests (no physical disks)
-	$(BUILDER) python3 -m unittest discover -s tests -v
+	$(BUILDER) python3 tools/run_tests.py
 smoke: image ## UEFI-boot a temporary image in QEMU and test instruction emulation
 	$(BUILDER) python3 tools/boot_test.py "$(USB_IMAGE)" "$(OUT)"
 shell: $(BUILD_READY) ## Open a shell inside the builder

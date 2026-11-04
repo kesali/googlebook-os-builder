@@ -22,10 +22,11 @@ description: "Use when validating a finished gbos-builder change: focused tests,
    a bounded boot check. Do not start a full suite without a reason.
 2. Run selected unittest modules together through the builder, for example:
    ```sh
-   scripts/builder.sh bash -c \
-     'PYTHONPATH=tests python3 -m unittest -v test_laptop_modules test_audio test_overlay'
+   scripts/builder.sh python3 tools/run_tests.py \
+     tests/test_laptop_modules.py tests/test_overlay.py hardware/drivers/hda-audio/tests
    ```
-   Select modules for the actual diff; the example is not a mandatory list.
+   Select files/directories for the actual diff; the example is not a mandatory list.
+   `make test` also discovers all recipe-local tests, regardless of build selection.
 3. For image changes, run `make android-image JOBS=12`. Keep output and timings under a
    task-specific ignored `out/` directory. Require the existing config/kABI checks,
    compiled-module checks, filesystem metadata read-back and partition-fit checks to pass.

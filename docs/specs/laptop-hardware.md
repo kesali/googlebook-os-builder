@@ -252,7 +252,8 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - [modules.patch](../../hardware/drivers/laptop-modules/vendor_dlkm/modules.patch) — codec preload/HDA unblock.
 - [powerhint.patch](../../hardware/msi-modern-15-b7m/vendor/powerhint.patch) — power HAL without 8-CPU masks.
 - [hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — read-only physical evidence.
-- [tests/test_audio.py](../../tests/test_audio.py), [test_kernel_source.py](../../tests/test_kernel_source.py)
+- [HDA tests](../../hardware/drivers/hda-audio/tests/test_audio.py),
+  [AMD kernel tests](../../hardware/drivers/amdgpu/tests/test_kernel_source.py)
   — selector failures, exact card-ID bytes and model-specific backlight naming.
 - Reference ports (local, not in Git): `reference/project-churro-msi-modern-15-B7M`,
   `reference/gbos-x86-msi-modern-15-B7M`.

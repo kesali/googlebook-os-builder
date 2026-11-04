@@ -34,26 +34,6 @@ class LaptopModuleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing.ko"):
             dependency_closure(["video.ko"], {"video.ko": ["missing.ko"]}, {"rfkill.ko"})
 
-    def test_microphone_modules_are_modular_and_installed_without_replacing_dmic(self):
-        config = expand(REPO / "kernel/gki.config")
-        for option in ("SND_SOC_AMD_RENOIR", "SND_SOC_AMD_RENOIR_MACH",
-                       "SND_AMD_ACP_CONFIG", "SND_SOC_DMIC"):
-            self.assertIn(f"CONFIG_{option}=m\n", config)
-        paths = {line for line in expand(REPO / "kernel/laptop-modules.list").splitlines()
-                 if line and not line.startswith("#")}
-        installs = [line.split() for line in
-                    expand(REPO / "android/vendor_dlkm/install.list").splitlines()
-                    if line and not line.startswith("#")]
-        for path in ("sound/soc/amd/snd-acp-config.ko",
-                     "sound/soc/amd/renoir/snd-rn-pci-acp3x.ko",
-                     "sound/soc/amd/renoir/snd-acp3x-pdm-dma.ko",
-                     "sound/soc/amd/renoir/snd-acp3x-rn.ko"):
-            with self.subTest(path=path):
-                self.assertIn(path, paths)
-                name = Path(path).name
-                self.assertIn([f"lib/modules/{name}", "0644", "0:0",
-                               "vendor_kernel_modules", f"gki/{name}"], installs)
-        self.assertFalse(any(Path(path).name == "snd-soc-dmic.ko" for path in paths))
 
     def test_alias_check_uses_compiled_module_name_not_hyphenated_filename(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -90,81 +70,6 @@ class LaptopModuleTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "only the verified Broadwell"):
                     check(root, installs)
 
-    def test_broadwell_modules_are_modular_and_explicitly_packaged(self):
-        config = expand(REPO / "kernel/gki.config")
-        paths = expand(REPO / "kernel/laptop-modules.list").splitlines()
-        installs = expand(REPO / "android/vendor_dlkm/install.list")
-        for option in ("DRM_I915", "INTEL_GTT"):
-            self.assertIn(f"CONFIG_{option}=m\n", config)
-        for path in ("drivers/gpu/drm/i915/i915.ko", "drivers/char/agp/intel-gtt.ko"):
-            self.assertIn(path, paths)
-            self.assertIn(f"gki/{Path(path).name}", installs)
-        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
-        self.assertIn("+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915\n", module_patch)
-        self.assertEqual(
-            [line for line in module_patch.splitlines()
-             if line.startswith("+alias ") and line.endswith(" i915")],
-            ["+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915"],
-        )
-
-    def test_ar9565_uses_upstream_modules_without_replacing_google_wireless_helpers(self):
-        config = expand(REPO / "kernel/gki.config")
-        paths = expand(REPO / "kernel/laptop-modules.list").splitlines()
-        installs = expand(REPO / "android/vendor_dlkm/install.list")
-        for option in ("ATH_COMMON", "ATH9K", "ATH9K_HW", "ATH9K_COMMON"):
-            self.assertIn(f"CONFIG_{option}=m\n", config)
-        for path in ("drivers/net/wireless/ath/ath.ko",
-                     "drivers/net/wireless/ath/ath9k/ath9k_hw.ko",
-                     "drivers/net/wireless/ath/ath9k/ath9k_common.ko",
-                     "drivers/net/wireless/ath/ath9k/ath9k.ko"):
-            self.assertIn(path, paths)
-            self.assertIn(f"gki/{Path(path).name}", installs)
-        for name in ("cfg80211.ko", "mac80211.ko"):
-            self.assertNotIn(f"gki/{name}", installs)
-            self.assertFalse(any(Path(path).name == name for path in paths))
-        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
-        alias = "pci:v0000168Cd00000036sv*sd*bc*sc*i*"
-        self.assertEqual(LAPTOP_ALIASES["ath9k"], alias)
-        self.assertIn(f"+alias {alias} ath9k\n", module_patch)
-
-    def test_ar3012_bluetooth_gets_ath3k_firmware_without_replacing_google_btusb(self):
-        config = expand(REPO / "kernel/gki.config")
-        paths = expand(REPO / "kernel/laptop-modules.list").splitlines()
-        installs = expand(REPO / "android/vendor_dlkm/install.list")
-        firmware = expand(REPO / "kernel/firmware.list").splitlines()
-        vendor = expand(REPO / "android/vendor/install.list")
-        self.assertIn("CONFIG_BT_ATH3K=m\n", config)
-        self.assertIn("drivers/bluetooth/ath3k.ko", paths)
-        self.assertIn("gki/ath3k.ko", installs)
-        self.assertNotIn("gki/btusb.ko", installs)
-        self.assertFalse(any(Path(path).name == "btusb.ko" for path in paths))
-        for name in ("ar3k/AthrBT_0x31010000.dfu", "ar3k/ramps_0x31010000_40.dfu"):
-            self.assertIn(name, firmware)
-            self.assertIn(f"firmware/{name}", vendor)
-        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
-        alias = "usb:v0CF3p3004d*dc*dsc*dp*ic*isc*ip*in*"
-        self.assertEqual(LAPTOP_ALIASES["ath3k"], alias)
-        self.assertEqual([line for line in module_patch.splitlines()
-                          if line.startswith("+alias ") and line.endswith(" ath3k")],
-                         [f"+alias {alias} ath3k"])
-        self.assertIn("+/vendor/lib/modules/ath3k.ko: /system/lib/modules/bluetooth.ko "
-                      "/system/lib/modules/rfkill.ko\n", module_patch)
-        self.assertIn("+options ath9k btcoex_enable=1\n", module_patch)
-
-    def test_elantech_ps2_module_is_packaged_with_hotplug_and_builtin_helpers(self):
-        config = expand(REPO / "kernel/gki.config")
-        self.assertIn("CONFIG_MOUSE_PS2=m\n", config)
-        self.assertIn("CONFIG_MOUSE_PS2_ELANTECH=y\n", config)
-        self.assertIn("CONFIG_MOUSE_PS2_ELANTECH_SMBUS=y\n", config)
-        self.assertIn("drivers/input/mouse/psmouse.ko",
-                      expand(REPO / "kernel/laptop-modules.list").splitlines())
-        installs = expand(REPO / "android/vendor_dlkm/install.list")
-        self.assertIn("gki/psmouse.ko", installs)
-        self.assertNotIn("gki/i2c-smbus.ko", installs)
-        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
-        self.assertIn("+/vendor/lib/modules/psmouse.ko:\n", module_patch)
-        self.assertEqual(LAPTOP_ALIASES["psmouse"], "serio:ty01pr*id*ex*")
-        self.assertIn("+alias serio:ty01pr*id*ex* psmouse\n", module_patch)
 
     def test_sound_module_paths_keep_traversal_and_root_guards(self):
         with tempfile.TemporaryDirectory() as temporary:

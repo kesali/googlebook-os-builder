@@ -251,7 +251,7 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
   seccomp policy for Mesa's CPU-affinity query; the platform sandbox and enforcing SELinux remain.
 - [mesa-radv-yv12.patch](../../hardware/drivers/amdgpu/mesa-radv-yv12.patch),
   [minigbm-yuv-pitch.patch](../../hardware/drivers/amdgpu/minigbm-yuv-pitch.patch),
-  [test_video_buffers.py](../../tests/test_video_buffers.py) — source-level external-format query
+  [test_video_buffers.py](../../hardware/drivers/amdgpu/tests/test_video_buffers.py) — source-level external-format query
   and planar pitch fixes based on the owner's earlier gbos findings.
 
 ## Verify
