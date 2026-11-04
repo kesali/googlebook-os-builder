@@ -6,9 +6,12 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+from hardware_recipes import expand
 
 
 class MesaPublicationTests(unittest.TestCase):
@@ -110,7 +113,7 @@ esac
         self.assertIn("-Dopengl=false", script)
         self.assertIn("-Dllvm=disabled -Damd-use-llvm=false", script)
         installs = [line.split() for line in
-                    (ROOT / "android/vendor/install.list").read_text().splitlines()
+                    expand(ROOT / "android/vendor/install.list").splitlines()
                     if line and not line.startswith("#")]
         self.assertIn(["lib64/radeonsi_drv_video.so", "0644", "0:0",
                        "same_process_hal_file", "mesa/lib64/radeonsi_drv_video.so"], installs)

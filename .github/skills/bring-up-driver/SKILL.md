@@ -23,16 +23,20 @@ A missing app feature does not prove a missing driver.
    patch only when simpler options cannot work and the owner approves.
 3. Check what Google already ships. Reuse suitable signed/prebuilt helpers unchanged; do not
    replace them merely because the same source build produces a copy.
-4. For an approved module addition, wire every relevant surface:
+4. For an approved module addition, select its native [recipe](../../../hardware/drivers.list)
+   and wire its fragments into every relevant base surface:
    - [kernel config](../../../kernel/gki.config): explicit modular settings and dependencies;
      preserve the agreed built-ins, Google release, toolchain, certificate and ABI whitelist.
    - [publication list](../../../kernel/laptop-modules.list) and
      [packager](../../../scripts/laptop-modules.sh): selected upstream paths only; preserve
      path checks, signing, replacement refusal and symbol/CRC validation.
    - [install list](../../../android/vendor_dlkm/install.list): explicit signed modules.
-   - [module metadata patch](../../../android/vendor_dlkm/modules.patch): dependencies,
+   - [module metadata patch](../../../hardware/drivers/laptop-modules/vendor_dlkm/modules.patch): dependencies,
      device aliases and only necessary, justified preloads. Generate Google text patches with
      `diff -u` from pristine originals; keep an explanatory header and removal condition.
+     This combined source-derived patch is not automatically regenerated when selecting drivers.
+   - Recipe-local firmware, Android assets and component patches where needed; keep shared OS
+     changes common. See the [recipe format](../../../README.md#hardware-recipes).
    - [module checker](../../../tools/laptop_module_check.py) and
      [tests](../../../tests/test_laptop_modules.py): cover changed behavior and safeguard failures.
 5. Distinguish module filenames from compiled names: hyphens and underscores can differ.

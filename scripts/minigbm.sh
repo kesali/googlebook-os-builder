@@ -31,7 +31,7 @@ fi
 
 common=$headers/interfaces/common/aidl/aidl_api/android.hardware.common/2
 graphics=$headers/interfaces/graphics/common/aidl/aidl_api/android.hardware.graphics.common/7
-settings=$(cat "$0" "$headers/.ready" "$root/android/minigbm-platform-cxx.h" | sha256sum | cut -d' ' -f1)
+settings=$(cat "$0" "$headers/.ready" "$root/hardware/drivers/amdgpu/minigbm-platform-cxx.h" | sha256sum | cut -d' ' -f1)
 if [ ! -f "$build/settings" ] || [ "$settings" != "$(cat "$build/settings")" ]; then
     for api in "$common" "$graphics"; do
         mapfile -t files < <(find "$api" -name '*.aidl' | LC_ALL=C sort)
@@ -58,7 +58,7 @@ rule cc
   depfile = \$out.d
   deps = gcc
 rule cxx
-  command = $tc/x86_64-linux-android35-clang++ $flags $includes -std=c++20 -fvisibility-inlines-hidden -include $root/android/minigbm-platform-cxx.h -MMD -MF \$out.d -c \$in -o \$out
+  command = $tc/x86_64-linux-android35-clang++ $flags $includes -std=c++20 -fvisibility-inlines-hidden -include $root/hardware/drivers/amdgpu/minigbm-platform-cxx.h -MMD -MF \$out.d -c \$in -o \$out
   depfile = \$out.d
   deps = gcc
 rule link

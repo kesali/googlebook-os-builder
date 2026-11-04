@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read: one change directory under android/. Write: its changes into an extracted Android tree.
+# Read: one change directory and its selected hardware recipes. Write: an extracted Android tree.
 #
 #   android-overlay.sh CHANGES ROOT [NAME=DIR ...]
 #
@@ -8,7 +8,8 @@
 #   install.list  New files: path, mode, uid:gid, SELinux type (- for none), source.
 #                 Source ./FILE is in CHANGES; NAME/FILE is FILE in the input NAME=DIR.
 #                 Source - makes a directory. To replace a file, remove it first.
-#   *.patch       Unified diffs (patch -p1) of existing text files, in name order.
+#   patches.list  Ordered patches, including selected native recipe fragments.
+#   *.patch       Unified diffs (patch -p1); name order when patches.list is absent.
 #                 Text before the first --- line explains the change.
 # All paths are relative to ROOT. Run under fakeroot so owners, modes and labels survive.
 set -euo pipefail
@@ -26,6 +27,7 @@ for listing in remove.list install.list; do
         python3 "$(dirname "$0")/../tools/hardware_recipes.py" "$changes/$listing" > "$scratch/$listing"
     fi
 done
+python3 "$(dirname "$0")/../tools/hardware_recipes.py" --patches "$changes" > "$scratch/patches.list"
 
 # The lines of a list file, without comments and blank lines.
 entries() {
@@ -92,8 +94,7 @@ done < <(entries install.list)
 
 # GNU patch replaces each file it changes, which would drop its owner, mode and SELinux
 # label. So patch copies in a scratch directory, then write the results back in place.
-for patch in "$changes"/*.patch; do
-    test -e "$patch" || continue  # no *.patch files
+while IFS= read -r patch; do
     name=$(basename "$patch")
     copies=$scratch/$name
     files=$(sed -n 's#^+++ b/\([^[:space:]]*\).*#\1#p' "$patch")
@@ -112,4 +113,4 @@ for patch in "$changes"/*.patch; do
         cat "$copies/$path" > "$root/$path"
     done
     echo "$changes: patch $name"
-done
+done < "$scratch/patches.list"

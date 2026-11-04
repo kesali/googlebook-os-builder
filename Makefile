@@ -10,15 +10,18 @@ endif
 GOOGLE := $(OUT)/google
 DL := $(OUT)/downloads
 RUBY_RECOVERY := $(DL)/ruby-$(RUBY_RECOVERY_BUILD)-$(RUBY_RECOVERY_SHA).bin
-# Unchanged Project Churro patch from commit 488dab956808916100eca141ee251a5a5773eeba.
-# Keep its separate content hash so existing editable kernel trees remain reusable.
-EMU_PATCH := kernel/vex-emulate.patch
-EMU_SHA := $(shell sha256sum $(EMU_PATCH) | cut -d' ' -f1)
 BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
-KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
-# Shared handoff first; selected driver recipes append their ordered source fixes.
-KERNEL_PATCHES := kernel/drm-firmware-handoff.patch
+# Selected recipes append native component patches in their declared order.
+KERNEL_PATCHES :=
+MESA_PATCHES :=
+MINIGBM_PATCHES :=
+EMU_PATCH :=
 include hardware/kernel.mk
+ifeq ($(strip $(EMU_PATCH)),)
+$(error The kernel source pipeline requires the cpu-vex recipe)
+endif
+EMU_SHA := $(shell sha256sum $(EMU_PATCH) | cut -d' ' -f1)
+KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
 KERNEL_PATCH_SHA := $(shell cat $(KERNEL_PATCHES) | sha256sum | cut -d' ' -f1)
 KERNEL_SRC := $(KERNEL_CACHE)-$(KERNEL_PATCH_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
@@ -34,8 +37,6 @@ ANDROID_DISK := $(OUT)/gbos-builder/disk.img
 ANDROID_LAYOUT := android/super-layout.json
 MESA := $(OUT)/mesa
 MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
-MESA_PATCH := android/mesa-drm-master.patch
-MESA_PATCHES := $(MESA_PATCH) android/mesa-radv-two-queues.patch android/mesa-radv-yv12.patch
 MESA_SOURCE_SHA := $(shell cat $(MESA_PATCHES) scripts/source.sh | sha256sum | cut -d' ' -f1)
 MESA_SRC := $(OUT)/src/mesa-$(MESA_SHA)-$(MESA_SOURCE_SHA)
 LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_SHA).tar.xz
@@ -51,8 +52,6 @@ FIRMWARE_TAR := $(DL)/linux-firmware-$(FIRMWARE_SHA).tar.xz
 FIRMWARE := $(OUT)/firmware-$(FIRMWARE_SHA)
 MINIGBM := $(OUT)/minigbm
 MINIGBM_TAR := $(DL)/minigbm-$(MINIGBM_SHA).tar.gz
-MINIGBM_PATCH := android/minigbm-amd.patch
-MINIGBM_PATCHES := $(MINIGBM_PATCH) android/minigbm-yuv-pitch.patch
 MINIGBM_SOURCE_SHA := $(shell cat $(MINIGBM_PATCHES) scripts/source.sh | sha256sum | cut -d' ' -f1)
 MINIGBM_SRC := $(OUT)/src/minigbm-$(MINIGBM_SHA)-$(MINIGBM_SOURCE_SHA)
 HEADERS := $(OUT)/android-headers/$(ANDROID_HEADERS_TAG)
@@ -68,8 +67,9 @@ AIDL := $(TOOLCHAIN)/build-tools-$(ANDROID_BUILDTOOLS_SHA)/aidl
 BUILDER := scripts/builder.sh
 BUILD_READY := $(OUT)/stamps/builder
 # Recipe directories are explicit build inputs; no runtime hardware detection or installer.
-RECIPE_SELECTION := tools/hardware_recipes.py hardware/lenovo-e50-80/drivers.list \
-	$(wildcard hardware/drivers/*)
+RECIPE_SELECTION := tools/hardware_recipes.py hardware/drivers.list hardware/devices.list \
+	$(HARDWARE_RECIPES)
+recipe_inputs = $(RECIPE_SELECTION) $(foreach recipe,$(HARDWARE_RECIPES),$(foreach pattern,$(1),$(wildcard $(recipe)/$(pattern))))
 export BUILDER_IMAGE JOBS QEMU_VNC_PORT
 export SOURCE_DATE_EPOCH := 1790812800
 export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $(image)))
@@ -83,7 +83,7 @@ help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
 
 .PHONY: hardware-check
-hardware-check: $(BUILD_READY) ## Check Lenovo recipe wiring without building an image
+hardware-check: $(BUILD_READY) ## Check selected hardware recipes without building an image
 	$(BUILDER) python3 tools/hardware_recipes.py
 
 # Device selection and mounts belong to the host, never a privileged builder container.
@@ -134,8 +134,8 @@ lp-tools: $(OUT)/lp-tools/lpmake ## Build upstream lpmake for disposable super-l
 # FORCE lets the upstream build systems see source edits. Published files keep
 # their timestamps when their contents do not change, so downstream steps skip.
 kernel: $(OUT)/kernel/bzImage ## Incrementally compile the diagnostic kernel
-$(OUT)/kernel/bzImage: FORCE $(KERNEL_SRC)/.ready kernel/msi-diagnostic.config scripts/kernel.sh $(BUILD_READY)
-	$(BUILDER) bash scripts/kernel.sh "$(KERNEL_SRC)" "$(OUT)/kernel" kernel/msi-diagnostic.config
+$(OUT)/kernel/bzImage: FORCE $(KERNEL_SRC)/.ready hardware/msi-modern-15-b7m/diagnostic.config scripts/kernel.sh $(BUILD_READY)
+	$(BUILDER) bash scripts/kernel.sh "$(KERNEL_SRC)" "$(OUT)/kernel" hardware/msi-modern-15-b7m/diagnostic.config
 # Debian's GRUB as one removable-media EFI file, with boot/loader.cfg built in.
 $(OUT)/grub/BOOTX64.EFI: boot/loader.cfg $(BUILD_READY)
 	@mkdir -p $(@D)
@@ -201,12 +201,12 @@ $(GKI_VIRT): | $(BUILD_READY)
 gki: $(GKI)/bzImage ## Rebuild Google's kernel with the instruction emulator, check kABI
 $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) $(GKI_ABI_LIST) \
 		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py \
-		$(RECIPE_SELECTION) $(wildcard hardware/drivers/*/gki.config)
+		$(call recipe_inputs,gki.config)
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
 		"$(GKI_SYMVERS)" "$(GKI_ABI_LIST)" kernel/gki.config
 
 $(GKI)/modules/manifest: FORCE $(GKI)/bzImage $(GOOGLE)/inventory.txt scripts/laptop-modules.sh \
-		kernel/laptop-modules.list $(RECIPE_SELECTION) $(wildcard hardware/drivers/*/modules.list)
+		kernel/laptop-modules.list $(call recipe_inputs,modules.list)
 	$(BUILDER) bash scripts/laptop-modules.sh "$(GKI)/build" "$(TOOLCHAIN)" \
 		kernel/laptop-modules.list "$(GOOGLE)" "$(GKI)/modules"
 
@@ -243,8 +243,8 @@ $(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.re
 
 $(FIRMWARE_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(FIRMWARE_URL)" "$(FIRMWARE_SHA)" "$@"
-$(FIRMWARE)/manifest: $(FIRMWARE_TAR) kernel/msi-firmware.list scripts/firmware.sh
-	$(BUILDER) bash scripts/firmware.sh "$<" "$(FIRMWARE_VERSION)" kernel/msi-firmware.list "$(FIRMWARE)"
+$(FIRMWARE)/manifest: $(FIRMWARE_TAR) kernel/firmware.list scripts/firmware.sh $(call recipe_inputs,firmware.list)
+	$(BUILDER) bash scripts/firmware.sh "$<" "$(FIRMWARE_VERSION)" kernel/firmware.list "$(FIRMWARE)"
 $(MINIGBM_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(MINIGBM_URL)" "$(MINIGBM_SHA)" "$@"
 $(MINIGBM_SRC)/.ready: | $(MINIGBM_TAR) $(MINIGBM_PATCHES) scripts/source.sh
@@ -306,7 +306,7 @@ minigbm-check: $(MINIGBM_SRC)/.ready $(LIBDRM_SRC)/.ready ## Test allocator buff
 	$(BUILDER) "$(OUT)/gbm-wrapper-test"
 $(MINIGBM)/manifest: FORCE $(MINIGBM_SRC)/.ready $(HEADERS)/.ready $(NDK)/.ready \
 		$(MESA)/manifest $(GOOGLE)/inventory.txt $(AIDL) scripts/minigbm.sh \
-		android/minigbm-platform-cxx.h tools/minigbm_abi.py
+		hardware/drivers/amdgpu/minigbm-platform-cxx.h tools/minigbm_abi.py
 	$(BUILDER) bash scripts/minigbm.sh "$(MINIGBM_SRC)" "$(HEADERS)" "$(NDK)" "$(MESA)" \
 		"$(GOOGLE)" "$(AIDL)" "$(MINIGBM)"
 
@@ -315,11 +315,11 @@ $(ANDROID)/crossystem: android/crossystem-qemu.c $(NDK)/.ready
 	$(BUILDER) "$(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android35-clang" \
 		-O2 -Wall -Wextra -Werror -o "$@" "$<"
 
-# Each partition = Google's pristine image + the declared changes in android/<partition>/
-# (remove.list, install.list, *.patch; see scripts/android-overlay.sh).
+# Each partition = Google's pristine image + base lists/patches and selected recipe fragments.
+# See scripts/android-overlay.sh for the native formats and metadata safeguards.
 # install.list sources start with one of these names, e.g. emulator/vendor/bin/...
 ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID) \
-	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules
+	minigbm=$(MINIGBM) firmware=$(FIRMWARE) gki=$(GKI)/modules hardware=hardware
 # $* is the partition name: system, vendor, system_ext or vendor_dlkm.
 $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vendor_dlkm_a.img: $(ANDROID)/%_a.img: \
 		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh \
@@ -328,21 +328,23 @@ $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(AN
 		--layout "$(ANDROID_LAYOUT)" $(ANDROID_INPUTS)
 
 # The directories catch removed files; the wildcards catch edited ones.
-$(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready
-$(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*)
+android_recipe_inputs = $(call recipe_inputs,$(1).install $(1).remove $(1)*.patches $(1) $(1)/*)
+$(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready \
+		$(call android_recipe_inputs,system)
+$(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*) $(call android_recipe_inputs,system_ext)
 $(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
-		hardware/lenovo-e50-80/vendor.install hardware/lenovo-e50-80/drivers.list \
+		$(call android_recipe_inputs,vendor) \
 		$(ANDROID_EMU)/.ready $(MESA)/manifest $(MINIGBM)/manifest $(FIRMWARE)/manifest $(ANDROID)/crossystem
 $(ANDROID)/vendor_dlkm_a.img: android/vendor_dlkm $(wildcard android/vendor_dlkm/*) \
-		$(GKI)/modules/manifest tools/laptop_module_check.py $(RECIPE_SELECTION) \
-		$(wildcard hardware/drivers/*/install.list hardware/drivers/*/aliases)
+		$(GKI)/modules/manifest tools/laptop_module_check.py $(call android_recipe_inputs,vendor_dlkm) \
+		$(call recipe_inputs,aliases)
 
 $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
 	@mkdir -p $(@D)
 	$(BUILDER) avbtool make_vbmeta_image --algorithm NONE --flags 3 --padding_size 4096 --output "$@"
 
 $(ANDROID)/modules.lz4: $(GOOGLE)/inventory.txt $(GKI_VIRT) scripts/android-modules.sh scripts/android-overlay.sh tools/hardware_recipes.py \
-		android/module_ramdisk $(wildcard android/module_ramdisk/*)
+		android/module_ramdisk $(wildcard android/module_ramdisk/*) $(call android_recipe_inputs,module_ramdisk)
 	$(BUILDER) fakeroot bash scripts/android-modules.sh "$(GOOGLE)" android/module_ramdisk "$(GKI_VIRT)" "$@"
 android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks and QEMU drivers, our boot settings
 $(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py

@@ -216,7 +216,7 @@ class ElantechCalibrationTests(unittest.TestCase):
             character.isalnum() or character in "-_") else "_"
                            for character in device_name) + ".idc"
         self.assertEqual(filename, "ETPS_2_Elantech_Touchpad.idc")
-        calibration = REPO / "android/vendor" / filename
+        calibration = REPO / "hardware/lenovo-e50-80/vendor" / filename
         settings = [line.strip() for line in calibration.read_text().splitlines()
                     if line.strip() and not line.startswith("#")]
         self.assertEqual(settings, ["gestureProp.Palm_Width = 50.0"])
@@ -228,7 +228,7 @@ class ElantechCalibrationTests(unittest.TestCase):
         entries = [line.split() for line in expand(REPO / "android/vendor/install.list").splitlines()
                    if line.strip() and not line.startswith("#")]
         self.assertIn([f"usr/idc/{filename}", "0644", "0:0",
-                       "vendor_configs_file", f"./{filename}"], entries)
+                       "vendor_configs_file", f"hardware/lenovo-e50-80/vendor/{filename}"], entries)
 
 
 if __name__ == "__main__":

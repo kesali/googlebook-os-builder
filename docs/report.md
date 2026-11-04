@@ -131,7 +131,7 @@ plus [android/cmdline.txt](../android/cmdline.txt) and [android/bootconfig.txt](
 | Our signed kernel modules in vendor_dlkm (amdgpu, mt7921e/mt76, …) | Drivers Google does not ship. |
 | `crossystem` stand-in ([crossystem-qemu.c](../android/crossystem-qemu.c)) | The boot HAL calls it; it accepts only the success values and rejects everything else. |
 | [no-face.xml](../android/vendor/no-face.xml) | Declares that there is no face feature. |
-| `get_variant_audio` and [audio-msi.rc](../android/vendor/audio-msi.rc) | Rename the ALC256 card to the ID Google's audio HAL expects, then restart the HAL. |
+| `get_variant_audio` and [audio-msi.rc](../hardware/msi-modern-15-b7m/vendor/audio-msi.rc) | Rename the ALC256 card to the ID Google's audio HAL expects, then restart the HAL. |
 | [gbos-builder.rc](../android/system_ext/gbos-builder.rc), `graphics-*.rc` | Disable gscd/udsattestation; choose the graphics profile from the GRUB argument. |
 | [bootlog.rc](../android/system_ext/bootlog.rc) and helpers | Save kernel and Android logs plus a read-only hardware snapshot to `/metadata/gbos-builder-bootlog`. |
 
@@ -173,7 +173,7 @@ Intel instructions that Zen 3 lacks.
 - **Config fragment** ([gki.config](../kernel/gki.config)): trusted key, touchpad, simpledrm and
   drm_log, modular amdgpu, EROFS Zstd. Unlisted config changes fail the build.
 - **Patches:**
-  - [drm-firmware-handoff.patch](../kernel/drm-firmware-handoff.patch) (from Churro): release the
+  - [drm-firmware-handoff.patch](../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) (from Churro): release the
     firmware framebuffer before amdgpu takes a DRM minor.
   - [msi-backlight.patch](../hardware/drivers/amdgpu/msi-backlight.patch): on this exact DMI model only, name the
     first panel `backlight` so Google's unchanged lights HAL finds it.
@@ -198,9 +198,9 @@ SurfaceFlinger and HWUI renderers have not been independently measured on the la
 
 - **Mesa:** 26.3.0-rc3, built with NDK r30 for API 35 and no LLVM (RADV uses ACO). libdrm and
   expat are linked statically.
-- **Mesa patch:** [mesa-drm-master.patch](../android/mesa-drm-master.patch) drops DRM master so
+- **Mesa patch:** [mesa-drm-master.patch](../hardware/drivers/drm-handoff/mesa-drm-master.patch) drops DRM master so
   the composer can drive the display.
-- **minigbm:** LineageOS minigbm with [minigbm-amd.patch](../android/minigbm-amd.patch). An ABI
+- **minigbm:** LineageOS minigbm with [minigbm-amd.patch](../hardware/drivers/amdgpu/minigbm-amd.patch). An ABI
   gate ([minigbm_abi.py](../tools/minigbm_abi.py)) checks it.
 - **Vulkan HWUI is an opt-in test only.** An AMD-only GRUB entry selects the `skiavk` profile;
   the RADV two-queue patch is compiled into the driver used by both AMD profiles. The owner saw

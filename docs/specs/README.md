@@ -9,14 +9,14 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial | Renamed kernel/ABI verified; owner checks panel brightness |
+| [Kernel (GKI)](kernel.md) | partial; recipe refactor validated | Owner tests combined image on both laptops |
 | [Boot chain](boot.md) | partial | Renamed direct/UEFI boots verified; physical retest remains |
-| [OS image and disk](os-image.md) | working (gbos-builder fresh image) | Old media need an explicit owner-run fresh flash, not an update |
+| [OS image and disk](os-image.md) | working; recipe image byte-identical | Owner tests combined image; old media still need a fresh flash |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial | Lenovo desktop/video owner-confirmed; original-profile freeze unresolved |
+| [Graphics](graphics.md) | partial; recipe image validated in QEMU | Physical AMD/Intel regression test |
 | [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
-| [Laptop hardware](laptop-hardware.md) | partial | Physical renamed-image retest; Lenovo audio/camera remain |
-| [USB diagnostics](usb-diagnostic.md) | parked | Renamed UEFI smoke passes; no new physical retest |
+| [Laptop hardware](laptop-hardware.md) | partial; recipe image validated | Owner tests MSI and Lenovo; retain fresh logs |
+| [USB diagnostics](usb-diagnostic.md) | parked; moved inputs byte-verified | Separate diagnostic build/smoke not repeated |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
 `planned` = agreed, not started · `parked` = works, not being developed now.

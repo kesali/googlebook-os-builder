@@ -5,7 +5,15 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-04 — Clean-break rename: 246 tests pass, including legacy label/
+**Last verified:** 2026-11-04 — Full hardware recipes: 263 tests pass; 11 expanded declaration
+surfaces and ordered patch bytes match `d901da2`. Image rebuild passes ABI/modules, metadata
+and fit checks; all 38 tracked output hashes/sizes match before the build. The 23.8 s repeat
+preserves timestamps/inodes too, with no partition/boot writes. Direct and USB-UEFI disposable
+boots reach inspected setup under enforcing SELinux; a tap opens inspected Accessibility.
+Both older disks and the deliverable remain untouched by boot tests. No physical writes.
+[Evidence](../../out/full-hardware-recipes/).
+
+Earlier, 2026-11-04 — Clean-break rename: 246 tests pass, including legacy label/
 marker/directory refusal without writes. New `out/gbos-builder/disk.img` passes kernel ABI,
 signed modules and filesystem metadata/fit checks. The 22.6 s repeat preserves 38 complete
 output hashes/sizes/timestamps and writes no partitions or boot files. Direct/USB-UEFI QEMU
@@ -79,6 +87,13 @@ Turn Google's read-only recovery image into a private QEMU disk with a short lis
 changes, and update only the changed OS partitions without touching Android's data.
 
 ## Current state
+Verified: native hardware recipes now supply device assets, driver libraries/firmware,
+whole-file removals and explicitly ordered Android patches through the existing overlay.
+Shared security/logging/native-bridge/storage changes stay common. Source-derived combined
+module metadata remains intact in `laptop-modules`; arbitrary driver removal is not automatic.
+The owner approved tests/build; exact input/output preservation and disposable QEMU checks
+pass above. The combined image remains `out/gbos-builder/disk.img`, ready for owner testing.
+
 Verified: clean-break gbos-builder identity uses a separate `out/gbos-builder/disk.img`,
 FAT label `GBOS-BOOT`, boot directory `gbos-builder/` and new format markers.
 Existing Dali media are deliberately rejected before updater writes; the owner must explicitly
@@ -309,6 +324,11 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-04 uncommitted — Combined image rebuilt/verified for MSI and Lenovo. 263 tests,
+  38-output byte equality and no-write repeat pass; disposable direct/UEFI boots inspected.
+  No physical writes or source-tree replacement; physical regression remains with the owner.
+- 2026-11-04 uncommitted — Added ordered recipe patch manifests and recipe-local install sources;
+  preserved overlay metadata/path checks. No new tests, build, boot or commit yet.
 - 2026-11-04 (this commit) — Clean-break identity/new image path; old disks/trees preserved.
   246 tests, ABI/metadata/fit, enforcing direct/UEFI/input, Berberis and no-write repeat pass.
   Fix timestamp-only Mesa/minigbm re-extraction; physical media/hardware remain untested.

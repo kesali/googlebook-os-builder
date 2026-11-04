@@ -42,9 +42,7 @@ bin/crossystem
 # generic build. See android/system/remove.list.
 lib64/libz.so
 
-# Source-built allocator with the AMD Mesa backend; services and mapper remain Google's.
-lib64/libgbm.so
-lib64/libminigbm_gralloc.so
+# recipe: amdgpu/vendor.remove
 
 # Compile the changed platform policy instead of using Google's unchanged binary.
 # Keep enforcing; remove this group when the dedicated boot logger is no longer needed.

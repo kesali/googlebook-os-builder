@@ -1,7 +1,13 @@
 # QEMU VM
 
 **Status:** parked — gbos-builder screen/input regression verified; setup not finished.
-**Last verified:** 2026-11-04 — New renamed image passes the existing bounded graphical
+**Last verified:** 2026-11-04 — Full recipe image: disposable direct boot passes stable PIDs,
+enforcing SELinux and softpipe; setup and Accessibility after a tap inspected. Both USB-UEFI
+runs pass, with inspected graphics setup/early DRM console and hidden unchanged NVMe decoy.
+All VMs exited; final hashes/timestamps confirm source image unchanged.
+[Evidence](../../out/full-hardware-recipes/).
+
+Earlier, 2026-11-04 — New renamed image passes the existing bounded graphical
 verifier through a session harness: stable system/graphics/key-service PIDs, SELinux enforcing,
 softpipe, new collector domain and saved logs. Setup and Accessibility after an injected tap
 are inspected. `make android-uefi-check JOBS=12` passes both runs with the NVMe decoy unchanged.
@@ -36,7 +42,7 @@ Known noise: Bluetooth services crash-loop because no Bluetooth device exists.
 - `-no-reboot`: a guest reboot or panic ends QEMU instead of looping.
 - A shared lock on the disk: the updater refuses to write while the VM runs.
 - The softpipe profile skips SurfaceFlinger's shader priming and the boot animation
-  ([graphics-softpipe.rc](../../android/system_ext/graphics-softpipe.rc)): under softpipe they kept
+  ([graphics-softpipe.rc](../../hardware/drivers/qemu-virtio/system_ext/graphics-softpipe.rc)): under softpipe they kept
   boot completion waiting for WindowManager's 30 s timeout (~49 s → ~22 s). The laptop keeps both.
 
 ## Files
@@ -80,6 +86,10 @@ Parked while the laptop is the focus (owner, 2026-10-31); these are still the ag
 - Keep the guest awake (for example Android's stay-awake setting) so it does not enter s2idle.
 
 ## Handoff log
+- 2026-11-04 uncommitted — Full recipe image passes disposable direct/USB-UEFI checks;
+  setup and direct Accessibility tap screenshots inspected. VMs exited; deliverable unchanged.
+- 2026-11-04 uncommitted — Softpipe profile and first-stage module declarations moved into
+  qemu-virtio recipe; contents/order intended unchanged. Validation deferred by the owner.
 - 2026-11-04 (this commit) — Rename runner/console identities and standalone image defaults;
   no VM geometry or enforcement change. Direct/UEFI setup screens inspected, accessibility
   tap responds, saved diagnostics and Berberis selection checked. VMs exited; setup not completed.

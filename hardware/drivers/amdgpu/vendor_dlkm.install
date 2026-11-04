@@ -1,0 +1,4 @@
+lib/modules/amdgpu.ko                  0644 0:0   vendor_kernel_modules gki/amdgpu.ko
+lib/modules/amdxcp.ko                  0644 0:0   vendor_kernel_modules gki/amdxcp.ko
+lib/modules/drm_panel_backlight_quirks.ko 0644 0:0 vendor_kernel_modules gki/drm_panel_backlight_quirks.ko
+lib/modules/hwmon.ko                   0644 0:0   vendor_kernel_modules gki/hwmon.ko

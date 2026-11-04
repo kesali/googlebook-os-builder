@@ -9,7 +9,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def additions(name):
-    return "\n".join(line[1:] for line in (REPO / "android" / name).read_text().splitlines()
+    return "\n".join(line[1:] for line in (REPO / "hardware/drivers/amdgpu" / name).read_text().splitlines()
                      if line.startswith("+") and not line.startswith("+++")
                      and not line.startswith("+#include"))
 

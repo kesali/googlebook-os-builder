@@ -1,7 +1,12 @@
 # Graphics
 
 **Status:** partial — QEMU softpipe works; the laptop desktop and camera work, and Chrome uses RADV.
-**Last verified:** 2026-11-03 — Lenovo logs prove i915/Iris enumeration but desktop presentation
+**Last verified:** 2026-11-04 — Recipe refactor: 263 tests, exact patch/profile/input equality,
+image metadata and 38-output byte equality pass; 23.8 s no-write repeat preserves timestamps.
+Direct and USB-UEFI softpipe setup screens inspected under enforcing SELinux; direct tap opens
+inspected Accessibility. Physical AMD/Intel regression remains. [Evidence](../../out/full-hardware-recipes/).
+
+Earlier, 2026-11-03 — Lenovo logs prove i915/Iris enumeration but desktop presentation
 fails (fb -22). Churro's primary-alpha candidate passes 33 tests, kernel/image/metadata checks,
 no-write repeat and disposable enforcing QEMU setup/input (screens inspected); hardware retest
 pending. [Evidence](../../out/intel-primary-alpha/). Owner confirms the pre-patch MSI image boots.
@@ -35,6 +40,11 @@ Show Googlebook OS on screen. First correctness (softpipe),
 then speed (accelerated rendering), later the laptop's AMD GPU.
 
 ## Current state
+Verified: graphics source patches/header now belong to DRM handoff/amdgpu recipes;
+Intel and QEMU profiles belong to their driver recipes. AMD profiles stay MSI-owned because
+they include the owner's panel density. Asset/patch bytes and ordering match the baseline;
+build, ABI, image equality and softpipe QEMU checks pass above. No new physical GPU test.
+
 Lenovo hardware attempt (2026-11-03): [saved boot](../../out/laptop-logs/20261103-181307-7gwlz7mk/current/boot.txt)
 selects Intel; i915 binds and EGL reports `Mesa Intel(R) HD Graphics 5500 (BDW GT2)`,
 OpenGL ES 3.2. After animation the display goes dark while keyboard activity wakes backlight.
@@ -47,7 +57,7 @@ Owner confirms the expanded image boots MSI; wider regression has not been repor
 
 Broadwell integration (2026-11-03, enumeration verified above): unchanged upstream Iris builds into
 Mesa alongside softpipe/Zink; native `mesa_clc`/`vtn_bindgen2` use builder-only LLVM 19.
-The [Intel profile](../../android/system_ext/graphics-intel.rc) selects GLES without Vulkan,
+The [Intel profile](../../hardware/drivers/i915/system_ext/graphics-intel.rc) selects GLES without Vulkan,
 software forcing or AMD overrides; GRUB selects it only for the Lenovo's `8086:1616` GPU.
 Signed i915/intel-gtt reuse Google's helpers; only that i915 alias is installed.
 The separate enlarged-layout vendor image is 354,205,696 B within its 387,108,864 B limit.
@@ -67,7 +77,7 @@ Verified: source-built Mesa and minigbm work with Google's unchanged composer, a
 and mapper on virtio-gpu. RADV/Zink and the AMD allocator backend build; all 49 gralloc and 22 GBM
 exports used by Google's clients are present. The prior laptop kernel loaded amdgpu as DRM minor 1,
 but SurfaceFlinger repeatedly reported invalid present fences. The
-[source-level handoff](../../kernel/drm-firmware-handoff.patch) gives virtio card0 in QEMU and a
+[source-level handoff](../../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) gives virtio card0 in QEMU and a
 visible setup screen on the laptop. On the laptop, Chrome renders through ANGLE on RADV; which
 renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. The opt-in RADV
 two-queue Vulkan HWUI candidate was tested by the owner with no noticeable performance difference;
@@ -135,7 +145,7 @@ Camera crashes still name the JPEG decoder's `RESOLUTION_BOUND`; its detailed in
 logs have rotated out ([logs](../../out/laptop-logs/20261102-221612-z03h9kht/current/)).
 Source tracing found a likely configuration conflict: the AMD profile globally exports
 `MESA_LOADER_DRIVER_OVERRIDE=zink`; the VA pipe loader honors it, but its build contains
-only RadeonSI. Approved [camera-va-driver.patch](../../android/vendor/camera-va-driver.patch)
+only RadeonSI. Approved [camera-va-driver.patch](../../hardware/drivers/amdgpu/vendor/camera-va-driver.patch)
 clears that variable only in the USB camera service, retaining automatic DRM detection,
 desktop Zink and enforcing SELinux. 21 focused tests pass; the 28.6 s image rebuild reads
 back the exact service edit and verifies 1622 metadata entries and partition fit. The 17.2 s
@@ -168,7 +178,7 @@ effects create a RADV Vulkan 1.4 context, but every frame fails AHWB import with
 `ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT`. The allocator's spoofed NV12 path aligns
 width only to 32, suggesting a 640-byte pitch at 640x480; the actual AHWB plane layout was not
 logged. RADV requires 256-byte linear pitches on GFX9.
-[minigbm-yuv-pitch.patch](../../android/minigbm-yuv-pitch.patch)
+[minigbm-yuv-pitch.patch](../../hardware/drivers/amdgpu/minigbm-yuv-pitch.patch)
 (renamed from the YV12 patch) also aligns NV12/NV21 widths to 256. 19 focused tests, GBM wrapper
 check, minigbm ABI gate, 30 s image build (only `vendor_a` written), 17 s no-write repeat and
 enforcing QEMU (77 s, screen inspected, VM exited) pass. [Evidence](../../out/camera-pitch/).
@@ -189,25 +199,25 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
   VA driver uses shared DRM, adding the AMD helper but preserving Google's core runtime.
   Pins: [sources.mk](../../sources.mk).
 - Software rendering is selected with `LIBGL_ALWAYS_SOFTWARE`/`GALLIUM_DRIVER` in
-  [graphics-softpipe.rc](../../android/system_ext/graphics-softpipe.rc), not Android properties (name-length limits).
+  [graphics-softpipe.rc](../../hardware/drivers/qemu-virtio/system_ext/graphics-softpipe.rc), not Android properties (name-length limits).
   That profile also skips shader priming and the boot animation, which softpipe draws too slowly ([QEMU spec](qemu.md)).
 - The laptop menu selects AMD only for PCI `1002:15e7`; otherwise softpipe is the default.
-  [graphics-amd.rc](../../android/system_ext/graphics-amd.rc) selects Google's ANGLE GLES,
+  [graphics-amd.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc) selects Google's ANGLE GLES,
   RADV Vulkan RenderEngine and Mesa GBM/Zink, with GL HWUI like QEMU. The AMD-only Vulkan HWUI
   entry is opt-in. The RADV queue patch is compiled into the driver used by both AMD profiles;
   it maps logical queues onto hardware rings and serializes submissions per context. Keep GL as
   the default; the owner saw no noticeable improvement with the optional profile.
 - LineageOS minigbm's Mesa backend needs the small AMD/FD/mapping fixes in
-  [minigbm-amd.patch](../../android/minigbm-amd.patch). Its C++ interface links to Google's actual
+  [minigbm-amd.patch](../../hardware/drivers/amdgpu/minigbm-amd.patch). Its C++ interface links to Google's actual
   platform libraries, not NDK libc++; an ABI gate checks Google's clients whenever either image or library changes.
-- [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch): Mesa drops DRM master after
+- [mesa-drm-master.patch](../../hardware/drivers/drm-handoff/mesa-drm-master.patch): Mesa drops DRM master after
   opening the primary node, so the composer can drive the display. A source patch, no added privileges.
 - Reuse the owner's gbos video findings at source level, not its binary patches.
   External-only AHB formats use Mesa's common gralloc query; planar YUV fallback allocations
   have 256-byte-aligned chroma pitches for RADV. Keep directly supported formats unchanged.
 - QEMU loads Google's virtio-gpu; the laptop adds amdgpu with official firmware.
   Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
-  DRM node labels: [android/vendor/file-contexts.patch](../../android/vendor/file-contexts.patch).
+  DRM node labels: [file-contexts.patch](../../hardware/msi-modern-15-b7m/vendor/file-contexts.patch).
 - Live uevents are serialized to prevent a delayed simpledrm remove event deleting amdgpu's reused
   card0. Only the MSI GPU's identification files get an existing SELinux type (`sysfs_gpu`, the
   same file set Google labels for its own GPU); no allow rules change.
@@ -217,18 +227,18 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 
 ## Files
 - [scripts/mesa.sh](../../scripts/mesa.sh) — Mesa/libdrm/Expat build; build cache keyed by inputs.
-- [mesa-radv-two-queues.patch](../../android/mesa-radv-two-queues.patch) and
-  [graphics-amd-vulkan.rc](../../android/system_ext/graphics-amd-vulkan.rc) — opt-in Vulkan HWUI
+- [mesa-radv-two-queues.patch](../../hardware/drivers/amdgpu/mesa-radv-two-queues.patch) and
+  [graphics-amd-vulkan.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd-vulkan.rc) — opt-in Vulkan HWUI
   test candidate.
 - [scripts/minigbm.sh](../../scripts/minigbm.sh), [tools/minigbm_abi.py](../../tools/minigbm_abi.py) — incremental allocator build and platform ABI gate.
 - [tests/gbm-wrapper.c](../../tests/gbm-wrapper.c), [tests/test_mesa.py](../../tests/test_mesa.py) — FD/error handling and unchanged-output publication.
 - [scripts/ndk.sh](../../scripts/ndk.sh), [scripts/source.sh](../../scripts/source.sh) — NDK and patched source trees.
-- [android/mesa-drm-master.patch](../../android/mesa-drm-master.patch) — Mesa source patch.
+- [mesa-drm-master.patch](../../hardware/drivers/drm-handoff/mesa-drm-master.patch) — Mesa source patch.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch) — Mesa libraries and settings in vendor.
 - [mediaswcodec.policy](../../android/vendor/mediaswcodec.policy) — additive software-codec
   seccomp policy for Mesa's CPU-affinity query; the platform sandbox and enforcing SELinux remain.
-- [mesa-radv-yv12.patch](../../android/mesa-radv-yv12.patch),
-  [minigbm-yuv-pitch.patch](../../android/minigbm-yuv-pitch.patch),
+- [mesa-radv-yv12.patch](../../hardware/drivers/amdgpu/mesa-radv-yv12.patch),
+  [minigbm-yuv-pitch.patch](../../hardware/drivers/amdgpu/minigbm-yuv-pitch.patch),
   [test_video_buffers.py](../../tests/test_video_buffers.py) — source-level external-format query
   and planar pitch fixes based on the owner's earlier gbos findings.
 
@@ -275,6 +285,11 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 uncommitted — Recipe source/profile bytes and image outputs match baseline;
+  263 tests, metadata checks, no-write repeat and inspected direct/UEFI softpipe boots pass.
+  Physical AMD/Intel regression remains with the owner.
+- 2026-11-04 uncommitted — Moved Mesa/minigbm patches and graphics profiles into recipes;
+  retained exact profile contents and explicit patch ordering. Not validated.
 - 2026-11-04 (this commit) — Kernel display fixes moved unchanged into AMD/i915 recipes;
   40 source/recipe/module tests and image preservation checks pass. No new runtime boot.
 - 2026-11-03 (this commit) — Owner confirms Lenovo guest/another-profile desktop and video,

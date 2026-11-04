@@ -17,6 +17,10 @@ A small Linux USB (not Android) to check this laptop's hardware with our own ker
 with file-level incremental updates instead of reflashing.
 
 ## Current state
+Verified: moved MSI diagnostic config and cpu-vex patch bytes match `d901da2`;
+source preparation and recipe tests pass in the 263-test suite. Android kernel/image and
+USB-UEFI checks pass. The separate diagnostic image was not rebuilt in this validation.
+
 Verified: clean-break gbos-builder identity uses `GBOS-BOOT`, `gbos-builder/`,
 new format marker and kernel arguments. Old diagnostic media are not compatible update
 targets. New output is `out/gbos-builder-usb.img`; existing images are preserved.
@@ -40,7 +44,7 @@ The log ends at the self-test; shutdown is the owner's observation, not captured
 ## Decisions
 - BusyBox is busybox.net's official static binary and GRUB is Debian's package, both unchanged:
   we change neither, so neither is compiled here. Only the kernel (instruction emulator) is.
-- Separate diagnostic kernel ([kernel/msi-diagnostic.config](../../kernel/msi-diagnostic.config)): GCC,
+- Separate diagnostic kernel ([MSI diagnostic config](../../hardware/msi-modern-15-b7m/diagnostic.config)): GCC,
   no modules; **not** GKI-compatible, so it cannot run Android.
 - Internal NVMe/SATA/MMC, SPI flash, TPM and EFI capsule writing are disabled in this kernel.
 - Updates go to an already-mounted USB with the gbos-builder marker; content-addressed kernel/initramfs
@@ -68,6 +72,10 @@ _None agreed._ The BUP Slim moves to the Android layout ([laptop-hardware.md](la
 flash this image again only when a hardware check is needed.
 
 ## Handoff log
+- 2026-11-04 uncommitted — Config/emulator moves match baseline bytes; recipe/source tests
+  and Android build/UEFI pass. Separate diagnostic build/smoke not repeated.
+- 2026-11-04 uncommitted — Moved diagnostic config and emulator patch into selected hardware
+  recipes; no tests/builds or new hardware verification.
 - 2026-11-04 (this commit) — Rename diagnostic marker/path/label, kernel build identity and
   readiness signal. 246 tests and rebuilt UEFI smoke pass with saved logs and clean poweroff;
   no physical writes, retest or history changes.

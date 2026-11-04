@@ -1,14 +1,11 @@
 # Files added to Google's vendor partition. See scripts/android-overlay.sh.
-# Sources: ./ is this directory; emulator/ is the pinned Android emulator image
-# (scripts/emulator.sh), mesa/ is our Mesa build and build/ is out/android.
+# Sources: ./ is this directory; named inputs are passed by the Makefile.
+# Recipe-local ./ sources are relative to their recipe and rebased to hardware/.
 #
 # path                                                                   mode owner  selinux type                source
 
 # recipe: lenovo-e50-80/vendor.install
-
-# MSI ALC256 setup; keep Google's audio HAL and select its expected card ID.
-bin/get_variant_audio                                                   0755 0:2000 get_variant_audio_exec      ./get_variant_audio
-etc/init/gbos-builder-audio.rc                                                   0644 0:0    vendor_configs_file         ./audio-msi.rc
+# recipe: msi-modern-15-b7m/vendor.install
 
 # Extend the software codec sandbox only for Mesa's CPU-affinity query.
 etc/seccomp_policy/mediaswcodec.policy                                   0644 0:0    vendor_configs_file         ./mediaswcodec.policy
@@ -34,54 +31,9 @@ lib64/libkeymint.so                                                      0644 0:
 lib64/libpuresoftkeymasterdevice.so                                      0644 0:0    vendor_file                 emulator/vendor/lib64/libpuresoftkeymasterdevice.so
 lib64/libsoft_attestation_cert.so                                        0644 0:0    vendor_file                 emulator/vendor/lib64/libsoft_attestation_cert.so
 
-# Source-built Mesa softpipe: CPU-rendered EGL/GLES for QEMU's virtio-gpu display.
-lib64/egl/                                                               0755 0:0    vendor_file                 -
-lib64/egl/libEGL_mesa.so                                                 0644 0:0    same_process_hal_file       mesa/lib64/libEGL_mesa.so
-lib64/egl/libGLESv1_CM_mesa.so                                           0644 0:0    same_process_hal_file       mesa/lib64/libGLESv1_CM_mesa.so
-lib64/egl/libGLESv2_mesa.so                                              0644 0:0    same_process_hal_file       mesa/lib64/libGLESv2_mesa.so
-lib64/libgallium_dri.so                                                  0644 0:0    same_process_hal_file       mesa/lib64/libgallium_dri.so
-# Google's camera HAL uses libva for webcam MJPEG; retain Google's libva.so loader.
-lib64/radeonsi_drv_video.so                                              0644 0:0    same_process_hal_file       mesa/lib64/radeonsi_drv_video.so
-lib64/libdrm_amdgpu.so                                                   0644 0:0    same_process_hal_file       mesa/lib64/libdrm_amdgpu.so
-lib64/hw/vulkan.radeon.so                                                0644 0:0    same_process_hal_file       mesa/lib64/libvulkan_radeon.so
-lib64/libgbm_mesa.so                                                     0644 0:0    same_process_hal_file       mesa/lib64/libgbm_mesa.so
-lib64/gbm/                                                              0755 0:0    vendor_file                 -
-lib64/gbm/dri_gbm.so                                                     0644 0:0    same_process_hal_file       mesa/lib64/gbm/dri_gbm.so
-
-# The AMD backend uses Mesa GBM; QEMU still uses minigbm's upstream virtio backend.
-lib64/libgbm.so                                                          0644 0:0    same_process_hal_file       minigbm/libgbm.so
-lib64/libminigbm_gralloc.so                                               0644 0:0    same_process_hal_file       minigbm/libminigbm_gralloc.so
-lib64/libgbm_mesa_wrapper.so                                              0644 0:0    same_process_hal_file       minigbm/libgbm_mesa_wrapper.so
-
-# Runtime GPU firmware, not firmware-update utilities.
-firmware/amdgpu/                  0755 0:0 vendor_firmware_file -
-firmware/amdgpu/renoir_asd.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_asd.bin
-firmware/amdgpu/renoir_ce.bin      0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_ce.bin
-firmware/amdgpu/renoir_dmcub.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_dmcub.bin
-firmware/amdgpu/renoir_gpu_info.bin 0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_gpu_info.bin
-firmware/amdgpu/renoir_me.bin      0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_me.bin
-firmware/amdgpu/renoir_mec.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_mec.bin
-firmware/amdgpu/renoir_mec2.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_mec2.bin
-firmware/amdgpu/renoir_pfp.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_pfp.bin
-firmware/amdgpu/renoir_rlc.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_rlc.bin
-firmware/amdgpu/renoir_sdma.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_sdma.bin
-firmware/amdgpu/renoir_ta.bin      0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_ta.bin
-firmware/amdgpu/renoir_vcn.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_vcn.bin
-firmware/amdgpu/green_sardine_asd.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_asd.bin
-firmware/amdgpu/green_sardine_ce.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_ce.bin
-firmware/amdgpu/green_sardine_dmcub.bin 0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_dmcub.bin
-firmware/amdgpu/green_sardine_me.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_me.bin
-firmware/amdgpu/green_sardine_mec.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_mec.bin
-firmware/amdgpu/green_sardine_mec2.bin  0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_mec2.bin
-firmware/amdgpu/green_sardine_pfp.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_pfp.bin
-firmware/amdgpu/green_sardine_rlc.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_rlc.bin
-firmware/amdgpu/green_sardine_sdma.bin  0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_sdma.bin
-firmware/amdgpu/green_sardine_ta.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_ta.bin
-firmware/amdgpu/green_sardine_vcn.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_vcn.bin
-# MT7922 Wi-Fi and Bluetooth; Google's firmware/mediatek/ already holds the MT7961 files.
-firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin        0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin
-firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin 0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin
-firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin    0644 0:0 vendor_firmware_file firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin
+# recipe: drm-handoff/vendor.install
+# recipe: amdgpu/vendor.install
+# recipe: mt7922/vendor.install
 
 # No face sensor: stops system_server polling for a face HAL. See no-face.xml.
 etc/permissions/gbos-builder-no-face.xml                                         0644 0:0    vendor_configs_file         ./no-face.xml

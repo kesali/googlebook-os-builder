@@ -1,0 +1,4 @@
+lib/modules/snd-acp-config.ko          0644 0:0   vendor_kernel_modules gki/snd-acp-config.ko
+lib/modules/snd-rn-pci-acp3x.ko        0644 0:0   vendor_kernel_modules gki/snd-rn-pci-acp3x.ko
+lib/modules/snd-acp3x-pdm-dma.ko       0644 0:0   vendor_kernel_modules gki/snd-acp3x-pdm-dma.ko
+lib/modules/snd-acp3x-rn.ko            0644 0:0   vendor_kernel_modules gki/snd-acp3x-rn.ko

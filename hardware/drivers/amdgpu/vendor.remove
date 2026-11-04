@@ -1,0 +1,3 @@
+# Source-built allocator with AMD Mesa backend; services and mapper remain Google's.
+lib64/libgbm.so
+lib64/libminigbm_gralloc.so

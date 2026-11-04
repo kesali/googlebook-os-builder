@@ -2,7 +2,13 @@
 
 **Status:** partial — Wi-Fi, input, speakers, built-in microphone, camera and video work by owner
 report. HDMI display performance feels fine; the brightness slider is unconfirmed.
-**Last verified:** 2026-11-02 — owner confirms camera preview and video recording work after the
+**Last verified:** 2026-11-04 — Recipe integration: 263 tests, exact declaration/asset/patch
+comparison, all 4,501 exports, signed-module metadata and image-fit checks pass. All 38 tracked
+output hashes match baseline; 23.8 s repeat preserves timestamps with no partition/boot writes.
+Disposable enforcing QEMU setup/input and USB-UEFI pass; no physical MSI/Lenovo retest.
+[Evidence](../../out/full-hardware-recipes/).
+
+Earlier, 2026-11-02 — owner confirms camera preview and video recording work after the
 NV12 pitch update. Its LED also flashes under Linux; the cause is unknown
 ([logs](../../out/laptop-logs/20261102-231851-2bm_5yev/current/)).
 Earlier, the owner confirmed the microphone works after the Renoir buffer update.
@@ -27,6 +33,11 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), following the working Chu
 with readable source changes and incremental USB updates.
 
 ## Current state
+Verified: MSI audio/camera/power policy and Lenovo IDC assets moved into device recipes;
+driver configs, modules, aliases and firmware moved into reusable driver recipes.
+The current selection still targets both laptops. Exact declarations/assets/patches and
+rebuilt outputs match baseline. New physical testing on both machines remains with the owner.
+
 Clean-break gbos-builder rename aligns vendor audio readiness/service names
 with boot profiles and renamed SELinux types. No mixer, buffer, calibration or driver changes.
 The log reader now reads only `/gbos-builder-bootlog`; historical local evidence is untouched.
@@ -105,7 +116,7 @@ Audio and backlight were designed from the references, Google's HALs and this la
   in a camera app. The HAL labels it external, and Google's internal-camera table omits this ID.
   Camera/front feature declarations already exist. No capture-open failure was found in the
   retained logs ([snapshot](../../out/laptop-logs/20261102-211552-18mjtoqx/current/)).
-  Approved [camera-msi.patch](../../android/vendor/camera-msi.patch) adds only this USB ID with
+  Approved [camera-msi.patch](../../hardware/msi-modern-15-b7m/vendor/camera-msi.patch) adds only this USB ID with
   `FACING_FRONT`, without guessed calibration. 13 camera/overlay tests pass; the 25.9 s vendor
   rebuild reads back the exact intended table and verifies all 1620 filesystem metadata entries.
   Its 348,319,744 B image fits the 387,108,864 B limit. The 14.7 s repeat preserves 29 published
@@ -211,21 +222,21 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - Backlight naming is restricted by exact DMI vendor/model and the first panel; other machines
   retain upstream names. Drop the patch when the unchanged HAL can discover AMD backlights.
 - Keep Google's power HAL, without its Panther Lake CPU masks
-  ([powerhint.patch](../../android/vendor/powerhint.patch)). On 12 CPUs they limited apps to
+  ([powerhint.patch](../../hardware/msi-modern-15-b7m/vendor/powerhint.patch)). On 12 CPUs they limited apps to
   0-7, background work to 4-7, and media playback to 4-7 with no load balancing. Init's
   all-CPU cpusets stay; SocSlider and the top-app uclamp boost are kept.
 
 ## Files
 - [kernel/gki.config](../../kernel/gki.config), [laptop-modules.list](../../kernel/laptop-modules.list),
-  [msi-firmware.list](../../kernel/msi-firmware.list) — explicit drivers and firmware.
+  [firmware.list](../../kernel/firmware.list) — explicit drivers and firmware.
 - [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) — narrow panel-name adaptation.
-- [android/vendor/get_variant_audio](../../android/vendor/get_variant_audio),
-  [audio-msi.rc](../../android/vendor/audio-msi.rc), [audio-msi.patch](../../android/vendor/audio-msi.patch)
+- [get_variant_audio](../../hardware/msi-modern-15-b7m/vendor/get_variant_audio),
+  [audio-msi.rc](../../hardware/msi-modern-15-b7m/vendor/audio-msi.rc), [audio-msi.patch](../../hardware/msi-modern-15-b7m/vendor/audio-msi.patch)
   — card selection, readiness-triggered restart and declarative PCM/mixer configuration.
-- [audio-policy.patch](../../android/vendor/audio-policy.patch),
-  [file-contexts.patch](../../android/vendor/file-contexts.patch) — scoped labels/permissions.
-- [android/vendor_dlkm/modules.patch](../../android/vendor_dlkm/modules.patch) — codec preload/HDA unblock.
-- [android/vendor/powerhint.patch](../../android/vendor/powerhint.patch) — power HAL without 8-CPU masks.
+- [audio-policy.patch](../../hardware/msi-modern-15-b7m/vendor/audio-policy.patch),
+  [file-contexts.patch](../../hardware/msi-modern-15-b7m/vendor/file-contexts.patch) — scoped labels/permissions.
+- [modules.patch](../../hardware/drivers/laptop-modules/vendor_dlkm/modules.patch) — codec preload/HDA unblock.
+- [powerhint.patch](../../hardware/msi-modern-15-b7m/vendor/powerhint.patch) — power HAL without 8-CPU masks.
 - [hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — read-only physical evidence.
 - [tests/test_audio.py](../../tests/test_audio.py), [test_kernel_source.py](../../tests/test_kernel_source.py)
   — selector failures, exact card-ID bytes and model-specific backlight naming.
@@ -309,7 +320,7 @@ to 24–34 mm: 422 of 462 frames exceed upstream's 21.2 mm single-contact palm t
 none reaches the default 200 pressure threshold. The owner reports fingertip motion works
 longer, finger-pad motion is suppressed, multi-finger gestures still work and clicking briefly
 restores motion. This supports width-based rejection, not a directly observed classifier result.
-The [name-scoped IDC](../../android/vendor/ETPS_2_Elantech_Touchpad.idc) is a locally validated A/B
+The [name-scoped IDC](../../hardware/lenovo-e50-80/vendor/ETPS_2_Elantech_Touchpad.idc) is a locally validated A/B
 candidate: `gestureProp.Palm_Width = 50.0`, above both captures' single-finger widths (maximum
 48.125 mm). It preserves pressure, multi-contact, edge and other gesture settings, and does
 not affect differently named MSI/I2C touchpads. This is not a measured optimal calibration;
@@ -356,6 +367,7 @@ metadata/logd starts still needs a screen photo.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
+- [x] Owner tests the rebuilt combined image on MSI and Lenovo — both reported working.
 - [ ] Owner updates the USB and tests the bounded Lenovo touchpad diagnostic — done when
   the owner retrieves a capture made while continuously moving through a cursor stall
   during the first three minutes after boot completion (or before the event limit).
@@ -407,6 +419,12 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 — Owner flashed the recipe image and reports MSI and Lenovo working;
+  no new logs reviewed.
+- 2026-11-04 uncommitted — Combined recipe image validated with 263 tests, exact baseline
+  inputs/outputs, module/ABI/metadata checks and disposable QEMU. Both-laptop physical test next.
+- 2026-11-04 uncommitted — Expanded MSI/Lenovo and reusable driver recipe ownership without
+  changing intended runtime behavior. Validation and commit explicitly deferred.
 - 2026-11-04 (this commit) — Rename audio service/readiness and diagnostic paths consistently
   with gbos-builder policy. 246 tests, image checks and enforcing saved-diagnostic QEMU pass;
   physical AMD audio/GPU and other peripheral regression remain untested.

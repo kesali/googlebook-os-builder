@@ -2,14 +2,24 @@
 
 from pathlib import Path
 import unittest
+import sys
 
 REPO = Path(__file__).resolve().parents[1]
 SYSTEM_EXT = REPO / "android/system_ext"
+sys.path.insert(0, str(REPO / "tools"))
+from hardware_recipes import expand
+
+
+def profile_path(name):
+    entries = [line.split() for line in expand(SYSTEM_EXT / "install.list").splitlines()
+               if line.strip() and not line.startswith("#")]
+    source = next(entry[4] for entry in entries if entry[0] == f"etc/gbos-builder/{name}")
+    return REPO / source
 
 
 class GraphicsProfileTests(unittest.TestCase):
     def test_broadwell_profile_is_gl_only_and_does_not_select_amd_or_software(self):
-        profile = (SYSTEM_EXT / "graphics-intel.rc").read_text()
+        profile = profile_path("graphics-intel.rc").read_text()
         self.assertIn("setprop ro.hardware.egl mesa", profile)
         self.assertIn("setprop ro.hardware.vulkan none", profile)
         self.assertIn("setprop debug.renderengine.vulkan false", profile)
@@ -29,11 +39,11 @@ class GraphicsProfileTests(unittest.TestCase):
             "graphics-softpipe.rc": ("false", "skiagl"),
             "graphics-intel.rc": ("false", "skiagl"),
         }
-        install_list = (SYSTEM_EXT / "install.list").read_text()
+        install_list = expand(SYSTEM_EXT / "install.list")
 
         for name, (vulkan, renderer) in profiles.items():
             with self.subTest(profile=name):
-                profile = (SYSTEM_EXT / name).read_text()
+                profile = profile_path(name).read_text()
                 self.assertIn(f"setprop ro.hwui.use_vulkan {vulkan}", profile)
                 self.assertIn(f"setprop debug.hwui.renderer {renderer}", profile)
                 self.assertIn(f"etc/gbos-builder/{name}", install_list)

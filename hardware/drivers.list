@@ -1,0 +1,12 @@
+# Combined-image driver recipes. Component patch fragments follow this order.
+cpu-vex
+drm-handoff
+amdgpu
+renoir-acp
+i915
+amd-i2c-hid
+mt7922
+elantech-ps2
+ar9565
+laptop-modules
+qemu-virtio

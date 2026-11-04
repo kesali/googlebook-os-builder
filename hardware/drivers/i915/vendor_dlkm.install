@@ -1,0 +1,2 @@
+lib/modules/i915.ko                    0644 0:0   vendor_kernel_modules gki/i915.ko
+lib/modules/intel-gtt.ko               0644 0:0   vendor_kernel_modules gki/intel-gtt.ko

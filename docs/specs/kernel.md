@@ -1,7 +1,13 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-04 — gbos-builder rename: 246 tests pass; kernel rebuild preserves
+**Last verified:** 2026-11-04 — Full hardware recipes: 263 tests pass; all 4,501 Google exports/
+CRCs preserved. Expanded declarations and patch bytes/order match `d901da2`; all 38 tracked
+output hashes/sizes match the pre-build baseline. A 23.8 s repeat preserves timestamps/inodes
+and writes no partitions or boot files. Enforcing direct/USB-UEFI QEMU screens and direct input
+inspected; physical MSI/Lenovo regression remains. [Evidence](../../out/full-hardware-recipes/).
+
+Earlier, 2026-11-04 — gbos-builder rename: 246 tests pass; kernel rebuild preserves
 all 4,501 Google exports/CRCs and signed-module metadata. New image passes inspected enforcing
 direct/UEFI QEMU checks; 22.6 s repeat preserves all 38 recorded output hashes/timestamps.
 No new physical hardware test. [Evidence](../../out/gbos-builder-validation/).
@@ -58,6 +64,12 @@ Build Google's Googlebook kernel from source with the instruction emulator compi
 enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEMU drivers) load.
 
 ## Current state
+Verified: full recipe refactoring moves firmware handoff, CPU emulation, all laptop
+config/modules/aliases/firmware and component source patches into selected native fragments.
+The [driver list](../../hardware/drivers.list) and [device list](../../hardware/devices.list)
+replace the Lenovo-only pilot. Expanded declaration rows and patch bytes/order match `d901da2`;
+build/config/kABI, module metadata, output equality and no-write repeat checks pass above.
+
 Verified: gbos-builder renames the private framebuffer helper and kernel build-user identity.
 This intentionally selects a new content-keyed source tree; existing editable trees are
 preserved. Driver fixes, config choices and ABI safeguards are unchanged. Rebuild/ABI and
@@ -65,8 +77,9 @@ enforcing QEMU checks pass; physical GPU/peripheral regression remains untested.
 
 Verified: driver-specific kernel fixes moved unchanged into AMD display, Renoir ACP
 and i915 recipes. [hardware/kernel.mk](../../hardware/kernel.mk) selects them in baseline order;
-each selected `kernel.mk` appends its own patches automatically. Shared firmware handoff and
-instruction emulation remain common. The existing patch runner, ABI checks and content hash
+each selected `kernel.mk` appends its own patches automatically. Firmware handoff and
+instruction emulation were still common at that verified milestone;
+their current recipe moves now pass the full validation above. The existing patch runner, ABI checks and content hash
 are unchanged; patch timestamps are now order-only prerequisites because content selects the
 source tree. An unknown selected recipe fails Make's required include rather than being skipped.
 Patch lists are explicit, not wildcard-discovered; adding a recipe does not automatically select it.
@@ -115,7 +128,7 @@ are stripped, signed with this build's trusted key and included in the regular A
 The vendor_dlkm build checks imports against Google's actual helpers; those helpers and the ABI
 whitelist remain unchanged. An earlier source-tree path change caused a full rebuild and changed
 all nine then-existing module hashes and the kernel bytes, not just amdgpu. No physical USB was updated.
-[drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) releases the firmware
+[drm-firmware-handoff.patch](../../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) releases the firmware
 framebuffer before a PCI display driver takes a DRM minor. It works with virtio in QEMU and is
 based on the owner's working Churro setup; the owner subsequently reached physical setup.
 [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) changes only the first panel's registered
@@ -158,7 +171,7 @@ functionality; generic ACP migration and other machines remain untested.
   (`CONFIG_TRIM_UNUSED_KSYMS`). Laptop drivers are modules too, except the few built-ins agreed for
   the first laptop boot ([laptop-hardware.md](laptop-hardware.md)); `make gki` must still show
   Google's exports and CRCs.
-- Churro's [vex-emulate.patch](../../kernel/vex-emulate.patch) (vendored unchanged, content-hashed)
+- Churro's [vex-emulate.patch](../../hardware/drivers/cpu-vex/vex-emulate.patch) (vendored unchanged, content-hashed)
   emulates VEX GFNI/AVX-VNNI — Googlebook
   userspace is built for Intel Panther Lake; this Zen 3 CPU lacks those instructions.
 - The source-level framebuffer handoff follows Churro's PCI display approach; errors are
@@ -190,7 +203,7 @@ functionality; generic ACP migration and other machines remain untested.
 - [scripts/git-fetch.sh](../../scripts/git-fetch.sh), [scripts/pahole.sh](../../scripts/pahole.sh) — toolchain.
 - [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + the emulator patch
   and selected recipes' `KERNEL_PATCHES`, in order; a new patch hash creates a separate tree.
-- [kernel/drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) — early PCI
+- [drm-firmware-handoff.patch](../../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) — early PCI
   framebuffer handoff before DRM minor allocation.
 - [hardware/kernel.mk](../../hardware/kernel.mk) — ordered combined-image kernel recipe selection.
 - [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) — exact-model panel naming.
@@ -231,6 +244,11 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-04 uncommitted — Recipe validation passes: 263 tests, exact inputs/patches, 4,501
+  unchanged exports, image/module checks, 38-output equality and 23.8 s no-write repeat.
+  Inspected enforcing direct/USB-UEFI boots and direct input; owner tests both laptops next.
+- 2026-11-04 uncommitted — Expanded hardware recipes across kernel, firmware, Mesa/minigbm and
+  Android overlays. Combined module metadata remains source-derived; validation/commit deferred.
 - 2026-11-04 (this commit) — Rename kernel helper/build identity; no driver logic change.
   New source key preserves old edits. 246 tests, all 4,501 exports, signed-module/image checks,
   no-write repeat and enforcing direct/UEFI QEMU pass; physical regression untested.

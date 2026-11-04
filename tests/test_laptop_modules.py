@@ -99,7 +99,7 @@ class LaptopModuleTests(unittest.TestCase):
         for path in ("drivers/gpu/drm/i915/i915.ko", "drivers/char/agp/intel-gtt.ko"):
             self.assertIn(path, paths)
             self.assertIn(f"gki/{Path(path).name}", installs)
-        module_patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
         self.assertIn("+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915\n", module_patch)
         self.assertEqual(
             [line for line in module_patch.splitlines()
@@ -122,7 +122,7 @@ class LaptopModuleTests(unittest.TestCase):
         for name in ("cfg80211.ko", "mac80211.ko"):
             self.assertNotIn(f"gki/{name}", installs)
             self.assertFalse(any(Path(path).name == name for path in paths))
-        module_patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
         alias = "pci:v0000168Cd00000036sv*sd*bc*sc*i*"
         self.assertEqual(LAPTOP_ALIASES["ath9k"], alias)
         self.assertIn(f"+alias {alias} ath9k\n", module_patch)
@@ -137,7 +137,7 @@ class LaptopModuleTests(unittest.TestCase):
         installs = expand(REPO / "android/vendor_dlkm/install.list")
         self.assertIn("gki/psmouse.ko", installs)
         self.assertNotIn("gki/i2c-smbus.ko", installs)
-        module_patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
         self.assertIn("+/vendor/lib/modules/psmouse.ko:\n", module_patch)
         self.assertEqual(LAPTOP_ALIASES["psmouse"], "serio:ty01pr*id*ex*")
         self.assertIn("+alias serio:ty01pr*id*ex* psmouse\n", module_patch)

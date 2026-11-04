@@ -1,0 +1,3 @@
+snd-rn-pci-acp3x pci:v00001022d000015E2sv*sd*bc04sc80i00*
+snd-acp3x-pdm-dma platform:acp_rn_pdm_dma
+snd-acp3x-rn platform:acp_pdm_mach

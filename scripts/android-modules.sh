@@ -18,11 +18,12 @@ if [ ! -d "$virt" ]; then
     echo "No modules for kernel $release in $virt_initramfs" >&2
     exit 1
 fi
-bash "$scripts/android-overlay.sh" "$changes" "$work/root" virt="$virt"
+bash "$scripts/android-overlay.sh" "$changes" "$work/root" virt="$virt" hardware="$scripts/../hardware"
+python3 "$scripts/../tools/hardware_recipes.py" "$changes/install.list" > "$work/install.list"
 
 # modules.patch spells out each module's dependencies; they must match Google's build.
 kernel_deps=$(sed -E 's#[^ :]*/([^/ :]+\.ko)#/lib/modules/\1#g' "$virt/modules.dep")
-for path in $(awk '!/^#/ && NF {print $1}' "$changes/install.list"); do
+for path in $(awk '!/^#/ && NF {print $1}' "$work/install.list"); do
     module=/lib/modules/${path##*/}
     expected=$(awk -F: -v module="$module" '$1 == module' <<< "$kernel_deps")
     if [ -z "$expected" ] || ! grep -qxF "$expected" "$work/root/lib/modules/modules.dep" \

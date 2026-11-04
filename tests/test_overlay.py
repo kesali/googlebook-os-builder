@@ -97,6 +97,27 @@ class OverlayTests(unittest.TestCase):
                 self.assertIn(message, result.stderr)
         self.assertEqual((self.root / "etc/build.prop").read_text(), "a=1\nb=2\n")
 
+    def test_explicit_patch_order_overrides_filename_order(self):
+        self.write("z-first.patch", "--- a/etc/build.prop\n+++ b/etc/build.prop\n"
+                   "@@ -1,2 +1,2 @@\n-a=1\n+a=2\n b=2\n")
+        self.write("a-second.patch", "--- a/etc/build.prop\n+++ b/etc/build.prop\n"
+                   "@@ -1,2 +1,2 @@\n-a=2\n+a=3\n b=2\n")
+        self.write("patches.list", "z-first.patch\na-second.patch\n")
+        result = self.run_overlay()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "etc/build.prop").read_text(), "a=3\nb=2\n")
+        self.assertLess(result.stdout.index("patch z-first.patch"),
+                        result.stdout.index("patch a-second.patch"))
+
+    def test_invalid_patch_manifest_fails_before_removals(self):
+        self.write("remove.list", "bin/old\n")
+        self.write("patches.list", "# recipe: unknown/vendor.patches\n")
+        result = self.run_overlay()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unselected", result.stderr)
+        self.assertEqual((self.root / "bin/old").read_text(), "old\n")
+        self.assertEqual((self.root / "etc/build.prop").read_text(), "a=1\nb=2\n")
+
     def test_vendor_programs_must_link_to_lib64_or_llndk(self):
         program = Path(shutil.which("true")).resolve()
         shutil.copy(program, self.root / "bin/program")
@@ -268,7 +289,7 @@ class ReplacementTests(unittest.TestCase):
 
 class ChangeDataTests(unittest.TestCase):
     def test_vendor_dlkm_unblocks_msi_hda_audio(self):
-        patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()
+        patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
         self.assertIn("-blocklist snd_hda_intel", patch)
         self.assertNotIn("+blocklist snd_hda_intel", patch)
         self.assertIn(
@@ -281,8 +302,8 @@ class ChangeDataTests(unittest.TestCase):
         )
 
     def test_laptop_density_is_only_set_in_amd_graphics_profile(self):
-        amd = (REPO / "android/system_ext/graphics-amd.rc").read_text()
-        softpipe = (REPO / "android/system_ext/graphics-softpipe.rc").read_text()
+        amd = (REPO / "hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc").read_text()
+        softpipe = (REPO / "hardware/drivers/qemu-virtio/system_ext/graphics-softpipe.rc").read_text()
         self.assertIn("setprop qemu.sf.lcd_density 160", amd)
         self.assertNotIn("qemu.sf.lcd_density", softpipe)
 
@@ -298,13 +319,13 @@ class ChangeDataTests(unittest.TestCase):
             sources = {entry[4] for entry in entries(install)} if install.exists() else set()
             for path in sorted(changes.iterdir()):
                 with self.subTest(path=f"{changes.name}/{path.name}"):
-                    self.assertTrue(path.name in ("remove.list", "install.list")
+                    self.assertTrue(path.name in ("remove.list", "install.list", "patches.list")
                                     or path.suffix == ".patch" or f"./{path.name}" in sources,
                                     "not a list or patch, and not a source in install.list")
 
     def test_first_stage_modules_are_loaded_in_install_order(self):
         changes = REPO / "android/module_ramdisk"
-        patch = (changes / "modules.patch").read_text()
+        patch = (REPO / "hardware/drivers/qemu-virtio/module_ramdisk/modules.patch").read_text()
         # Android reads a trailing space in modules.dep as an empty dependency.
         self.assertNotRegex(patch, r"(?m)[ \t]$")
         installed = [Path(entry[0]).name for entry in entries(changes / "install.list")]

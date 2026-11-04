@@ -1,0 +1,5 @@
+# MT7922 Wi-Fi (mt7921e): RAM code and ROM patch.
+mediatek/WIFI_RAM_CODE_MT7922_1.bin
+mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin
+# Google's btusb/btmtk needs this runtime blob for hci0 setup.
+mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin

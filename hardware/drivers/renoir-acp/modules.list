@@ -1,0 +1,4 @@
+sound/soc/amd/snd-acp-config.ko
+sound/soc/amd/renoir/snd-rn-pci-acp3x.ko
+sound/soc/amd/renoir/snd-acp3x-pdm-dma.ko
+sound/soc/amd/renoir/snd-acp3x-rn.ko

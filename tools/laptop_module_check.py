@@ -26,18 +26,7 @@ def dependency_closure(direct, dependencies, system_modules=frozenset()):
 
 
 # Verified laptop devices; only these aliases are added for our modules.
-LAPTOP_ALIASES = {
-    "amdgpu": "pci:v00001002d000015E7sv*sd*bc*sc*i*",
-    "mt7921e": "pci:v000014C3d00000616sv*sd*bc*sc*i*",
-    "snd-rn-pci-acp3x": "pci:v00001022d000015E2sv*sd*bc04sc80i00*",
-    "snd-acp3x-pdm-dma": "platform:acp_rn_pdm_dma",
-    "snd-acp3x-rn": "platform:acp_pdm_mach",
-    "i915": "pci:v00008086d00001616sv*sd*bc03sc*i*",
-}
-for module, alias in recipe_aliases().items():
-    if module in LAPTOP_ALIASES:
-        raise ValueError(f"Recipe duplicates base alias: {module}")
-    LAPTOP_ALIASES[module] = alias
+LAPTOP_ALIASES = recipe_aliases()
 
 
 def check(root, install_list):

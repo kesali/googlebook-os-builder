@@ -1,6 +1,7 @@
 """Verify that release sources are patched in order without replacing existing trees."""
 
 import os
+import hashlib
 from pathlib import Path
 import subprocess
 import tarfile
@@ -87,6 +88,34 @@ class SourcePreparationTests(unittest.TestCase):
                 self.assertNotIn("scripts/source.sh", result.stdout)
                 self.assertEqual(ready.stat().st_mtime_ns, 1_000_000_000)
                 self.assertEqual(edit.read_text(), "keep\n")
+
+    def test_selected_mesa_and_minigbm_recipes_keep_patch_order_and_content_keys(self):
+        expected = {
+            "MESA": [
+                "hardware/drivers/drm-handoff/mesa-drm-master.patch",
+                "hardware/drivers/amdgpu/mesa-radv-two-queues.patch",
+                "hardware/drivers/amdgpu/mesa-radv-yv12.patch",
+            ],
+            "MINIGBM": [
+                "hardware/drivers/amdgpu/minigbm-amd.patch",
+                "hardware/drivers/amdgpu/minigbm-yuv-pitch.patch",
+            ],
+        }
+        for component, paths in expected.items():
+            with self.subTest(component=component):
+                result = subprocess.run(
+                    ["make", "--no-print-directory", "-f", str(REPO / "Makefile"),
+                     "-f", "-", "inspect-component-recipes"],
+                    cwd=REPO, capture_output=True, text=True,
+                    input=".PHONY: inspect-component-recipes\ninspect-component-recipes:\n"
+                          f"\t@printf '%s\\n' '$({component}_PATCHES)' '$({component}_SOURCE_SHA)'\n",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                selected, digest = result.stdout.splitlines()
+                self.assertEqual(selected.split(), paths)
+                contents = b"".join((REPO / path).read_bytes() for path in paths)
+                contents += SOURCE_SCRIPT.read_bytes()
+                self.assertEqual(digest, hashlib.sha256(contents).hexdigest())
 
 
 if __name__ == "__main__":

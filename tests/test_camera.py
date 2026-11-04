@@ -21,7 +21,7 @@ class CameraConfigTests(unittest.TestCase):
             shutil.copyfile(fixture, service)
             result = subprocess.run(
                 ["patch", "--batch", "--fuzz=0", "-p1", "-i",
-                 str(REPO / "android/vendor/camera-va-driver.patch")],
+                 str(REPO / "hardware/drivers/amdgpu/vendor/camera-va-driver.patch")],
                 cwd=root, capture_output=True, text=True,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -32,7 +32,7 @@ class CameraConfigTests(unittest.TestCase):
         self.assertIn(setting, service_block)
         for profile in ("graphics-amd.rc", "graphics-amd-vulkan.rc"):
             self.assertIn("    export MESA_LOADER_DRIVER_OVERRIDE zink\n",
-                          (REPO / "android/system_ext" / profile).read_text())
+                          (REPO / "hardware/msi-modern-15-b7m/system_ext" / profile).read_text())
 
     def test_only_msi_usb_id_is_added_without_borrowed_calibration(self):
         fixture = REPO / "tests/camera/internal_usb_camera_info.txtpb"
@@ -52,7 +52,7 @@ class CameraConfigTests(unittest.TestCase):
             shutil.copyfile(fixture, config)
             result = subprocess.run(
                 ["patch", "--batch", "--fuzz=0", "-p1", "-i",
-                 str(REPO / "android/vendor/camera-msi.patch")],
+                 str(REPO / "hardware/msi-modern-15-b7m/vendor/camera-msi.patch")],
                 cwd=root, capture_output=True, text=True,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

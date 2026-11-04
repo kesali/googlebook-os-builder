@@ -1,6 +1,6 @@
 ---
 description: "Use when editing the Makefile, sources.mk, config.mk or docker/Dockerfile: target help text, source pins, per-component dependencies, incremental builds."
-applyTo: ["Makefile", "*.mk", "docker/**"]
+applyTo: ["Makefile", "*.mk", "hardware/**/*.mk", "docker/**"]
 ---
 # Build system
 
@@ -22,6 +22,9 @@ applyTo: ["Makefile", "*.mk", "docker/**"]
 - Keep dependencies per component: an input should rebuild only what uses it (vendor-only inputs
   hang off `$(ANDROID)/vendor_a.img`; each `android/<partition>/` directory and its files are
   prerequisites of that partition only).
+- Selected [hardware recipes](../../hardware/) contribute optional native component Make
+  fragments and partition lists. Declare source patches explicitly and preserve ordering;
+  include recipe assets and directories in the consuming partition's prerequisites.
 - Steps with their own incremental logic (Kbuild, Meson) depend on `FORCE`; their scripts must not
   touch outputs whose bytes did not change, and configure only when their settings change.
   Other rules always replace their output, so they run once per input change, not every build.

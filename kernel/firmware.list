@@ -1,0 +1,3 @@
+# Runtime blobs only, not firmware-update utilities.
+# recipe: amdgpu/firmware.list
+# recipe: mt7922/firmware.list

@@ -1,0 +1,38 @@
+# Google's camera HAL uses libva for webcam MJPEG; retain Google's libva.so loader.
+lib64/radeonsi_drv_video.so                                              0644 0:0    same_process_hal_file       mesa/lib64/radeonsi_drv_video.so
+lib64/libdrm_amdgpu.so                                                   0644 0:0    same_process_hal_file       mesa/lib64/libdrm_amdgpu.so
+lib64/hw/vulkan.radeon.so                                                0644 0:0    same_process_hal_file       mesa/lib64/libvulkan_radeon.so
+lib64/libgbm_mesa.so                                                     0644 0:0    same_process_hal_file       mesa/lib64/libgbm_mesa.so
+lib64/gbm/                                                              0755 0:0    vendor_file                 -
+lib64/gbm/dri_gbm.so                                                     0644 0:0    same_process_hal_file       mesa/lib64/gbm/dri_gbm.so
+
+# AMD uses Mesa GBM; QEMU retains minigbm's upstream virtio backend.
+lib64/libgbm.so                                                          0644 0:0    same_process_hal_file       minigbm/libgbm.so
+lib64/libminigbm_gralloc.so                                               0644 0:0    same_process_hal_file       minigbm/libminigbm_gralloc.so
+lib64/libgbm_mesa_wrapper.so                                              0644 0:0    same_process_hal_file       minigbm/libgbm_mesa_wrapper.so
+
+# Runtime GPU firmware, not firmware-update utilities.
+firmware/amdgpu/                  0755 0:0 vendor_firmware_file -
+firmware/amdgpu/renoir_asd.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_asd.bin
+firmware/amdgpu/renoir_ce.bin      0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_ce.bin
+firmware/amdgpu/renoir_dmcub.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_dmcub.bin
+firmware/amdgpu/renoir_gpu_info.bin 0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_gpu_info.bin
+firmware/amdgpu/renoir_me.bin      0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_me.bin
+firmware/amdgpu/renoir_mec.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_mec.bin
+firmware/amdgpu/renoir_mec2.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_mec2.bin
+firmware/amdgpu/renoir_pfp.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_pfp.bin
+firmware/amdgpu/renoir_rlc.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_rlc.bin
+firmware/amdgpu/renoir_sdma.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_sdma.bin
+firmware/amdgpu/renoir_ta.bin      0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_ta.bin
+firmware/amdgpu/renoir_vcn.bin     0644 0:0 vendor_firmware_file firmware/amdgpu/renoir_vcn.bin
+firmware/amdgpu/green_sardine_asd.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_asd.bin
+firmware/amdgpu/green_sardine_ce.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_ce.bin
+firmware/amdgpu/green_sardine_dmcub.bin 0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_dmcub.bin
+firmware/amdgpu/green_sardine_me.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_me.bin
+firmware/amdgpu/green_sardine_mec.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_mec.bin
+firmware/amdgpu/green_sardine_mec2.bin  0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_mec2.bin
+firmware/amdgpu/green_sardine_pfp.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_pfp.bin
+firmware/amdgpu/green_sardine_rlc.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_rlc.bin
+firmware/amdgpu/green_sardine_sdma.bin  0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_sdma.bin
+firmware/amdgpu/green_sardine_ta.bin    0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_ta.bin
+firmware/amdgpu/green_sardine_vcn.bin   0644 0:0 vendor_firmware_file firmware/amdgpu/green_sardine_vcn.bin

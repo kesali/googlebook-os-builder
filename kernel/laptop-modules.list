@@ -1,22 +1,7 @@
-# Only modules absent from Google's vendor_dlkm. Dependencies already shipped by Google
-# are kept unchanged. Static ABI evidence and runtime limits are in docs/specs/kernel.md.
-drivers/gpu/drm/amd/amdgpu/amdgpu.ko
-drivers/gpu/drm/amd/amdxcp/amdxcp.ko
-drivers/gpu/drm/drm_panel_backlight_quirks.ko
-drivers/hwmon/hwmon.ko
-# Broadwell display; publish only the Lenovo's 8086:1616 hotplug alias.
-drivers/gpu/drm/i915/i915.ko
-drivers/char/agp/intel-gtt.ko
+# Only modules absent from Google's vendor_dlkm; preserve Google's existing helpers.
+# recipe: amdgpu/modules.list
+# recipe: i915/modules.list
 # recipe: elantech-ps2/modules.list
-# MT7922 Wi-Fi; cfg80211 and mac80211 are Google's.
-drivers/net/wireless/mediatek/mt76/mt76.ko
-drivers/net/wireless/mediatek/mt76/mt76-connac-lib.ko
-drivers/net/wireless/mediatek/mt76/mt792x-lib.ko
-drivers/net/wireless/mediatek/mt76/mt7921/mt7921-common.ko
-drivers/net/wireless/mediatek/mt76/mt7921/mt7921e.ko
+# recipe: mt7922/modules.list
 # recipe: ar9565/modules.list
-# Internal digital microphone; snd-soc-dmic is already shipped by Google.
-sound/soc/amd/snd-acp-config.ko
-sound/soc/amd/renoir/snd-rn-pci-acp3x.ko
-sound/soc/amd/renoir/snd-acp3x-pdm-dma.ko
-sound/soc/amd/renoir/snd-acp3x-rn.ko
+# recipe: renoir-acp/modules.list

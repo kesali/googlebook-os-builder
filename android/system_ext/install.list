@@ -8,7 +8,6 @@ etc/gbos-builder/              0755 0:0   system_file  -
 etc/gbos-builder/bootlog-prepare.sh 0644 0:0 system_file ./bootlog-prepare.sh
 etc/gbos-builder/hardware-snapshot.sh 0644 0:0 system_file ./hardware-snapshot.sh
 etc/gbos-builder/touchpad-capture.sh 0644 0:0 system_file ./touchpad-capture.sh
-etc/gbos-builder/graphics-softpipe.rc 0644 0:0 system_file ./graphics-softpipe.rc
-etc/gbos-builder/graphics-amd.rc 0644 0:0 system_file ./graphics-amd.rc
-etc/gbos-builder/graphics-amd-vulkan.rc 0644 0:0 system_file ./graphics-amd-vulkan.rc
-etc/gbos-builder/graphics-intel.rc 0644 0:0 system_file ./graphics-intel.rc
+# recipe: qemu-virtio/system_ext.install
+# recipe: msi-modern-15-b7m/system_ext.install
+# recipe: i915/system_ext.install

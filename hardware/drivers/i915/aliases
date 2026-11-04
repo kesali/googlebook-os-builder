@@ -1,0 +1,2 @@
+# Do not publish aliases for other Intel GPUs.
+i915 pci:v00008086d00001616sv*sd*bc03sc*i*

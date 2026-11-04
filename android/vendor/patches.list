@@ -1,0 +1,7 @@
+# Preserve the original overlay application order.
+# recipe: msi-modern-15-b7m/vendor-audio.patches
+build-prop.patch
+# recipe: msi-modern-15-b7m/vendor-camera.patches
+# recipe: amdgpu/vendor.patches
+# recipe: msi-modern-15-b7m/vendor-policy.patches
+# recipe: drm-handoff/vendor.patches

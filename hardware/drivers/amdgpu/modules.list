@@ -1,0 +1,4 @@
+drivers/gpu/drm/amd/amdgpu/amdgpu.ko
+drivers/gpu/drm/amd/amdxcp/amdxcp.ko
+drivers/gpu/drm/drm_panel_backlight_quirks.ko
+drivers/hwmon/hwmon.ko

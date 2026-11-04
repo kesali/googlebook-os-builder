@@ -1,0 +1,4 @@
+# Google's firmware/mediatek/ directory already holds MT7961 files.
+firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin        0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin
+firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin 0644 0:0 vendor_firmware_file firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin
+firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin    0644 0:0 vendor_firmware_file firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin

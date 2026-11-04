@@ -30,22 +30,20 @@ def recipe_patch(name):
 
 
 class KernelRecipeTests(unittest.TestCase):
-    def test_selected_patches_keep_order_and_only_rename_the_shared_helper(self):
+    def test_selected_patches_keep_baseline_order_and_bytes(self):
         result = inspect_kernel_recipes()
         self.assertEqual(result.returncode, 0, result.stderr)
         paths, digest, source = result.stdout.splitlines()
         self.assertEqual(paths.split(), [
-            "kernel/drm-firmware-handoff.patch",
+            "hardware/drivers/drm-handoff/drm-firmware-handoff.patch",
             "hardware/drivers/amdgpu/msi-backlight.patch",
             "hardware/drivers/amdgpu/amdgpu-fast-flips.patch",
             "hardware/drivers/renoir-acp/renoir-capture-buffers.patch",
             "hardware/drivers/i915/i915-gen4-primary-alpha.patch",
         ])
         patch_bytes = b"".join((ROOT / path).read_bytes() for path in paths.split())
-        before_rename = patch_bytes.replace(b"gbos_builder_remove_firmware_fb",
-                                           b"dali_remove_firmware_fb")
-        self.assertEqual(hashlib.sha256(before_rename).hexdigest(),
-                         "28b9b8b1e7af2eff86399844b1a1242331637f29b8b4b32f176cfbcd541fd11f")
+        self.assertEqual(hashlib.sha256(patch_bytes).hexdigest(),
+                         "0af5689168b66909fd4b25dff041b637ceb32cb6bada48957274ed2407a651b2")
         self.assertTrue(source.endswith("-" + digest))
         self.assertEqual(hashlib.sha256(patch_bytes).hexdigest(), digest)
 
@@ -55,10 +53,10 @@ class KernelRecipeTests(unittest.TestCase):
         original_source = original.stdout.splitlines()[2]
         for selected in ("i915", "i915 renoir-acp amdgpu", ""):
             with self.subTest(selected=selected):
-                result = inspect_kernel_recipes(f"KERNEL_DRIVER_RECIPES={selected}")
+                result = inspect_kernel_recipes(f"HARDWARE_DRIVERS=cpu-vex drm-handoff {selected}")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 paths, digest, source = result.stdout.splitlines()
-                self.assertEqual(paths.split()[0], "kernel/drm-firmware-handoff.patch")
+                self.assertEqual(paths.split()[0], "hardware/drivers/drm-handoff/drm-firmware-handoff.patch")
                 self.assertNotEqual(source, original_source)
                 self.assertEqual(source.rsplit("-", 1)[0], original_source.rsplit("-", 1)[0])
                 self.assertTrue(source.endswith("-" + digest))
@@ -66,9 +64,9 @@ class KernelRecipeTests(unittest.TestCase):
                     self.assertEqual(len(paths.split()), 2)
 
     def test_unknown_selected_recipe_fails_instead_of_silently_omitting_it(self):
-        result = inspect_kernel_recipes("KERNEL_DRIVER_RECIPES=missing-driver")
+        result = inspect_kernel_recipes("HARDWARE_DRIVERS=cpu-vex missing-driver")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("hardware/drivers/missing-driver/kernel.mk", result.stderr)
+        self.assertIn("Missing hardware recipe: hardware/drivers/missing-driver", result.stderr)
 
     def test_moved_patch_timestamp_does_not_replace_existing_source(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -98,7 +96,7 @@ class VendoredEmulatorTests(unittest.TestCase):
         )
 
     def test_vendored_patch_matches_working_baseline(self):
-        patch = ROOT / "kernel/vex-emulate.patch"
+        patch = ROOT / "hardware/drivers/cpu-vex/vex-emulate.patch"
         self.assertEqual(
             hashlib.sha256(patch.read_bytes()).hexdigest(),
             "d8decdcffc7a87aea0386ec3ca8476e607f5a26f0ef127e4f051f65ab84e8e0f",
@@ -489,7 +487,7 @@ class FramebufferPatchTests(unittest.TestCase):
             )
             subprocess.run(
                 ["patch", "--batch", "--fuzz=0", "-p1",
-                 "-i", str(ROOT / "kernel/drm-firmware-handoff.patch")],
+                 "-i", str(ROOT / "hardware/drivers/drm-handoff/drm-firmware-handoff.patch")],
                 cwd=source, check=True, capture_output=True, text=True,
             )
             drm_text = drm.read_text()

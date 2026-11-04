@@ -1,0 +1,3 @@
+# Device profiles retain the owner's MSI panel density setting.
+etc/gbos-builder/graphics-amd.rc 0644 0:0 system_file ./system_ext/graphics-amd.rc
+etc/gbos-builder/graphics-amd-vulkan.rc 0644 0:0 system_file ./system_ext/graphics-amd-vulkan.rc

@@ -1,0 +1,12 @@
+# Files added to Google's first-stage module ramdisk (vendor_ramdisk02).
+# Sources: virt/ is the module directory of Google's QEMU driver ramdisk (GKI_VIRT in
+# sources.mk), prebuilt for our kernel release. Ramdisks have no SELinux labels.
+# module_ramdisk/modules.patch loads these; scripts/android-modules.sh checks dependencies.
+#
+# path                          mode owner selinux type source
+lib/modules/virtio_dma_buf.ko   0644 0:0   -            virt/kernel/drivers/virtio/virtio_dma_buf.ko
+lib/modules/virtio-gpu.ko       0644 0:0   -            virt/kernel/drivers/gpu/drm/virtio/virtio-gpu.ko
+lib/modules/virtio_input.ko     0644 0:0   -            virt/kernel/drivers/virtio/virtio_input.ko
+lib/modules/failover.ko         0644 0:0   -            virt/kernel/net/core/failover.ko
+lib/modules/net_failover.ko     0644 0:0   -            virt/kernel/drivers/net/net_failover.ko
+lib/modules/virtio_net.ko       0644 0:0   -            virt/kernel/drivers/net/virtio_net.ko

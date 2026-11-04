@@ -16,4 +16,5 @@ applyTo: ["tools/**/*.py", "tests/**/*.py"]
 - Every bug fixed in a tool gets a regression test (e.g. the `modules.dep` trailing-space test in
   [tests/test_overlay.py](../../tests/test_overlay.py)).
 - Python never writes changes into Google's image: those are lists and `.patch` files under
-  `android/<target>/` (see [scripts/android-overlay.sh](../../scripts/android-overlay.sh)).
+  `android/<target>/` or explicitly selected [hardware recipes](../../hardware/)
+  (see [scripts/android-overlay.sh](../../scripts/android-overlay.sh)).

@@ -60,50 +60,48 @@ iteration and guest responsiveness separately; the graphics path is a runtime-pe
 
 ### Hardware recipes
 
-The default image still includes both laptops. Native-format recipes cover AR9565 Wi-Fi and
-PS/2 Elantech declarations, plus driver-specific kernel fixes. AMD/Broadwell kernel options,
-modules and other support remain in their existing base declarations. This is not a runtime
-driver installer or a complete selectable-laptop image system.
+The default image still includes both laptops. [drivers.list](hardware/drivers.list) selects
+reusable driver recipes; [devices.list](hardware/devices.list) selects the
+[MSI](hardware/msi-modern-15-b7m/) and [Lenovo](hardware/lenovo-e50-80/) configuration.
+Shared security, logging, native translation and storage safeguards stay under [android/](android/).
+The refactoring passes 263 tests, exact baseline declaration/patch comparisons, image checks
+and inspected enforcing direct/USB-UEFI QEMU boots with input. All 38 tracked output hashes
+match the rename baseline; the 23.8 s repeat preserves timestamps and writes nothing.
+Physical MSI/Lenovo regression testing remains. [Evidence](out/full-hardware-recipes/).
 
-[hardware/kernel.mk](hardware/kernel.mk) selects the combined image's kernel patch recipes,
-in order: [AMD display](hardware/drivers/amdgpu/kernel.mk),
-[Renoir ACP](hardware/drivers/renoir-acp/kernel.mk) and [i915](hardware/drivers/i915/kernel.mk).
-Each recipe's `kernel.mk` appends its ordered patches to `KERNEL_PATCHES`; selecting another
-recipe requires no central Makefile edit. Declare patches explicitly rather than discovering
-them by wildcard, so a stray or experimental patch cannot enter the build.
+Recipes contain only the native files they need:
 
-The existing source runner applies shared firmware handoff first, then the selected driver
-fixes, all after instruction emulation. It refuses failed hunks and never edits an existing
-source checkout. Patch contents and order select the source-cache hash; file moves/timestamps
-alone do not invalidate it. Mesa and Android patches remain outside this kernel-only mechanism.
-The migration preserves all four patch files, application order and source-cache hash.
-Focused tests and the image build preserve the existing runtime bytes.
+| Fragment | Purpose |
+|---|---|
+| `kernel.mk`, `mesa.mk`, `minigbm.mk` | Explicit, ordered source patches appended to component lists |
+| `gki.config`, `modules.list`, `aliases` | Kernel options, source module paths and verified hotplug aliases |
+| `firmware.list` | Runtime blobs from the unchanged archive pin in [sources.mk](sources.mk) |
+| `<partition>.install`, `<partition>.remove` | Existing five-column installs and whole-file removals |
+| `<partition>.patches`, `<partition>-<group>.patches` | Ordered source-derived Android text patches |
 
-[Lenovo's driver list](hardware/lenovo-e50-80/drivers.list) selects the reusable
-[AR9565](hardware/drivers/ar9565/) and [Elantech](hardware/drivers/elantech-ps2/) recipes.
-Each owns `gki.config`, `modules.list`, `install.list` and `aliases`: kernel options,
-source-built modules, Android installation declarations and verified device aliases.
-The [Lenovo vendor fragment](hardware/lenovo-e50-80/vendor.install) installs the
-[touchpad calibration](android/vendor/ETPS_2_Elantech_Touchpad.idc); Android source files
-remain under the declared `android/` change directories.
+[hardware/kernel.mk](hardware/kernel.mk) collects selected component fragments automatically.
+The base lists use explicit `# recipe: name/file` includes to preserve installation and Android
+patch ordering. Recipe-local install sources start with `./` and are relative to that recipe;
+for example, [Lenovo's IDC declaration](hardware/lenovo-e50-80/vendor.install).
+Android patch lists name files relative to the recipe. A stray patch is never auto-selected.
 
-The base config and lists contain explicit `# recipe: name/file` includes. Build tools expand
-them into temporary inputs, keeping their ordering and the existing signing, ABI, metadata
-and dependency checks. No Google text file is generated or edited by the recipe tool:
-[modules.patch](android/vendor_dlkm/modules.patch) remains a source-derived patch. The checker
-requires selected recipes to be wired into each base surface and their aliases to match it.
+The [recipe reader](tools/hardware_recipes.py) expands declarations into temporary inputs;
+it never generates Google text edits. Existing runners apply the patches with exact context
+and preserve metadata, signing and ABI checks. Kernel/Mesa/minigbm source-cache keys remain
+content-based: moving an unchanged patch must not replace an editable source tree.
+The separate instruction-emulation patch belongs to [cpu-vex](hardware/drivers/cpu-vex/);
+this source pipeline currently requires it.
 
-For another driver, first check whether Ruby already ships a suitable module. If not, add
-the four native-format files, select its name in the laptop list and add the three explicit
-includes to the base kernel/module/install lists. Generate any required module-metadata patch
-from Google's pristine original, as for existing drivers. Keep firmware pins in
-[sources.mk](sources.mk) and device-specific Android changes in their existing directories;
-the pilot does not yet abstract those surfaces.
+The combined [module metadata patch](hardware/drivers/laptop-modules/vendor_dlkm/modules.patch)
+is intentionally intact in `laptop-modules`. Removing arbitrary drivers is **not** yet automatic:
+update that source-derived dependency/load/alias patch from Google's original as well as the
+selection and base includes. Recipes organize the current combined image, not independent
+selectable-laptop builds or a runtime driver installer.
 
-`make hardware-check` checks recipe wiring without a kernel/image build. A recipe declaration
-is not hardware verification: consult the [hardware spec](docs/specs/laptop-hardware.md).
-Validation preserves all expanded declarations and the built image byte-for-byte against
-the touchpad baseline; an unchanged repeat preserves all 37 recorded output hashes/timestamps.
+For another driver, first check whether Ruby already ships a suitable module. Otherwise,
+add only the required native fragments, select the recipe and place its includes in the
+appropriate base lists. `make hardware-check` checks this wiring without building the image.
+A recipe declaration is not hardware verification; see the [hardware spec](docs/specs/laptop-hardware.md).
 
 ### Laptop test image
 
@@ -248,7 +246,7 @@ regression test, not proof of working laptop audio, brightness or GPU accelerati
 | [scripts/fetch.sh](scripts/fetch.sh), [scripts/source.sh](scripts/source.sh) | Verified download and source extraction |
 | [scripts/kernel-source.sh](scripts/kernel-source.sh) | Checked kernel checkout with the emulator patch and our [kernel/](kernel/) source patches (`KERNEL_PATCHES` in the Makefile) |
 | [scripts/kernel.sh](scripts/kernel.sh) | Kbuild plus the diagnostic hardware config |
-| [kernel/msi-diagnostic.config](kernel/msi-diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
+| [MSI diagnostic config](hardware/msi-modern-15-b7m/diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
 | [boot/init](boot/init) | The complete runtime startup sequence |
 | [boot/menu.cfg](boot/menu.cfg), [boot/loader.cfg](boot/loader.cfg) | Readable GRUB configurations |
 | [scripts/initramfs.sh](scripts/initramfs.sh), [scripts/image.sh](scripts/image.sh) | Standard cpio/FAT/GPT assembly |
@@ -415,7 +413,7 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
 - Mesa EGL/GLES, softpipe, Zink and RADV are built from source, with libdrm/Expat linked statically.
   Google's DRM composer, mapper and allocator service remain; minigbm's libraries are rebuilt
   with AMD support and an ABI check against those clients. Virtio-gpu supplies QEMU scanout.
-  [android/mesa-drm-master.patch](android/mesa-drm-master.patch) fixes Mesa's Android software
+  [mesa-drm-master.patch](hardware/drivers/drm-handoff/mesa-drm-master.patch) fixes Mesa's Android software
   renderer retaining DRM master after opening a primary node, which otherwise prevents the
   composer from displaying anything. This is a small **source patch**, not a binary edit or
   added service privilege. [android/vendor/build-prop.patch](android/vendor/build-prop.patch)
@@ -426,7 +424,7 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   replace them **unmodified**; [scripts/check-replacements.sh](scripts/check-replacements.sh)
   checks each is a drop-in. Remaining traps are rare (Rust std, HWUI, ART).
 - Google's power HAL configuration pins cpusets to Panther Lake's 8 CPUs; on the laptop's 12 it
-  kept apps off 4 CPUs and background work on 4. [android/vendor/powerhint.patch](android/vendor/powerhint.patch)
+  kept apps off 4 CPUs and background work on 4. [powerhint.patch](hardware/msi-modern-15-b7m/vendor/powerhint.patch)
   removes only those masks, so Android's default all-CPU cpusets stay.
 - Google's memory daemon (mmd) makes an 8 GiB writeback file in `/data` on every boot and writes
   idle zram pages out to the USB. [android/vendor/build-prop.patch](android/vendor/build-prop.patch)
@@ -532,7 +530,7 @@ This invokes the upstream incremental builds, but only changed outputs are publi
 | Changed input | Rebuilt | Written to USB |
 |---|---|---|
 | `boot/init` | initramfs | new initramfs + boot menu |
-| kernel source or `kernel/msi-diagnostic.config` | kernel via Kbuild | new kernel + boot menu |
+| kernel source or [MSI diagnostic config](hardware/msi-modern-15-b7m/diagnostic.config) | kernel via Kbuild | new kernel + boot menu |
 | `boot/menu.cfg` | boot menu | boot menu only |
 | nothing | nothing | **no files** |
 
@@ -566,7 +564,7 @@ use `make deploy`, **not** another whole-stick flash.
 - Development security HALs: unmodified binaries from Google's pinned Android 17 emulator
   image. Googlebook userspace remains proprietary recovery-image content, not a source rebuild
   or a claim of redistribution permission.
-- Instruction-emulation source patch: [kernel/vex-emulate.patch](kernel/vex-emulate.patch),
+- Instruction-emulation source patch: [vex-emulate.patch](hardware/drivers/cpu-vex/vex-emulate.patch),
   preserved unchanged from Project Churro commit `488dab956808916100eca141ee251a5a5773eeba`.
   Vendored, content-hashed and applied to kernel **source**, with the user's approval.
   The reference repository has no top-level licence; resolve redistribution permissions before

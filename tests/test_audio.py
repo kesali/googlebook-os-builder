@@ -9,7 +9,7 @@ import unittest
 import xml.etree.ElementTree as ET
 
 REPO = Path(__file__).resolve().parents[1]
-SELECTOR = REPO / "android/vendor/get_variant_audio"
+SELECTOR = REPO / "hardware/msi-modern-15-b7m/vendor/get_variant_audio"
 
 
 class AudioRouteTests(unittest.TestCase):
@@ -21,7 +21,7 @@ class AudioRouteTests(unittest.TestCase):
         shutil.copytree(REPO / "tests/audio", audio)
         result = subprocess.run(
             ["patch", "--batch", "--fuzz=0", "-p1", "-i",
-             str(REPO / "android/vendor/audio-msi.patch")],
+             str(REPO / "hardware/msi-modern-15-b7m/vendor/audio-msi.patch")],
             cwd=root, capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -146,7 +146,7 @@ class AudioTests(unittest.TestCase):
         self.assertIn("gbos-builder audio preparation failed", result.stderr)
 
     def test_service_is_laptop_only_and_restarts_hal_after_readiness(self):
-        text = (REPO / "android/vendor/audio-msi.rc").read_text()
+        text = (REPO / "hardware/msi-modern-15-b7m/vendor/audio-msi.rc").read_text()
         self.assertIn("on boot && property:ro.boot.gbos_builder.graphics=amd", text)
         self.assertIn("on boot && property:ro.boot.gbos_builder.graphics=amd-vulkan", text)
         self.assertIn("/vendor/bin/get_variant_audio /sys ALC256", text)
@@ -154,7 +154,7 @@ class AudioTests(unittest.TestCase):
         self.assertNotIn("mount", text)
 
     def test_policy_does_not_grant_generic_sysfs_write(self):
-        patch = (REPO / "android/vendor/audio-policy.patch").read_text()
+        patch = (REPO / "hardware/msi-modern-15-b7m/vendor/audio-policy.patch").read_text()
         allows = [line for line in patch.splitlines() if line.startswith("+(allow ")]
         self.assertIn("+(allow get_variant_audio gbos_builder_audio_id (file (getattr open read write)))",
                       allows)
