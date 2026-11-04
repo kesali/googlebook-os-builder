@@ -104,7 +104,6 @@ class HardwareRecipeTests(unittest.TestCase):
             "hardware/msi-modern-15-b7m/vendor/audio-ueventd.patch",
             "android/vendor/build-prop.patch",
             "hardware/msi-modern-15-b7m/vendor/camera-msi.patch",
-            "hardware/drivers/amdgpu/vendor/camera-va-driver.patch",
             "hardware/msi-modern-15-b7m/vendor/file-contexts.patch",
             "hardware/msi-modern-15-b7m/vendor/powerhint.patch",
             "hardware/drivers/drm-handoff/vendor/ueventd.patch",

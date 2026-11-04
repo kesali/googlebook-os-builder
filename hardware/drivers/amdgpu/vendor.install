@@ -1,6 +1,3 @@
-# Google's camera HAL uses libva for webcam MJPEG; retain Google's libva.so loader.
-lib64/radeonsi_drv_video.so                                              0644 0:0    same_process_hal_file       mesa/lib64/radeonsi_drv_video.so
-lib64/libdrm_amdgpu.so                                                   0644 0:0    same_process_hal_file       mesa/lib64/libdrm_amdgpu.so
 lib64/hw/vulkan.radeon.so                                                0644 0:0    same_process_hal_file       mesa/lib64/libvulkan_radeon.so
 lib64/libgbm_mesa.so                                                     0644 0:0    same_process_hal_file       mesa/lib64/libgbm_mesa.so
 lib64/gbm/                                                              0755 0:0    vendor_file                 -

@@ -43,7 +43,6 @@ LIBDRM_TAR := $(DL)/libdrm-$(LIBDRM_SHA).tar.xz
 LIBDRM_SRC := $(OUT)/src/libdrm-$(LIBDRM_SHA)
 EXPAT_TAR := $(DL)/expat-$(EXPAT_SHA).tar.xz
 EXPAT_SRC := $(OUT)/src/expat-$(EXPAT_SHA)
-LIBVA_SRC := $(OUT)/src/libva-$(LIBVA_VERSION)-$(LIBVA_REV)
 NDK_ZIP := $(DL)/android-ndk-$(NDK_SHA).zip
 NDK := $(TOOLCHAIN)/ndk-$(NDK_SHA)
 ANDROID_EMU_ZIP := $(DL)/emulator-$(ANDROID_EMU_SHA).zip
@@ -236,8 +235,6 @@ $(LIBDRM_SRC)/.ready: $(LIBDRM_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
 $(EXPAT_SRC)/.ready: $(EXPAT_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
-$(LIBVA_SRC)/.ready: | $(BUILD_READY)
-	$(BUILDER) bash scripts/git-fetch.sh "$(LIBVA_URL)" "$(LIBVA_REV)" "$(@D)"
 $(NDK)/.ready: $(NDK_ZIP) scripts/ndk.sh
 	$(BUILDER) bash scripts/ndk.sh "$<" "$(@D)"
 $(ANDROID_EMU)/.ready: $(ANDROID_EMU_ZIP) $(GOOGLE)/inventory.txt scripts/emulator.sh tools/lp.py
@@ -269,9 +266,9 @@ $(HTTPENGINE_CRYPTO)/manifest: FORCE $(HTTPENGINE_CRYPTO_SRC)/.ready $(NDK)/.rea
 
 $(OUT)/mesa-clc/manifest: FORCE $(MESA_SRC)/.ready scripts/mesa-clc.sh $(BUILD_READY)
 	$(BUILDER) bash scripts/mesa-clc.sh "$(MESA_SRC)" "$(OUT)/mesa-clc"
-mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Iris, Zink, AMD Vulkan and VA-API
-$(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready $(LIBVA_SRC)/.ready scripts/mesa.sh $(OUT)/mesa-clc/manifest
-	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)" "$(LIBVA_SRC)" "$(OUT)/mesa-clc"
+mesa: $(MESA)/manifest ## Incrementally build Mesa softpipe, Iris, Zink and AMD Vulkan
+$(MESA)/manifest: FORCE $(MESA_SRC)/.ready $(LIBDRM_SRC)/.ready $(EXPAT_SRC)/.ready $(NDK)/.ready scripts/mesa.sh $(OUT)/mesa-clc/manifest
+	$(BUILDER) bash scripts/mesa.sh "$(MESA_SRC)" "$(LIBDRM_SRC)" "$(EXPAT_SRC)" "$(NDK)" "$(MESA)" "$(OUT)/mesa-clc"
 
 $(FIRMWARE_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(FIRMWARE_URL)" "$(FIRMWARE_SHA)" "$@"

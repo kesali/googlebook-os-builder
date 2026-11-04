@@ -1,9 +1,10 @@
 # Graphics
 
-**Status:** partial — QEMU softpipe works; the laptop desktop and camera work, and Chrome uses RADV.
-**Last verified:** 2026-11-04 — HttpEngine crypto candidate: 29 tests, exact ABI, image metadata,
-no-write repeat and enforcing QEMU/native checks pass; subsequent Lenovo test owner-accepted.
-Dedicated HttpEngine requests and MSI regression remain unverified.
+**Status:** partial — QEMU softpipe passes; AMD desktop profiles remain, but the camera-only
+RadeonSI VA-API path was removed. Camera behavior after removal is unverified.
+**Last verified:** 2026-11-04 — 289 tests pass; image build and bounded enforcing QEMU pass with
+softpipe and inspected setup screenshot. Repeat reports no partition or boot-file writes.
+Physical AMD/Intel retest and camera software fallback remain unverified.
 [Evidence](../../out/httpengine-investigation/).
 
 Earlier, 2026-11-04 — Recipe refactor: 263 tests, exact patch/profile/input equality,
@@ -121,7 +122,7 @@ path. The owner subsequently confirms the previously failing game, another nativ
 Hearthstone work with Berberis; see [boot diagnostics](boot.md) for the translator comparison.
 Houdini's internal failure cause is not established.
 
-Camera VA-API candidate (built; laptop decoding unverified): the latest laptop
+Historical camera VA-API attempt (removed 2026-11-04): the latest laptop
 [capture logs](../../out/laptop-logs/20261102-212827-m7k5rziw/current/) show the USB camera HAL
 aborting in `HardwareJpegDecoderVaapi` after libva cannot load `radeonsi_drv_video.so`.
 The kernel already reports `jpeg_v2_0` and a `jpeg_dec` ring; Google's image supplies libva
@@ -156,8 +157,8 @@ Camera crashes still name the JPEG decoder's `RESOLUTION_BOUND`; its detailed in
 logs have rotated out ([logs](../../out/laptop-logs/20261102-221612-z03h9kht/current/)).
 Source tracing found a likely configuration conflict: the AMD profile globally exports
 `MESA_LOADER_DRIVER_OVERRIDE=zink`; the VA pipe loader honors it, but its build contains
-only RadeonSI. Approved [camera-va-driver.patch](../../hardware/drivers/amdgpu/vendor/camera-va-driver.patch)
-clears that variable only in the USB camera service, retaining automatic DRM detection,
+only RadeonSI. The now-removed `camera-va-driver.patch` cleared that variable only in the USB
+camera service, retaining automatic DRM detection,
 desktop Zink and enforcing SELinux. 21 focused tests pass; the 28.6 s image rebuild reads
 back the exact service edit and verifies 1622 metadata entries and partition fit. The 17.2 s
 repeat preserves all 39 published sizes/timestamps and writes nothing. Bounded QEMU passes
@@ -184,6 +185,11 @@ setup screenshot inspected and VM exit confirmed; input not retested.
 [Evidence](../../out/camera-vulkan/). Not verified: physical RADV version/extension enumeration,
 desktop/app regression or camera preview/capture. QEMU softpipe cannot prove those.
 
+Current camera decision: the owner chose to remove the separate AMD RadeonSI VA-API JPEG driver
+and its shared AMD DRM helper to reduce dependencies. The camera HAL previously aborted when
+RadeonSI VA loading failed, so it may abort again without that driver. Software JPEG decoding or
+another camera path has not been investigated or verified.
+
 Owner retest (`df0b9859-30cd-4454-8299-cd2bddbcff5b`): the activation indicator appears and
 effects create a RADV Vulkan 1.4 context, but every frame fails AHWB import with
 `ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT`. The allocator's spoofed NV12 path aligns
@@ -203,12 +209,12 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
   (no Churro version patch needed): Google's camera effects cannot initialize with the
   strict-mode 1.1 cap. This also removes Android extension
   allowlist filtering, so desktop/app rendering requires regression testing; no CTS claim.
-- Owner's overnight request authorizes an AMD test candidate, retaining softpipe as the verified fallback.
+- Keep Zink/RADV for AMD desktop rendering and softpipe as the verified fallback; omit the separate
+  RadeonSI VA-API camera driver and its shared DRM helper to reduce dependencies. Camera software
+  fallback is not established.
 - Mesa 26.3.0-rc3, libdrm 2.4.133, Expat 2.7.3 from source, NDK r30 at API 35;
-  softpipe, Zink and RADV with ACO, no LLVM/GLX; the approved RadeonSI VA candidate adds
-  hardware JPEG support without changing renderer selection. Rendering links libdrm, Expat and
-  Mesa's C++ runtime statically to avoid vendor linker-namespace problems. Only the separate
-  VA driver uses shared DRM, adding the AMD helper but preserving Google's core runtime.
+  softpipe, Zink and RADV with ACO, no LLVM/GLX. Rendering links libdrm, Expat and Mesa's C++
+  runtime statically to avoid vendor linker-namespace problems.
   Pins: [sources.mk](../../sources.mk).
 - Software rendering is selected with `LIBGL_ALWAYS_SOFTWARE`/`GALLIUM_DRIVER` in
   [graphics-softpipe.rc](../../hardware/drivers/qemu-virtio/system_ext/graphics-softpipe.rc), not Android properties (name-length limits).
@@ -299,7 +305,10 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
-- 2026-11-04 uncommitted — Retain Google's RenderEngine property defaults in the vendor patch;
+- 2026-11-04 (this commit) — Remove the camera-only RadeonSI VA-API build, libva pin, shared AMD
+  DRM helper and camera-service override. 289 tests, image fit/metadata and enforcing QEMU pass;
+  repeat writes nothing. Zink/RADV remain; camera software fallback and hardware retest await owner.
+- 2026-11-04 `03b2dde` — Retain Google's RenderEngine property defaults in the vendor patch;
   assert all graphics profiles explicitly set their own backend. 291 tests, image metadata/fit
   checks and enforcing QEMU softpipe boot pass; physical AMD/Intel profiles await owner retest.
 - 2026-11-04 (this commit) — Owner accepts Lenovo test; saved `193204` logs show no HttpEngine

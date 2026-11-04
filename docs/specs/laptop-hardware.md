@@ -146,6 +146,9 @@ Audio and backlight were designed from the references, Google's HALs and this la
   Approved camera-service-only clearing passes 21 tests, image read-back/metadata/fit,
   no-write repeat and enforcing QEMU (setup screen inspected, VM exited); physical retest pending
   ([details](graphics.md), [logs](../../out/laptop-logs/20261102-221612-z03h9kht/current/)).
+  On 2026-11-04 the owner chose to drop this camera-only VA-API stack to reduce dependencies;
+  RadeonSI and its camera-service override are no longer part of the planned baseline. A software
+  JPEG fallback has not been identified or tested, so camera operation after removal is unverified.
   Latest retest (`dc40de8f-009e-4ef5-a671-9b5acb3af439`) confirms camera VA initialization
   succeeds. Preview now fails in VC effects: Vulkan DRM modifiers require 1.2 or
   `VK_KHR_image_format_list`, but strict-mode RADV reports 1.1.
