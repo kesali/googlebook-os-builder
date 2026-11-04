@@ -44,9 +44,10 @@ etc/permissions/gbos-builder-no-face.xml                                        
 # Generic x86-64 libz from the emulator image; see remove.list.
 lib64/libz.so                                                            0644 0:0    same_process_hal_file       emulator/vendor/lib64/libz.so
 
-# Same ABI-checked CPU-portable BoringSSL as system; vendor has its own linker namespace.
-lib64/libcrypto.so                                                       0644 0:0    vendor_file                 crypto/libcrypto.so
-lib64/libssl.so                                                          0644 0:0    vendor_file                 crypto/libssl.so
+# Preserve Google's optimized crypto; boot selects these ABI-checked fallbacks if needed.
+lib64/gbos-builder-portable/                                              0755 0:0    vendor_file                 -
+lib64/gbos-builder-portable/libcrypto.so                                  0644 0:0    vendor_file                 crypto/libcrypto.so
+lib64/gbos-builder-portable/libssl.so                                     0644 0:0    vendor_file                 crypto/libssl.so
 
 # Source-built crossystem stub from android/crossystem-qemu.c; keeps Google's metadata.
 bin/crossystem                                                           0755 0:2000 firmware_tool_exec          build/crossystem

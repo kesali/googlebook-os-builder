@@ -1,17 +1,41 @@
-Conscrypt's signed APEX keeps a Panther Lake libcrypto that traps on Broadwell.
-Init bind-mounts the ABI-checked CPU-portable pair over its library files before zygote.
-Permit only file mount targets of the system library type, not vendor/system files generally.
-Drop with the Conscrypt overlay once Google's crypto uses runtime CPU detection.
+Keep Google's optimized crypto when every CPU has SHA-NI; otherwise init bind-mounts
+the ABI-checked CPU-portable pair over system and vendor libraries before zygote.
+Permit file mount targets only for platform and vendor library types.
+Drop the selector and vendor rule when Google's libraries dispatch safely; keep the platform
+rule while signed APEX overlays remain.
 
 --- a/system/etc/selinux/plat_sepolicy.cil
 +++ b/system/etc/selinux/plat_sepolicy.cil
-@@ -1,6 +1,10 @@
+@@ -1,6 +1,33 @@
  (role object_r)
  (typeattribute cil_gen_require)
  (roleattribute cil_gen_require)
 +
-+; Init overlays CPU-portable crypto on Conscrypt's two signed-APEX library files.
++; Init mounts selected crypto on signed APEXes and portable libraries when required.
 +(allow init system_lib_file (file (mounton)))
++(allow init vendor_file (file (mounton)))
++
++(type gbos_builder_crypto_selector)
++(roletype object_r gbos_builder_crypto_selector)
++(typeattributeset domain (gbos_builder_crypto_selector))
++(typeattributeset coredomain (gbos_builder_crypto_selector))
++(allow init gbos_builder_crypto_selector (process (transition siginh rlimitinh)))
++(dontaudit init gbos_builder_crypto_selector (process (noatsecure)))
++(allow gbos_builder_crypto_selector shell_exec (file (read getattr map execute open entrypoint)))
++(allow gbos_builder_crypto_selector toolbox_exec (file (read getattr map execute open execute_no_trans)))
++(allow gbos_builder_crypto_selector self (process (fork)))
++(allow gbos_builder_crypto_selector proc (dir (search)))
++(allow gbos_builder_crypto_selector proc_cpuinfo (file (read getattr open)))
++(allow gbos_builder_crypto_selector property_socket (sock_file (write)))
++(allow gbos_builder_crypto_selector init (unix_stream_socket (connectto)))
++(allow gbos_builder_crypto_selector self (unix_stream_socket (create connect read write getattr getopt setopt shutdown)))
++
++(type gbos_builder_crypto_prop)
++(roletype object_r gbos_builder_crypto_prop)
++(typeattributeset property_type (gbos_builder_crypto_prop))
++(typeattributeset system_property_type (gbos_builder_crypto_prop))
++(typeattributeset system_internal_property_type (gbos_builder_crypto_prop))
++(allow gbos_builder_crypto_selector gbos_builder_crypto_prop (property_service (set)))
 +
  (handleunknown deny)
  (mls true)

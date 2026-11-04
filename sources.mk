@@ -124,9 +124,10 @@ NDK_SHA := 753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2
 ANDROID_EMU_URL := https://dl.google.com/android/repository/sys-img/google_apis/x86_64-37.0_r06.zip
 ANDROID_EMU_SHA := 43f1d4eadf9117a505bbd815704ac5d9aaf4c7ce61c9d99f66305245ce00a191
 
-# Google's Panther Lake crypto uses SHA-NI unconditionally on Broadwell. The pinned emulator
-# lacks required exports, so build upstream with runtime CPUID dispatch. Churro identifies
-# this commit by the recovery's export window (SSL_get_signature_algorithm_used, no CBS_get_u48).
+# Google's platform crypto uses SHA-NI without runtime dispatch. Keep it when every CPU
+# advertises SHA-NI; otherwise use this ABI-checked runtime-dispatched build. The pinned emulator
+# lacks required exports. Churro identifies this commit by its recovery export window
+# (SSL_get_signature_algorithm_used, no CBS_get_u48).
 BORINGSSL_REV := e2da59b2d9e85f20a87d4b9116bc4a3de3525603
 BORINGSSL_URL := https://codeload.github.com/google/boringssl/tar.gz/$(BORINGSSL_REV)
 BORINGSSL_SHA := d9d20cb1df6a717908eda2340bd222f547d2fe6e3fc46900449da6d214c5bf5d

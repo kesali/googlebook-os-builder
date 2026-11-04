@@ -1,9 +1,9 @@
 # Security services
 
 **Status:** working (software keys) — renamed policy enforcing; key services stable.
-**Last verified:** 2026-11-04 — HttpEngine candidate: 29 focused tests, exact versioned ABI,
-enforcing QEMU/native crypto checks; no added permission. Subsequent Lenovo test owner-accepted;
-dedicated HttpEngine requests and MSI regression remain unverified.
+**Last verified:** 2026-11-04 — 20 selector/overlay tests, image ABI/metadata/kABI checks, and
+enforcing QEMU boot. Live mountinfo shows Google's system crypto bound into Conscrypt.
+Comparative performance and physical-laptop selection remain unverified.
 [Evidence](../../out/httpengine-investigation/).
 
 Earlier, 2026-11-04 — 246 tests, source-derived policy comparison (identity changes
@@ -27,6 +27,10 @@ Not verified: SetupWizard lock-screen setup, Google account sign-in, Play Integr
 Not provided: hardware-backed keys, attestation, rollback resistance (Android falls back to
 non-rollback-resistant keys, as expected). This is a development device, not a secure one.
 
+Verified: the selector requires SHA-NI on every reported logical CPU; otherwise it selects the
+portable pair. QEMU selected Google's libraries, and live mountinfo confirmed the Conscrypt bind.
+Not verified: stock-versus-portable performance or physical-laptop selection.
+
 ## Decisions
 - Emulator binaries are pinned by SHA-256 and copied **unmodified** with their missing library
   dependencies; Gatekeeper's executable is renamed to the standard service name, bytes unchanged.
@@ -41,16 +45,18 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
   (`gscutil.rc`): init waited 10 s for a `/dev/tpm0` that the TPM blacklist keeps absent. The
   only firmware command left is a source-built `crossystem` stand-in that accepts the boot HAL's
   success values and rejects everything else.
-- No SELinux permissive domains or broad policy changes.
-- CPU-portable BoringSSL replaces the system/vendor pair and overlays only Conscrypt's two
-  library files at post-fs-data. HttpEngine uses a separate exact-ABI build overlaid on
-  Tethering's crypto file. Both signed APEXes remain unchanged. Init gains only file
-  `mounton` on `system_lib_file` (type-scoped, not path-scoped); no additional HttpEngine
-  permission. Wi-Fi and other APEX copies are untouched.
+- SELinux remains enforcing; the crypto selector adds init file-mount access for the
+  platform/vendor library types it needs to overlay.
+- Keep Google's system/vendor BoringSSL when every logical CPU advertises SHA-NI; otherwise
+  init binds the ABI-checked runtime-dispatched pair over both libraries before zygote.
+  HttpEngine keeps its separate exact-ABI build over Tethering's crypto file. Both signed APEXes
+  remain unchanged. Wi-Fi and other APEX copies are untouched. The stock path is verified in QEMU;
+  comparative performance on SHA-NI hardware is not measured.
 
 ## Files
 - [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts; API check.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/remove.list](../../android/vendor/remove.list) — services installed and removed.
+- [android/system_ext/crypto-select.sh](../../android/system_ext/crypto-select.sh) — selects stock or portable system/vendor crypto before APEX overlays.
 - [android/system_ext/vintf-manifest.patch](../../android/system_ext/vintf-manifest.patch) — Trusty-only HAL declarations removed.
 - [android/vendor/gatekeeper.rc](../../android/vendor/gatekeeper.rc), [android/system_ext/gbos-builder.rc](../../android/system_ext/gbos-builder.rc) — software-security services shared by QEMU and the laptop.
 - [android/crossystem-qemu.c](../../android/crossystem-qemu.c) — firmware-command stand-in.
@@ -71,6 +77,9 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-04 (this commit) — 20 selector/overlay tests, image ABI/metadata/kABI checks and
+  enforcing QEMU boot pass; live mountinfo confirms Google's system crypto is bound into Conscrypt.
+  Comparative performance and physical-laptop selection remain unverified.
 - 2026-11-04 (this commit) — Owner accepts Lenovo hardware test; saved `193204` logs have no
   HttpEngine trap samples. Remaining sampled SHA is in Bluetooth crypto, not replaced here.
   Dedicated HttpEngine HTTP/TLS request and MSI regression remain unverified.
