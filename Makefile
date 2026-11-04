@@ -9,6 +9,7 @@ endif
 
 GOOGLE := $(OUT)/google
 DL := $(OUT)/downloads
+RUBY_RECOVERY := $(DL)/ruby-$(RUBY_RECOVERY_BUILD)-$(RUBY_RECOVERY_SHA).bin
 # Unchanged Project Churro patch from commit 488dab956808916100eca141ee251a5a5773eeba.
 # Keep its separate content hash so existing editable kernel trees remain reusable.
 EMU_PATCH := kernel/vex-emulate.patch
@@ -92,6 +93,11 @@ builder: $(BUILD_READY) ## Build the Debian tool environment
 $(BUILD_READY): docker/Dockerfile
 	docker build -t $(BUILDER_IMAGE) docker
 	@mkdir -p $(@D) && touch $@
+
+recovery: $(RUBY_RECOVERY) ## Download and verify Google's pinned Ruby recovery image
+.PHONY: recovery
+$(RUBY_RECOVERY): | $(BUILD_READY)
+	$(BUILDER) bash scripts/fetch.sh "$(RUBY_RECOVERY_URL)" "$(RUBY_RECOVERY_SHA)" "$@" "$(RUBY_RECOVERY_MEMBER)"
 
 unpack: $(GOOGLE)/inventory.txt ## Inspect Google's read-only recovery image
 $(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) config.mk scripts/unpack.sh \

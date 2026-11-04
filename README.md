@@ -35,6 +35,9 @@ this license does not grant rights to redistribute those materials.
 
 For Googlebook OS, Linux needs Docker, GNU make, Python 3, `/dev/kvm` and a VNC viewer.
 Allow at least 50 GB for sources, builds and recovery images, plus Android's sparse data partition.
+The first build downloads Google's pinned Ruby recovery (7.8 GB ZIP, 19 GB extracted) into
+`out/downloads/`, separate from editable reference projects. `make recovery` fetches just that
+source; the extracted image must match the existing SHA-256 pin before it is published.
 
 ```sh
 make qemu JOBS=12         # build changed components and run; VNC viewer: localhost:5900

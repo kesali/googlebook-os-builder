@@ -5,7 +5,14 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-03 — 92 focused tests pass; fresh expanded slot-A image builds with
+**Last verified:** 2026-11-04 — Restored official Ruby recovery matches the unchanged image
+SHA-256 pin; five offline fetch and four source-extraction tests pass. Image rebuild passes
+all ABI/module/metadata/fit checks and preserves all 37 recorded output hashes/sizes, including
+the full disk. A 21.4 s repeat preserves timestamps and writes no partitions/boot files.
+No new QEMU or physical boot: runtime bytes match the existing baseline.
+[Evidence](../../out/hardware-recipes/).
+
+Earlier, 2026-11-03 — 92 focused tests pass; fresh expanded slot-A image builds with
 `make android-image JOBS=12`;
 all rebuilt filesystem metadata/import checks and all 4,501 Google exports pass. The exact six
 A allocations and absence of logical B partitions/group are verified. Direct and USB/UEFI QEMU
@@ -64,6 +71,13 @@ Turn Google's read-only recovery image into a private QEMU disk with a short lis
 changes, and update only the changed OS partitions without touching Android's data.
 
 ## Current state
+Recovery-source restoration verified: the old reference file no longer matched the pinned
+baseline, so the build refused it before extraction. A separate official Ruby `16658739`
+download now matches the unchanged image SHA-256 and is the default hash-named source cache.
+The downloader verifies the extracted ZIP member before publishing it; raw downloads retain
+their existing checks. The altered reference file remains untouched. Read-only comparison
+localizes its changes to the metadata partition; the cause of those changes is unknown.
+
 The owner approved a fresh image rather than migration, with additional growth space.
 [super-layout.json](../../android/super-layout.json) declares system 2 GiB, vendor 1 GiB,
 product 3 GiB, system_ext 1 GiB and both module partitions 64 MiB. Logical B partitions and their
@@ -276,6 +290,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Restored pinned Ruby source into a separate cache after the
+  reference file changed only in metadata. Five fetch/four source tests and rebuilt output
+  equality/no-write repeat pass; old source preserved, no new QEMU or physical writes.
 - 2026-11-03 (this commit) — Larger raw-flashed USB exposed GPT placement rejection. Shared
   read-only comparison accepts only exact verified-source GPT bytes; sfdisk diagnostics fail
   even on zero exit. 32 regular-file tests pass; owner update retest pending, no agent disk writes.

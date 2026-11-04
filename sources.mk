@@ -2,6 +2,13 @@
 # or no suitable prebuilt exists. Read the release tag or version; the build checks the Git
 # commit ID or archive SHA-256 next to it.
 
+# Unchanged official Ruby recovery, matching the existing extracted baseline.
+# SHA-256 is for the unzipped image, not its transport ZIP.
+RUBY_RECOVERY_BUILD := 16658739
+RUBY_RECOVERY_SHA := 805de2e7251b2ec0c2089af0fe8f0547c386a58e8c5e24614d506697456837db
+RUBY_RECOVERY_URL := https://dl.google.com/device/recovery/ruby-user/$(RUBY_RECOVERY_BUILD)/recovery.zip
+RUBY_RECOVERY_MEMBER := android-desktop_signed_recovery_image.bin
+
 # Google's Android 17 kernel, June 2026 release 52. Built from source because the instruction
 # emulator below must be compiled into it. A tag can be moved, so the build also
 # checks that it still points at the commit GKI_BUILD (below) was built from.
