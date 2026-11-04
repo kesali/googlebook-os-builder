@@ -1,0 +1,5 @@
+# The Lenovo's 15.6" 1920x1080 panel at 160 dpi, matching the MSI. Google's ro.sf.lcd_density
+# (240) stays for QEMU; SurfaceFlinger and zygote read this property first. Googlebook Settings
+# offers no display-size slider, so the density must come from the image.
+on early-init && property:ro.boot.gbos_builder.graphics=intel
+    setprop qemu.sf.lcd_density 160

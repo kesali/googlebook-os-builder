@@ -1,0 +1,2 @@
+# Lenovo panel density; GRUB selects the intel profile only for this laptop's GPU.
+etc/init/zz-gbos-builder-display-lenovo.rc 0644 0:0 system_file ./system_ext/display-lenovo.rc

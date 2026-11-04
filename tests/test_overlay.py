@@ -334,11 +334,16 @@ class ChangeDataTests(unittest.TestCase):
             patch,
         )
 
-    def test_laptop_density_is_only_set_in_amd_graphics_profile(self):
+    def test_laptop_density_is_set_only_for_the_laptop_panels(self):
         amd = (REPO / "hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc").read_text()
+        lenovo = (REPO / "hardware/lenovo-e50-80/system_ext/display-lenovo.rc").read_text()
         softpipe = (REPO / "hardware/drivers/qemu-virtio/system_ext/graphics-softpipe.rc").read_text()
         self.assertIn("setprop qemu.sf.lcd_density 160", amd)
+        self.assertIn("on early-init && property:ro.boot.gbos_builder.graphics=intel\n"
+                      "    setprop qemu.sf.lcd_density 160\n", lenovo)
         self.assertNotIn("qemu.sf.lcd_density", softpipe)
+        self.assertIn("etc/init/zz-gbos-builder-display-lenovo.rc",
+                      expand(REPO / "android/system_ext/install.list"))
 
     def test_install_lists_have_five_columns(self):
         for path in sorted(REPO.glob("android/*/install.list")):

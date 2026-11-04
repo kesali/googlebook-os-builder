@@ -244,6 +244,8 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - [audio-lenovo.rc](../../hardware/lenovo-e50-80/vendor/audio-lenovo.rc), [audio-lenovo.patch](../../hardware/lenovo-e50-80/vendor/audio-lenovo.patch),
   [audio-policy.patch](../../hardware/lenovo-e50-80/vendor/audio-policy.patch) — Lenovo ALC233
   bind-mounted configuration and card-ID label.
+- [display-lenovo.rc](../../hardware/lenovo-e50-80/system_ext/display-lenovo.rc) — Lenovo
+  1920x1080 panel density 160 (it fell back to QEMU's 240, making everything 1.5x too big).
 - [camera-lenovo.patch](../../hardware/lenovo-e50-80/vendor/camera-lenovo.patch) — EasyCamera
   `0bda:579c` listed as the front camera, without borrowed calibration.
 - [ar9565](../../hardware/drivers/ar9565/) — Lenovo AR9565 Wi-Fi and AR3012 Bluetooth (`ath3k` firmware upload).
@@ -401,7 +403,8 @@ metadata/logd starts still needs a screen photo.
 - [x] Lenovo Bluetooth, speaker, mic, camera and Chrome — owner-confirmed 2026-11-04.
 - [ ] MSI regression after the shared hda-audio selector — done when the MSI still has speaker,
   mic and camera.
-- [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
+- [ ] Confirm laptop density 160 is comfortable on the MSI and Lenovo, with QEMU still 240.
+  Googlebook Settings has no display-size slider, so the image sets it per laptop.
 - [ ] Diagnose the old framebuffer-free hard lockup only with a safe, evidence-based test.
 - [ ] Establish whether the touchpad needs `X86_AMD_PLATFORM_DEVICE` through a separately
   agreed diagnostic A/B test; leave the working production input path unchanged.
@@ -434,6 +437,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Lenovo looked oversized at density 240 (no density setting in its
+  profile, no display-size slider in Settings); added display-lenovo.rc for 160. 271 tests,
+  image and QEMU (still 240) pass; owner confirms the Lenovo is now smaller.
 - 2026-11-04 uncommitted — Owner confirms the Lenovo camera and Chrome work; MSI audio regression
   check still pending.
 - 2026-11-04 uncommitted — Owner confirms Lenovo Bluetooth, audio and mic. Boot `20261104-052320`:

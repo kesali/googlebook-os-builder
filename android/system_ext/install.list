@@ -11,3 +11,4 @@ etc/gbos-builder/touchpad-capture.sh 0644 0:0 system_file ./touchpad-capture.sh
 # recipe: qemu-virtio/system_ext.install
 # recipe: msi-modern-15-b7m/system_ext.install
 # recipe: i915/system_ext.install
+# recipe: lenovo-e50-80/system_ext.install
