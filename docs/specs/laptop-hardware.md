@@ -401,8 +401,6 @@ metadata/logd starts still needs a screen photo.
 - [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up
   without firmware errors. Check Wi-Fi still works: both run on the same MT7922.
 - [x] Lenovo Bluetooth, speaker, mic, camera and Chrome — owner-confirmed 2026-11-04.
-- [ ] MSI regression after the shared hda-audio selector — done when the MSI still has speaker,
-  mic and camera.
 - [ ] Confirm laptop density 160 is comfortable on the MSI and Lenovo, with QEMU still 240.
   Googlebook Settings has no display-size slider, so the image sets it per laptop.
 - [ ] Diagnose the old framebuffer-free hard lockup only with a safe, evidence-based test.
@@ -437,6 +435,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Owner reports MSI is fine after the requested speaker, microphone
+  and camera regression check on the updated combined image. Shared hda-audio regression closed;
+  Lenovo fixes and smaller density were already owner-confirmed.
 - 2026-11-04 (this commit) — Lenovo looked oversized at density 240 (no density setting in its
   profile, no display-size slider in Settings); added display-lenovo.rc for 160. 271 tests,
   image and QEMU (still 240) pass; owner confirms the Lenovo is now smaller.

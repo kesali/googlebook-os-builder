@@ -13,9 +13,9 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Boot chain](boot.md) | partial | Renamed direct/UEFI boots verified; physical retest remains |
 | [OS image and disk](os-image.md) | working; recipe image byte-identical | Owner tests combined image; old media still need a fresh flash |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial; recipe image validated in QEMU | Lenovo hasvk camera/Chrome confirmed; MSI regression check |
+| [Graphics](graphics.md) | partial; Lenovo fixes and MSI regression owner-confirmed | Continue daily-use testing; retain failure logs |
 | [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
-| [Laptop hardware](laptop-hardware.md) | partial; Lenovo BT/audio/camera/Chrome confirmed | MSI audio/camera regression check |
+| [Laptop hardware](laptop-hardware.md) | partial; Lenovo fixes and MSI regression owner-confirmed | Remaining headphone, brightness and suspend checks |
 | [USB diagnostics](usb-diagnostic.md) | parked; moved inputs byte-verified | Separate diagnostic build/smoke not repeated |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
