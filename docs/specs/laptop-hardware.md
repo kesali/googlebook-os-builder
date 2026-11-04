@@ -230,7 +230,7 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - Backlight naming is restricted by exact DMI vendor/model and the first panel; other machines
   retain upstream names. Drop the patch when the unchanged HAL can discover AMD backlights.
 - Keep Google's power HAL, without its Panther Lake CPU masks
-  ([powerhint.patch](../../hardware/msi-modern-15-b7m/vendor/powerhint.patch)). On 12 CPUs they limited apps to
+  ([powerhint.patch](../../android/vendor/powerhint.patch)). On 12 CPUs they limited apps to
   0-7, background work to 4-7, and media playback to 4-7 with no load balancing. Init's
   all-CPU cpusets stay; SocSlider and the top-app uclamp boost are kept.
 
@@ -254,7 +254,7 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
   `0bda:579c` listed as the front camera, without borrowed calibration.
 - [ar9565](../../hardware/drivers/ar9565/) — Lenovo AR9565 Wi-Fi and AR3012 Bluetooth (`ath3k` firmware upload).
 - [modules.patch](../../hardware/drivers/laptop-modules/vendor_dlkm/modules.patch) — codec preload/HDA unblock.
-- [powerhint.patch](../../hardware/msi-modern-15-b7m/vendor/powerhint.patch) — power HAL without 8-CPU masks.
+- [powerhint.patch](../../android/vendor/powerhint.patch) — power HAL without 8-CPU masks.
 - [hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — read-only physical evidence.
 - [HDA tests](../../hardware/drivers/hda-audio/tests/test_audio.py),
   [AMD kernel tests](../../hardware/drivers/amdgpu/tests/test_kernel_source.py)
@@ -420,7 +420,10 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
-- 2026-11-04 (this commit) — Recovery now starts with reproducing under the diagnostic GRUB
+- 2026-11-05 (this commit) — Powerhint's CPU-mask removal moved to shared `android/vendor/`:
+  the combined image already applied it on every laptop. Its hunks are unchanged and touch
+  no other patched file, so the vendor image is expected to be identical.
+- 2026-11-04 — Recovery now starts with reproducing under the diagnostic GRUB
   entry; normal boots preserve older captures. QEMU verifies capture/preservation and the menu;
   physical laptop behavior is not retested.
 - 2026-11-04 (this commit) — Owner reports faster Lenovo Chrome launch and page loads.

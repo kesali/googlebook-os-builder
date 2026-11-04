@@ -1,7 +1,7 @@
-Select the native bridge at early-init so an optional boot entry can test Google's
-included Berberis translator. The normal entry keeps Houdini. Google's existing init
-hooks select the matching ARM64 libraries and executable handlers.
-Drop when Google's default translator works on this laptop without comparison tests.
+Select the native bridge at early-init instead: Berberis by default, Houdini from its
+remembered GRUB entry. Google's existing init hooks select the matching ARM64 libraries
+and executable handlers.
+Drop when one translator works for the owner's apps and the GRUB choice is removed.
 
 --- a/system/build.prop
 +++ b/system/build.prop

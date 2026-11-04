@@ -496,7 +496,7 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   replace them **unmodified**; [scripts/check-replacements.sh](../scripts/check-replacements.sh)
   checks each is a drop-in. Remaining traps are rare (Rust std, HWUI, ART).
 - Google's power HAL configuration pins cpusets to Panther Lake's 8 CPUs; on the laptop's 12 it
-  kept apps off 4 CPUs and background work on 4. [powerhint.patch](../hardware/msi-modern-15-b7m/vendor/powerhint.patch)
+  kept apps off 4 CPUs and background work on 4. [powerhint.patch](../android/vendor/powerhint.patch)
   removes only those masks, so Android's default all-CPU cpusets stay.
 - Google's memory daemon (mmd) makes an 8 GiB writeback file in `/data` on every boot and writes
   idle zram pages out to the USB. [android/vendor/build-prop.patch](../android/vendor/build-prop.patch)

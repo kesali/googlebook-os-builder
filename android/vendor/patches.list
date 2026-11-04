@@ -2,6 +2,7 @@
 # recipe: hda-audio/vendor.patches
 # recipe: msi-modern-15-b7m/vendor-audio.patches
 build-prop.patch
+powerhint.patch
 # recipe: msi-modern-15-b7m/vendor-camera.patches
 # AMD has no vendor text patches.
 # recipe: msi-modern-15-b7m/vendor-policy.patches

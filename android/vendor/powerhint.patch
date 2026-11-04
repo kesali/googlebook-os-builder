@@ -1,5 +1,6 @@
 Drop the power HAL's fixed CPU masks, written for Panther Lake's 8 CPUs (4-7 are its efficient cores).
-On the 12-thread Ryzen they confine apps to CPUs 0-7 and background work to 4-7, and media
+Shared by every laptop: no supported CPU has that layout. On the 12-thread Ryzen they confine apps
+to CPUs 0-7 and background work to 4-7, and media
 playback pins foreground work to 4-7 with load balancing off; the xe IRQ mask is retried every 500 ms.
 Without these nodes init.rc's cpusets (all CPUs) stay. SocSlider and the top-app uclamp boost are kept.
 Drop when Google's powerhint.json sizes its masks to the CPU count.
