@@ -116,13 +116,19 @@ Android data. Use the normal GRUB entry. The old framebuffer-free experiment
 panicked; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
 shows the earliest kernel messages for a black screen but adds about a minute to the boot.
 
+Choose **Googlebook OS (Berberis)** or **Googlebook OS (Houdini)** in GRUB. GRUB remembers the
+last choice on the USB and uses it as the next boot's default; a fresh or missing saved choice
+defaults to Berberis. The setting is kept in the ESP-root `grubenv`, outside the two directories
+replaced by updates, so updating boot files preserves it. A failed boot does not reset the saved
+choice; select the other entry manually from GRUB.
+
 Berberis (`libndk_translation.so`) is the default ARM-to-x86 translator. The owner confirms the
 previously failing game, another native app and Hearthstone work on the laptop with Berberis.
 In enforcing QEMU on this host, a small ARM64 executable traps in Houdini but runs with Berberis;
-Houdini's exact failure cause remains unknown. Houdini stays included and can still be selected
-through the `androidboot.gbos_builder.native_bridge` kernel argument. The new default has passed
-QEMU validation; the laptop has not yet been retested with it. The boot record names the selected
-translator, and a separate `crash.log*` retains fatal records independently of noisy desktop logs.
+Houdini's exact failure cause remains unknown. Disposable UEFI/QEMU checks confirm both saved
+choices reach Android and persist in `grubenv`; physical menu selection has not been tested.
+The boot record names the selected translator, and a separate `crash.log*` retains fatal records
+independently of noisy desktop logs.
 
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on the MSI's
 `1002:15e7` GPU and Intel graphics on the Lenovo's Broadwell `8086:1616`.

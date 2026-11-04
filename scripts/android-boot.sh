@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Read: the boot bundle. Write: the boot files (GRUB, kernel, initrd, menu) in the disk image's
-# EFI-SYSTEM partition, and nothing else on the disk. The laptop boots from these files once the
-# disk image is on the USB.
+# Read: the boot bundle. Write: GRUB, kernel, initrd and menu in EFI-SYSTEM, plus the initial
+# root-level GRUB saved-entry file when missing. Preserve existing selection and all other disk data.
 #
 #   android-boot.sh <disk image> <boot bundle directory>
 #
@@ -35,11 +34,28 @@ esp_matches_new() { # the partition holds exactly the new files
     rm -rf "$work/current"
     mkdir "$work/current"
     mcopy -s -n -i "$esp" ::EFI ::gbos-builder "$work/current" || return 1
-    diff -r "$work/new" "$work/current"
+    diff -r "$work/new/EFI" "$work/current/EFI" &&
+        diff -r "$work/new/gbos-builder" "$work/current/gbos-builder"
 }
 
+grubenv_initialized=0
+if mcopy -n -i "$esp" ::grubenv "$work/grubenv-existing" >/dev/null 2>&1; then
+    grub-editenv "$work/grubenv-existing" list >/dev/null ||
+        { echo "Invalid GRUB environment block; refusing to overwrite the saved selection." >&2; exit 1; }
+else
+    mcopy -i "$esp" "$work/new/grubenv" ::grubenv
+    mcopy -n -i "$esp" ::grubenv "$work/grubenv-existing"
+    grub-editenv "$work/grubenv-existing" list >/dev/null ||
+        { echo "GRUB environment block failed read-back verification." >&2; exit 1; }
+    grubenv_initialized=1
+fi
+
 if esp_matches_new >/dev/null 2>&1; then
-    echo "Boot files in $disk are up to date; nothing written."
+    if [ "$grubenv_initialized" -eq 1 ]; then
+        echo "Saved boot selection initialized; boot files are otherwise up to date."
+    else
+        echo "Boot files in $disk are up to date; nothing written."
+    fi
     exit 0
 fi
 

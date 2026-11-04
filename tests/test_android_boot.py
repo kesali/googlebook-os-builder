@@ -86,6 +86,7 @@ class AndroidBootTests(unittest.TestCase):
         """The boot files as the partition holds them, copied out with mtools."""
         directory = Path(tempfile.mkdtemp(dir=self.work))
         subprocess.run(["mcopy", "-s", "-n", "-i", self.esp, "::EFI", "::gbos-builder", str(directory)], check=True)
+        subprocess.run(["mcopy", "-n", "-i", self.esp, "::grubenv", str(directory / "grubenv")], check=True)
         return {str(path.relative_to(directory)): path.read_bytes()
                 for path in directory.rglob("*") if path.is_file()}
 
@@ -104,11 +105,19 @@ class AndroidBootTests(unittest.TestCase):
         files = self.files_in_esp()
         kernel = f"gbos-builder/kernel-{deploy.digest(b'kernel one')}"
         self.assertEqual(sorted(files), sorted([
-            "EFI/BOOT/BOOTX64.EFI", "gbos-builder/format", "gbos-builder/grub.cfg", kernel,
+            "EFI/BOOT/BOOTX64.EFI", "grubenv", "gbos-builder/format", "gbos-builder/grub.cfg", kernel,
             f"gbos-builder/initramfs-{deploy.digest(b'initrd')}",
         ]))
         self.assertEqual(files["EFI/BOOT/BOOTX64.EFI"], b"grub")
         self.assertEqual(files[kernel], b"kernel one")
+        self.assertTrue(deploy.valid_grubenv(files["grubenv"]))
+        grubenv = self.work / "grubenv"
+        grubenv.write_bytes(files["grubenv"])
+        saved = subprocess.run(
+            ["grub-editenv", str(grubenv), "list"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertIn("saved_entry=android-berberis\n", saved)
         self.assertEqual(files["gbos-builder/format"], b"gbos-builder-android-v1\n")
         self.assertIn(kernel.encode(), files["gbos-builder/grub.cfg"])
         self.assertEqual(self.outside_esp(), outside)
@@ -124,11 +133,21 @@ class AndroidBootTests(unittest.TestCase):
 
     def test_a_new_build_replaces_the_old_files_instead_of_adding_to_them(self):
         self.assertEqual(self.run_script(self.make_bundle(b"kernel one")).returncode, 0)
+        grubenv = self.work / "grubenv"
+        subprocess.run(["mcopy", "-i", self.esp, "::grubenv", str(grubenv)], check=True)
+        subprocess.run(["grub-editenv", str(grubenv), "set", "saved_entry=android-houdini"], check=True)
+        subprocess.run(["mcopy", "-o", "-i", self.esp, str(grubenv), "::grubenv"], check=True)
+
         result = self.run_script(self.make_bundle(b"kernel two"))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         files = self.files_in_esp()
         self.assertIn(f"gbos-builder/kernel-{deploy.digest(b'kernel two')}", files)
         self.assertNotIn(f"gbos-builder/kernel-{deploy.digest(b'kernel one')}", files)
+        grubenv.write_bytes(files["grubenv"])
+        persisted = subprocess.run(
+            ["grub-editenv", str(grubenv), "list"], check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertIn("saved_entry=android-houdini\n", persisted)
 
     def test_an_interrupted_run_is_repaired_by_running_again(self):
         bundle = self.make_bundle(b"kernel one")

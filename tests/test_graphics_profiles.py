@@ -56,12 +56,25 @@ class GraphicsProfileTests(unittest.TestCase):
             installs,
         )
 
-    def test_berberis_is_default_without_a_translator_specific_grub_entry(self):
+    def test_grub_persists_berberis_or_houdini_selection(self):
         menu = (REPO / "boot/android-menu.cfg").read_text()
-        self.assertIn('menuentry "Googlebook OS" {\n    boot_android\n}', menu)
-        self.assertNotIn("native_bridge=", menu)
-        self.assertNotIn("Berberis ARM translation", menu)
-        self.assertIn("set default=0\n", menu)
+        self.assertIn('load_env --file=($root)/grubenv saved_entry\n', menu)
+        self.assertIn('set default=android-berberis\n', menu)
+        for entry, identifier, argument in (
+            ("Berberis", "android-berberis", None),
+            ("Houdini", "android-houdini", "androidboot.gbos_builder.native_bridge=libhoudini.so"),
+        ):
+            with self.subTest(entry=entry):
+                start = menu.index(f'menuentry "Googlebook OS ({entry})" --id={identifier}')
+                end = menu.index("\n}", start)
+                block = menu[start:end]
+                self.assertIn(f"set saved_entry={identifier}", block)
+                self.assertIn("save_env --file=($root)/grubenv saved_entry", block)
+                if argument:
+                    self.assertIn(argument, block)
+                else:
+                    self.assertIn("boot_android", block)
+        self.assertNotIn("Googlebook OS (test: Berberis ARM translation)", menu)
         init = (SYSTEM_EXT / "gbos-builder.rc").read_text()
         early_init = init.split("on early-init\n", 1)[1]
         self.assertIn("    setprop ro.dalvik.vm.native.bridge "

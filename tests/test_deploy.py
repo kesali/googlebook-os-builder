@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -128,12 +129,49 @@ class DeployTests(unittest.TestCase):
     def test_android_menu_gets_the_command_line_on_one_line_and_the_android_marker(self):
         stage = self.android_stage()
         self.assertEqual((stage / "gbos-builder/format").read_bytes(), b"gbos-builder-android-v1\n")
+        self.assertTrue(deploy.valid_grubenv((stage / "grubenv").read_bytes()))
+        env = subprocess.run(
+            ["grub-editenv", str(stage / "grubenv"), "list"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertIn("saved_entry=android-berberis\n", env)
         kernel = next((stage / "gbos-builder").glob("kernel-*")).name
         initramfs = next((stage / "gbos-builder").glob("initramfs-*")).name
         self.assertEqual(
             (stage / "gbos-builder/grub.cfg").read_text(),
             f"linux {kernel} log_buf_len=1M root=/dev/ram0 bootconfig panic=0\ninitrd {initramfs}\n",
         )
+
+    def test_android_update_preserves_saved_entry_and_initializes_it_if_missing(self):
+        bundle = self.publish_android()
+        stage = self.android_stage()
+        grubenv = stage / "grubenv"
+        subprocess.run(["grub-editenv", str(grubenv), "set", "saved_entry=android-houdini"], check=True)
+        saved = grubenv.read_bytes()
+
+        (self.inputs / "kernel").write_bytes(b"updated kernel")
+        self.publish_android()
+        self.assertEqual(deploy.install(bundle, stage)[-1], "gbos-builder/grub.cfg")
+        self.assertEqual(grubenv.read_bytes(), saved)
+
+        grubenv.unlink()
+        dry_run = deploy.install(bundle, stage, dry_run=True)
+        self.assertIn("grubenv", dry_run)
+        self.assertIn("grubenv", deploy.install(bundle, stage))
+        env = subprocess.run(
+            ["grub-editenv", str(grubenv), "list"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertIn("saved_entry=android-berberis\n", env)
+
+    def test_android_update_refuses_invalid_grubenv_without_replacing_it(self):
+        bundle = self.publish_android()
+        stage = self.android_stage()
+        grubenv = stage / "grubenv"
+        grubenv.write_bytes(b"broken saved selection")
+        with self.assertRaisesRegex(ValueError, "refusing to overwrite"):
+            deploy.install(bundle, stage)
+        self.assertEqual(grubenv.read_bytes(), b"broken saved selection")
 
     def test_a_new_command_line_rewrites_only_the_menu(self):
         stage = self.android_stage()
@@ -204,7 +242,8 @@ class DeployTests(unittest.TestCase):
         self.assertNotIn("initcall_blacklist=sysfb_init", kernel_arguments)
         # The firmware console drew each early line synchronously: 60 s of the laptop's boot.
         self.assertNotIn("earlycon=efifb", kernel_arguments)
-        normal_entry = 'menuentry "Googlebook OS" {\n    boot_android\n}'
+        berberis_entry = 'menuentry "Googlebook OS (Berberis)" --id=android-berberis'
+        houdini_entry = 'menuentry "Googlebook OS (Houdini)" --id=android-houdini'
         test_entry = (
             'menuentry "Googlebook OS (test: no firmware framebuffer)" {\n'
             '    boot_android initcall_blacklist=sysfb_init\n}'
@@ -213,12 +252,14 @@ class DeployTests(unittest.TestCase):
             'menuentry "Googlebook OS (debug: slow early screen log, for black screens)" {\n'
             '    boot_android earlycon=efifb\n}'
         )
-        self.assertIn("set default=0\n", menu)
-        self.assertIn(normal_entry, menu)
+        self.assertIn("set default=android-berberis\n", menu)
+        self.assertIn(berberis_entry, menu)
+        self.assertIn(houdini_entry, menu)
         self.assertIn(test_entry, menu)
         self.assertIn(debug_entry, menu)
-        self.assertLess(menu.index(normal_entry), menu.index(test_entry))
-        self.assertLess(menu.index(normal_entry), menu.index(debug_entry))
+        self.assertLess(menu.index(berberis_entry), menu.index(test_entry))
+        self.assertLess(menu.index(houdini_entry), menu.index(test_entry))
+        self.assertLess(menu.index(berberis_entry), menu.index(debug_entry))
         self.assertIn(
             'menuentry "Previous build (may write UEFI crash records)" {\n'
             '        configfile ($root)/gbos-builder/grub.previous.cfg\n    }',

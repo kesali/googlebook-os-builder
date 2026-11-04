@@ -2,9 +2,11 @@
 
 **Status:** partial — opt-in diagnostics and default Berberis selection verified in QEMU;
 physical retest pending.
-**Last verified:** 2026-11-04 — 4 focused translator/profile tests pass; `make qemu-check JOBS=12`
-passes and a direct guest property query confirms `libndk_translation.so` is the default.
-Translator selection on the laptop remains unverified; Houdini's failure cause is unknown.
+**Last verified:** 2026-11-04 — 67 focused deploy/boot/menu tests pass;
+`grub-script-check` and `make android-uefi-check JOBS=12` pass. Disposable UEFI boots confirm
+Berberis default and Houdini override both reach Android and persist the selected entry in the
+ESP-root environment block. Physical menu selection remains unverified; Houdini's failure cause
+is unknown.
 Earlier, 57 focused boot/logging/overlay tests pass. Image rebuild changes only system_ext and
 boot files; repeat preserves published timestamps and writes nothing. Direct diagnostic boot
 saves fresh streams/snapshot; normal boot leaves saved bytes and inode timestamps unchanged.
@@ -170,11 +172,12 @@ cause; the game-controls loop was not established as the cause.
   budget 14 MiB per boot, plus record-size overshoot and the small snapshots.
   Collection begins at `post-fs`, not first-stage init; an earlier hang still needs a photo.
 - Use Google's bundled Berberis (`libndk_translation.so`) as the default native bridge; retain
-  Houdini in the image. Early-init sets the read-only bridge property before zygote, with an
-  optional `androidboot.gbos_builder.native_bridge` kernel argument for another bootloader to
-  select a different translator. No translator-specific GRUB entry is needed. The reason some
-  apps fail under Houdini remains unknown; use Google's existing translator hooks unchanged.
-  No new security permissions.
+  Houdini in the image. GRUB offers both choices and persists the selected entry in the ESP-root
+  `grubenv`, outside the directories replaced by boot updates. A missing environment block starts
+  with Berberis; failed boots do not reset the saved choice. Early-init sets the read-only bridge
+  property before zygote, with an optional `androidboot.gbos_builder.native_bridge` kernel argument
+  for another bootloader. The reason some apps fail under Houdini remains unknown; use Google's
+  existing translator hooks unchanged. No new security permissions.
 - A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.gbos_builder.bootlog.ready=1`
   may read backlight, ALSA and loaded-module metadata
   into the current boot log directory. It must not read sound device nodes or write sysfs, and it
@@ -184,7 +187,9 @@ cause; the game-controls loop was not established as the cause.
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
 - [native-bridge.patch](../../android/system/native-bridge.patch) and
   [gbos-builder.rc](../../android/system_ext/gbos-builder.rc) — let early-init select the native bridge.
-- [boot/android-menu.cfg](../../boot/android-menu.cfg) — laptop GRUB menu, also used by the UEFI check; the direct-kernel VM does not use it.
+- [boot/android-menu.cfg](../../boot/android-menu.cfg) — laptop GRUB menu and persistent translator choice; the direct-kernel VM does not use it.
+- [tools/deploy.py](../../tools/deploy.py) — seeds a missing ESP-root `grubenv` with Berberis and preserves an existing selection.
+- [scripts/android-boot.sh](../../scripts/android-boot.sh) — preserves the saved choice while replacing managed boot directories.
 - [tools/android_uefi_test.py](../../tools/android_uefi_test.py) — OVMF/GRUB and USB-partition checks with an NVMe decoy.
 - [android/bootconfig.txt](../../android/bootconfig.txt), [tools/bootconfig.py](../../tools/bootconfig.py) — settings and packing.
 - [android/module_ramdisk/](../../android/module_ramdisk/) — first-stage modules (`install.list`) and their load lines (`modules.patch`).
@@ -248,6 +253,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Add persistent Berberis/Houdini selection in ESP-root `grubenv`;
+  updates preserve the choice. 67 focused tests and disposable UEFI boots validate both options
+  and saved state. Physical selection remains untested.
 - 2026-11-04 (this commit) — Make Berberis the default and remove its translator-specific GRUB
   entry. Four focused tests, QEMU smoke check and direct property query pass; laptop retest and
   Houdini failure cause remain unknown.

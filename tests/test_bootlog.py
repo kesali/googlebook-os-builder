@@ -39,7 +39,8 @@ class BootlogTests(unittest.TestCase):
         for service, options in services.items():
             self.assertIn("disabled", options, service)
         menu = (REPO / "boot/android-menu.cfg").read_text()
-        self.assertIn('menuentry "Googlebook OS" {\n    boot_android\n}', menu)
+        self.assertIn('menuentry "Googlebook OS (Berberis)" --id=android-berberis', menu)
+        self.assertIn('menuentry "Googlebook OS (Houdini)" --id=android-houdini', menu)
         self.assertIn('menuentry "Googlebook OS (diagnostic logs)" {\n'
                       '    boot_android androidboot.gbos_builder.logs=1\n}', menu)
         self.assertNotIn("androidboot.gbos_builder.logs", (REPO / "android/cmdline.txt").read_text())

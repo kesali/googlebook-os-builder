@@ -52,15 +52,29 @@ def serial_menu(text):
     return "\n".join(lines) + "\n"
 
 
-def prepare_menu(disk, work, logs):
+def prepare_menu(disk, work, logs, saved_entry, force_entry=None):
     table = json.loads(subprocess.check_output(["sfdisk", "--json", str(disk)]))["partitiontable"]
     partitions = [p for p in table["partitions"] if p.get("name") == "EFI-SYSTEM"]
     if table["label"] != "gpt" or table["sectorsize"] != 512 or len(partitions) != 1:
         raise ValueError("Expected one EFI-SYSTEM in a 512-byte-sector GPT")
     fat = f"{disk}@@{partitions[0]['start'] * 512}"
+    if saved_entry not in ("android-berberis", "android-houdini"):
+        raise ValueError(f"Unknown saved GRUB entry: {saved_entry}")
+    env = work / "grubenv"
+    subprocess.run(["mcopy", "-i", fat, "::grubenv", str(env)], check=True)
+    subprocess.run(["grub-editenv", str(env), "set", f"saved_entry={saved_entry}"], check=True)
+    subprocess.run(["mcopy", "-o", "-i", fat, str(env), "::grubenv"], check=True)
     menu = work / "grub.cfg"
     subprocess.run(["mcopy", "-i", fat, "::/gbos-builder/grub.cfg", str(menu)], check=True)
-    menu.write_text(serial_menu(menu.read_text()))
+    text = serial_menu(menu.read_text())
+    if force_entry is not None:
+        if force_entry not in ("android-berberis", "android-houdini"):
+            raise ValueError(f"Unknown forced GRUB entry: {force_entry}")
+        marker = "# Verified PCI IDs only:"
+        if text.count(marker) != 1:
+            raise ValueError("Could not locate the GRUB menu test insertion point")
+        text = text.replace(marker, f"set default={force_entry}\n\n{marker}")
+    menu.write_text(text)
     shutil.copyfile(menu, logs / "grub.cfg")
     subprocess.run(["mcopy", "-o", "-i", fat, str(menu), "::/gbos-builder/grub.cfg"], check=True)
 
@@ -124,9 +138,12 @@ def check_storage(kernel, cmdline, blocks, controllers, boot_path, graphical=Fal
         raise RuntimeError("The firmware framebuffer did not register the DRM log console")
 
 
-def verify_storage(logs, graphical):
+def verify_storage(logs, graphical, expected_native_bridge):
     console = logs / "console.sock"
     cmdline = command(console, "cat /proc/cmdline")
+    native_bridge = command(console, "getprop ro.dalvik.vm.native.bridge").strip()
+    if native_bridge != expected_native_bridge:
+        raise RuntimeError(f"Expected {expected_native_bridge}, got {native_bridge}")
     blocks = command(console, "ls -1 /sys/class/block")
     controllers = command(console, "ls -1 /sys/class/nvme")
     partition = command(console, "readlink -f /dev/block/by-name/EFI-SYSTEM").strip()
@@ -135,7 +152,7 @@ def verify_storage(logs, graphical):
     boot_path = command(console, f"readlink -f /sys/class/block/{Path(partition).name}")
     (logs / "storage.txt").write_text(
         f"Command line:\n{cmdline}\nBlock devices:\n{blocks}\nNVMe controllers:\n{controllers}"
-        f"\nEFI-SYSTEM:\n{partition}\n{boot_path}")
+        f"\nEFI-SYSTEM:\n{partition}\n{boot_path}\nNative bridge:\n{native_bridge}")
     check_storage((logs / "kernel.log").read_text(errors="replace"),
                   cmdline, blocks, controllers, boot_path, graphical)
     pci = qmp(logs / "monitor.sock", "query-pci")
@@ -178,7 +195,7 @@ def wait_for_shell(logs, process):
     raise TimeoutError(f"Android's enforcing serial shell did not start: {last_error}")
 
 
-def run(image, output, cpus, memory, graphical):
+def run(image, output, cpus, memory, graphical, saved_entry, expected_entry, force_entry=None):
     if not os.access("/dev/kvm", os.W_OK):
         raise ValueError("Android's UEFI test needs /dev/kvm")
     # A fresh evidence directory prevents an old screenshot from passing for this run.
@@ -188,7 +205,7 @@ def run(image, output, cpus, memory, graphical):
     with tempfile.TemporaryDirectory(prefix="work-", dir=logs) as temporary:
         work = Path(temporary)
         copy_disk(image, work / "usb.img")
-        prepare_menu(work / "usb.img", work, logs)
+        prepare_menu(work / "usb.img", work, logs, saved_entry, force_entry)
         shutil.copyfile("/usr/share/OVMF/OVMF_VARS_4M.fd", work / "OVMF_VARS.fd")
         decoy = work / "nvme.img"
         decoy.write_bytes(os.urandom(16 << 20))
@@ -205,7 +222,10 @@ def run(image, output, cpus, memory, graphical):
                     wait_for_shell(logs, process)
                     qmp(logs / "monitor.sock", "screendump",
                         {"filename": str(logs / "screen.png"), "format": "png"})
-                verify_storage(logs, graphical)
+                expected_bridge = (
+                    "libhoudini.so" if expected_entry == "android-houdini" else "libndk_translation.so"
+                )
+                verify_storage(logs, graphical, expected_bridge)
                 try:
                     command(logs / "console.sock", "sync; setprop sys.powerctl shutdown", timeout=5)
                     process.wait(timeout=15)
@@ -224,11 +244,23 @@ def run(image, output, cpus, memory, graphical):
                     except (OSError, RuntimeError) as error:
                         print(f"Could not capture final screen: {error}", flush=True)
                 stop_vm(process, logs)
+                table = json.loads(subprocess.check_output(
+                    ["sfdisk", "--json", str(work / "usb.img")]))["partitiontable"]
+                esp = next(part for part in table["partitions"] if part.get("name") == "EFI-SYSTEM")
+                fat = f"{work / 'usb.img'}@@{esp['start'] * 512}"
+                env = work / "grubenv-after"
+                subprocess.run(["mcopy", "-i", fat, "::grubenv", str(env)], check=True)
+                persisted = subprocess.run(
+                    ["grub-editenv", str(env), "list"], check=True, capture_output=True, text=True,
+                ).stdout
+                if f"saved_entry={expected_entry}\n" not in persisted.splitlines(keepends=True):
+                    raise RuntimeError(f"GRUB did not persist selected entry {expected_entry}")
                 after = file_hash(decoy)
                 (logs / "decoy-sha256.txt").write_text(f"before {before}\nafter  {after}\n")
                 if before != after:
                     raise RuntimeError("The decoy NVMe was modified")
-    print(f"PASS ({mode}): UEFI -> GRUB -> Android on USB; NVMe hidden and unchanged. "
+    print(f"PASS ({mode}): UEFI -> GRUB -> {expected_entry} -> Android on USB; "
+          f"NVMe hidden and unchanged. "
           f"Inspect screenshots in {logs}.", flush=True)
 
 
@@ -240,8 +272,10 @@ def main():
     parser.add_argument("--image", type=Path, help="Disk image to test instead of OUT/gbos-builder/disk.img")
     args = parser.parse_args()
     try:
-        for graphical in (False, True):
-            run(args.image or args.out / "gbos-builder/disk.img", args.out, args.cpus, args.memory, graphical)
+        run(args.image or args.out / "gbos-builder/disk.img", args.out,
+            args.cpus, args.memory, False, "android-berberis", "android-berberis")
+        run(args.image or args.out / "gbos-builder/disk.img", args.out,
+            args.cpus, args.memory, True, "android-berberis", "android-houdini", "android-houdini")
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"android-uefi-check: {error}\n")
 

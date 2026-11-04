@@ -20,6 +20,9 @@ import tempfile
 # The marker file gbos-builder/format names what a boot filesystem holds, so one kind never overwrites the other.
 FORMATS = {"diagnostic": b"gbos-builder-diagnostic-v1\n", "android": b"gbos-builder-android-v1\n"}
 COMPONENTS = ("kernel", "initramfs.gz", "BOOTX64.EFI", "menu.cfg")
+GRUBENV_SIZE = 1024
+GRUBENV_HEADER = b"# GRUB Environment Block\n"
+DEFAULT_ANDROID_ENTRY = "android-berberis"
 
 
 def digest(data):
@@ -89,6 +92,25 @@ def fill_cmdline(menu, cmdline_file):
     return menu.replace(b"@CMDLINE@", flatten_cmdline(cmdline_file.read_text()).encode())
 
 
+def valid_grubenv(data):
+    return len(data) == GRUBENV_SIZE and data.startswith(GRUBENV_HEADER)
+
+
+def create_grubenv():
+    """Create the initial persistent GRUB selection without changing an existing one."""
+    with tempfile.TemporaryDirectory(prefix="gbos-builder-grubenv-") as temporary:
+        path = Path(temporary) / "grubenv"
+        subprocess.run(["grub-editenv", str(path), "create"], check=True)
+        subprocess.run(
+            ["grub-editenv", str(path), "set", f"saved_entry={DEFAULT_ANDROID_ENTRY}"],
+            check=True,
+        )
+        data = path.read_bytes()
+    if not valid_grubenv(data):
+        raise ValueError("grub-editenv created an invalid environment block")
+    return data
+
+
 def bundle(inputs, destination, kind, cmdline=None):
     if kind not in FORMATS:
         raise ValueError(f"Unknown bundle kind: {kind}")
@@ -99,6 +121,8 @@ def bundle(inputs, destination, kind, cmdline=None):
             raise ValueError(f"Empty build output: {source}")
     # Everything is checked before the first write, so a mistake never leaves a half-updated bundle.
     files["menu.cfg"] = fill_cmdline(files["menu.cfg"], cmdline)
+    if kind == "android":
+        files["grubenv"] = create_grubenv()
     destination.mkdir(parents=True, exist_ok=True)
     for name, data in files.items():
         replace_file(destination, name, data)
@@ -110,9 +134,14 @@ def bundle(inputs, destination, kind, cmdline=None):
 def read_bundle(source):
     manifest = json.loads((source / "manifest.json").read_text())
     kind, hashes = manifest.get("kind"), manifest.get("sha256")
-    if kind not in FORMATS or not isinstance(hashes, dict) or set(hashes) != set(COMPONENTS):
+    expected = set(COMPONENTS) | ({"grubenv"} if kind == "android" else set())
+    if kind not in FORMATS or not isinstance(hashes, dict) or set(hashes) != expected:
         raise ValueError("Invalid build bundle manifest")
     files = {name: (source / name).read_bytes() for name in COMPONENTS}
+    if kind == "android":
+        files["grubenv"] = (source / "grubenv").read_bytes()
+        if not valid_grubenv(files["grubenv"]):
+            raise ValueError("Invalid GRUB environment block in build bundle")
     for name, data in files.items():
         if not data or digest(data) != hashes[name]:
             raise ValueError(f"Build bundle checksum mismatch: {name}")
@@ -141,6 +170,12 @@ def install(source, destination, initialize=False, dry_run=False):
         "EFI/BOOT/BOOTX64.EFI": files["BOOTX64.EFI"],
         "gbos-builder/format": FORMATS[kind],
     }
+    if kind == "android":
+        grubenv = safe_path(destination, "grubenv")
+        if initialize or not grubenv.exists():
+            payloads["grubenv"] = files["grubenv"]
+        elif not valid_grubenv(grubenv.read_bytes()):
+            raise ValueError("Invalid existing grubenv; refusing to overwrite saved boot selection")
     # Check all destinations and available space before writing the first byte.
     for name in (*payloads, "gbos-builder/grub.cfg", "gbos-builder/grub.previous.cfg"):
         safe_path(destination, name)

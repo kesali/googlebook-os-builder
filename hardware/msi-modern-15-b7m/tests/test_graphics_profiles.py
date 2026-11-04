@@ -16,7 +16,8 @@ class GraphicsProfileTests(unittest.TestCase):
         entry = 'if [ "$gbos_builder_graphics" = amd ]; then\n    menuentry "Googlebook OS (test: Vulkan HWUI)"'
         self.assertIn(entry, menu)
         self.assertIn("set gbos_builder_graphics=amd-vulkan", menu)
-        self.assertIn("set default=0", menu)
+        self.assertIn("set default=android-berberis", menu)
+        self.assertIn("set default=android-houdini", menu)
 
 
 if __name__ == "__main__":
