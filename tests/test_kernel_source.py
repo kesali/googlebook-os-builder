@@ -12,6 +12,78 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def inspect_kernel_recipes(*arguments):
+    return subprocess.run(
+        ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"), "-f", "-",
+         "inspect-kernel-recipes", *arguments],
+        cwd=ROOT, capture_output=True, text=True,
+        input=".PHONY: inspect-kernel-recipes\ninspect-kernel-recipes:\n"
+              "\t@printf '%s\\n' '$(KERNEL_PATCHES)' '$(KERNEL_PATCH_SHA)' '$(KERNEL_SRC)'\n",
+    )
+
+
+def recipe_patch(name):
+    matches = list((ROOT / "hardware/drivers").glob(f"*/{name}"))
+    if len(matches) != 1:
+        raise AssertionError(f"Expected exactly one recipe patch named {name}: {matches}")
+    return matches[0]
+
+
+class KernelRecipeTests(unittest.TestCase):
+    def test_selected_patches_preserve_baseline_order_bytes_and_source_cache(self):
+        result = inspect_kernel_recipes()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        paths, digest, source = result.stdout.splitlines()
+        self.assertEqual(paths.split(), [
+            "kernel/drm-firmware-handoff.patch",
+            "hardware/drivers/amdgpu/msi-backlight.patch",
+            "hardware/drivers/amdgpu/amdgpu-fast-flips.patch",
+            "hardware/drivers/renoir-acp/renoir-capture-buffers.patch",
+            "hardware/drivers/i915/i915-gen4-primary-alpha.patch",
+        ])
+        self.assertEqual(digest, "28b9b8b1e7af2eff86399844b1a1242331637f29b8b4b32f176cfbcd541fd11f")
+        self.assertTrue(source.endswith("-" + digest))
+        self.assertEqual(hashlib.sha256(
+            b"".join((ROOT / path).read_bytes() for path in paths.split())).hexdigest(), digest)
+
+    def test_selection_and_order_change_only_the_source_patch_hash(self):
+        original = inspect_kernel_recipes()
+        self.assertEqual(original.returncode, 0, original.stderr)
+        original_source = original.stdout.splitlines()[2]
+        for selected in ("i915", "i915 renoir-acp amdgpu", ""):
+            with self.subTest(selected=selected):
+                result = inspect_kernel_recipes(f"KERNEL_DRIVER_RECIPES={selected}")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                paths, digest, source = result.stdout.splitlines()
+                self.assertEqual(paths.split()[0], "kernel/drm-firmware-handoff.patch")
+                self.assertNotEqual(source, original_source)
+                self.assertEqual(source.rsplit("-", 1)[0], original_source.rsplit("-", 1)[0])
+                self.assertTrue(source.endswith("-" + digest))
+                if selected == "i915":
+                    self.assertEqual(len(paths.split()), 2)
+
+    def test_unknown_selected_recipe_fails_instead_of_silently_omitting_it(self):
+        result = inspect_kernel_recipes("KERNEL_DRIVER_RECIPES=missing-driver")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("hardware/drivers/missing-driver/kernel.mk", result.stderr)
+
+    def test_moved_patch_timestamp_does_not_replace_existing_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            (source / ".ready").touch()
+            os.utime(source / ".ready", (1, 1))
+            builder_ready = source / "builder-ready"
+            builder_ready.touch()
+            result = subprocess.run(
+                ["make", "--no-print-directory", "-n", "sources",
+                 f"KERNEL_SRC={source}", f"BUILD_READY={builder_ready}"],
+                cwd=ROOT, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("kernel-source.sh", result.stdout)
+            self.assertNotIn("fetch.sh", result.stdout)
+
+
 class VendoredEmulatorTests(unittest.TestCase):
     def make(self, *arguments, extra_rules=None):
         command = ["make", "--no-print-directory", "-f", str(ROOT / "Makefile")]
@@ -200,7 +272,7 @@ class KernelSourceTests(unittest.TestCase):
 
 def patched_text(name):
     """The new side of a source patch: context and added lines, without the header."""
-    patch = (ROOT / "kernel" / name).read_text()
+    patch = recipe_patch(name).read_text()
     return "\n".join(line[1:] for line in patch.splitlines()
                      if line.startswith((" ", "+")) and not line.startswith("+++"))
 
@@ -223,7 +295,7 @@ class RenoirCapturePatchTests(unittest.TestCase):
             header.write_text(original)
             subprocess.run(
                 ["patch", "--batch", "--fuzz=0", "-p1",
-                 "-i", str(ROOT / "kernel/renoir-capture-buffers.patch")],
+                 "-i", str(recipe_patch("renoir-capture-buffers.patch"))],
                 cwd=source, check=True, capture_output=True, text=True,
             )
             text = header.read_text()
@@ -246,20 +318,19 @@ class RenoirCapturePatchTests(unittest.TestCase):
         })
 
     def test_patch_is_in_kernel_source_inputs(self):
-        makefile = (ROOT / "Makefile").read_text()
-        patches = makefile[makefile.index("KERNEL_PATCHES :="):
-                           makefile.index("KERNEL_PATCH_SHA :=")]
-        self.assertIn("kernel/renoir-capture-buffers.patch", patches)
+        result = inspect_kernel_recipes()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("hardware/drivers/renoir-acp/renoir-capture-buffers.patch",
+                      result.stdout.splitlines()[0].split())
 
 
 class IntelPrimaryAlphaPatchTests(unittest.TestCase):
     def test_primary_alpha_patch_is_wired_and_keeps_reference_changes(self):
         name = "i915-gen4-primary-alpha.patch"
-        makefile = (ROOT / "Makefile").read_text()
-        patches = makefile[makefile.index("KERNEL_PATCHES :="):
-                           makefile.index("KERNEL_PATCH_SHA :=")]
-        self.assertIn(f"kernel/{name}", patches)
-        patch = (ROOT / "kernel" / name).read_text()
+        result = inspect_kernel_recipes()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"hardware/drivers/i915/{name}", result.stdout.splitlines()[0].split())
+        patch = recipe_patch(name).read_text()
         self.assertIn("70538d7", patch)
         self.assertEqual(patch.count("+\tDRM_FORMAT_ARGB8888,"), 2)
         self.assertEqual(patch.count("+\tDRM_FORMAT_ABGR8888,"), 2)

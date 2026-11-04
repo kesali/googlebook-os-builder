@@ -40,7 +40,7 @@ selects Intel; i915 binds and EGL reports `Mesa Intel(R) HD Graphics 5500 (BDW G
 OpenGL ES 3.2. After animation the display goes dark while keyboard activity wakes backlight.
 drmhwc logs framebuffer creation -22, failed AtomicCommitArgs and BAD_DISPLAY; no rejected
 format is printed. Churro documents the same Broadwell failure with alpha client targets.
-The approved [kernel candidate](../../kernel/i915-gen4-primary-alpha.patch) reuses its fix;
+The approved [kernel candidate](../../hardware/drivers/i915/i915-gen4-primary-alpha.patch) reuses its fix;
 local validation passes; subsequent desktop/video results are recorded above.
 Bluetooth initialization crashes are separate.
 Owner confirms the expanded image boots MSI; wider regression has not been reported.
@@ -275,6 +275,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Kernel display fixes moved unchanged into AMD/i915 recipes;
+  40 source/recipe/module tests and image preservation checks pass. No new runtime boot.
 - 2026-11-03 (this commit) — Owner confirms Lenovo guest/another-profile desktop and video,
   with good perceived performance. Successful boot has no prior framebuffer errors; original-
   profile freeze lacks panic evidence. Wi-Fi/touchpad work is tracked in the hardware spec.

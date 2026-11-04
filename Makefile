@@ -16,9 +16,9 @@ EMU_PATCH := kernel/vex-emulate.patch
 EMU_SHA := $(shell sha256sum $(EMU_PATCH) | cut -d' ' -f1)
 BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
 KERNEL_CACHE := $(OUT)/src/kernel-$(KERNEL_REV)-$(EMU_SHA)
-# Our kernel source patches, applied in this order after the emulator patch.
-KERNEL_PATCHES := kernel/drm-firmware-handoff.patch kernel/msi-backlight.patch kernel/amdgpu-fast-flips.patch \
-	kernel/renoir-capture-buffers.patch kernel/i915-gen4-primary-alpha.patch
+# Shared handoff first; selected driver recipes append their ordered source fixes.
+KERNEL_PATCHES := kernel/drm-firmware-handoff.patch
+include hardware/kernel.mk
 KERNEL_PATCH_SHA := $(shell cat $(KERNEL_PATCHES) | sha256sum | cut -d' ' -f1)
 KERNEL_SRC := $(KERNEL_CACHE)-$(KERNEL_PATCH_SHA)
 DWARVES_SRC := $(OUT)/src/dwarves-$(DWARVES_REV)
@@ -116,8 +116,8 @@ $(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) config.mk scripts/unpack.sh \
 $(BUSYBOX): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
 
-# The emulator's bytes select KERNEL_SRC; its timestamp must not recreate that tree.
-$(KERNEL_SRC)/.ready: $(KERNEL_PATCHES) | $(EMU_PATCH) $(BUILD_READY)
+# All patch bytes and their order select KERNEL_SRC; timestamps must not recreate that tree.
+$(KERNEL_SRC)/.ready: | $(KERNEL_PATCHES) $(EMU_PATCH) $(BUILD_READY)
 	$(BUILDER) bash scripts/kernel-source.sh "$(KERNEL_URL)" "$(KERNEL_TAG)" "$(KERNEL_REV)" \
 		"$(KERNEL_CACHE)" "$(KERNEL_SRC)" "$(EMU_PATCH)" $(KERNEL_PATCHES)
 

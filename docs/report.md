@@ -172,9 +172,9 @@ Intel instructions that Zen 3 lacks.
 - **Patches:**
   - [drm-firmware-handoff.patch](../kernel/drm-firmware-handoff.patch) (from Churro): release the
     firmware framebuffer before amdgpu takes a DRM minor.
-  - [msi-backlight.patch](../kernel/msi-backlight.patch): on this exact DMI model only, name the
+  - [msi-backlight.patch](../hardware/drivers/amdgpu/msi-backlight.patch): on this exact DMI model only, name the
     first panel `backlight` so Google's unchanged lights HAL finds it.
-  - [amdgpu-fast-flips.patch](../kernel/amdgpu-fast-flips.patch): on DCN < 3.2, do a full update
+  - [amdgpu-fast-flips.patch](../hardware/drivers/amdgpu/amdgpu-fast-flips.patch): on DCN < 3.2, do a full update
     only when a CRTC really needs a modeset. This fixes the halved frame rate with HDMI and is
     small enough to upstream.
 
@@ -385,7 +385,7 @@ safer to run.
 
 1. Add HDMI audio routes, following the measured-control approach used for ALC256.
    Built-in DMIC now works with Renoir modules, the named InternalMic route and an isolated
-   [buffer compatibility patch](../kernel/renoir-capture-buffers.patch); generic ACP migration
+   [buffer compatibility patch](../hardware/drivers/renoir-acp/renoir-capture-buffers.patch); generic ACP migration
    remains separate and untested.
 2. Count the remaining instruction traps on the laptop by instruction and by binary. Fix them only
    if they cost real time.

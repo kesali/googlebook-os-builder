@@ -211,7 +211,7 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 ## Files
 - [kernel/gki.config](../../kernel/gki.config), [laptop-modules.list](../../kernel/laptop-modules.list),
   [msi-firmware.list](../../kernel/msi-firmware.list) — explicit drivers and firmware.
-- [kernel/msi-backlight.patch](../../kernel/msi-backlight.patch) — narrow panel-name adaptation.
+- [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) — narrow panel-name adaptation.
 - [android/vendor/get_variant_audio](../../android/vendor/get_variant_audio),
   [audio-msi.rc](../../android/vendor/audio-msi.rc), [audio-msi.patch](../../android/vendor/audio-msi.patch)
   — card selection, readiness-triggered restart and declarative PCM/mixer configuration.
@@ -387,7 +387,7 @@ metadata/logd starts still needs a screen photo.
 - The pinned kernel also contains a generic ACP stack accepting 2–8 periods and 1024-byte
   minimum periods, but its PCI selector rejects this MSI's default config flag (0). Switching
   stacks is not a configuration-only shortcut and adds more modules/machine dependencies.
-- Approved [isolated patch](../../kernel/renoir-capture-buffers.patch): allow two periods and
+- Approved [isolated patch](../../hardware/drivers/renoir-acp/renoir-capture-buffers.patch): allow two periods and
   a 1024-byte minimum in the current Renoir driver,
   retaining all maxima, allocation, rate/channel/format and DMA safeguards. The DMA ring and
   interrupt watermark already use negotiated sizes, not a hardcoded four-period layout.
@@ -400,6 +400,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Backlight and capture fixes moved unchanged into kernel recipes.
+  40 tests, exact patch/cache equality and image preservation pass; HAL/routing/calibration
+  unchanged. No new physical or QEMU boot.
 - 2026-11-04 (this commit) — Native config/list recipes for Lenovo ath9k and Elantech retain
   the declared Android IDC. 47 focused tests, exact expanded inputs and 37-output binary
   equality/no-write repeat pass. No new hardware/QEMU boot; existing combined image preserved.

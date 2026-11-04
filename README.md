@@ -50,11 +50,26 @@ make qemu-check JOBS=12   # bounded graphical check; shuts only the VM down afte
 **not accelerated graphics**; CPU instruction emulation is another performance cost. Measure build
 iteration and guest responsiveness separately; the graphics path is a runtime-performance question.
 
-### Hardware recipes (Lenovo pilot)
+### Hardware recipes
 
-The default image still includes both laptops. The native-format recipe pilot covers only
-AR9565 Wi-Fi and PS/2 Elantech input; AMD, Broadwell graphics and other support stay in their
-existing declarations. This is not a selectable-image system or a runtime driver installer.
+The default image still includes both laptops. Native-format recipes cover AR9565 Wi-Fi and
+PS/2 Elantech declarations, plus driver-specific kernel fixes. AMD/Broadwell kernel options,
+modules and other support remain in their existing base declarations. This is not a runtime
+driver installer or a complete selectable-laptop image system.
+
+[hardware/kernel.mk](hardware/kernel.mk) selects the combined image's kernel patch recipes,
+in order: [AMD display](hardware/drivers/amdgpu/kernel.mk),
+[Renoir ACP](hardware/drivers/renoir-acp/kernel.mk) and [i915](hardware/drivers/i915/kernel.mk).
+Each recipe's `kernel.mk` appends its ordered patches to `KERNEL_PATCHES`; selecting another
+recipe requires no central Makefile edit. Declare patches explicitly rather than discovering
+them by wildcard, so a stray or experimental patch cannot enter the build.
+
+The existing source runner applies shared firmware handoff first, then the selected driver
+fixes, all after instruction emulation. It refuses failed hunks and never edits an existing
+source checkout. Patch contents and order select the source-cache hash; file moves/timestamps
+alone do not invalidate it. Mesa and Android patches remain outside this kernel-only mechanism.
+The migration preserves all four patch files, application order and source-cache hash.
+Focused tests and the image build preserve the existing runtime bytes.
 
 [Lenovo's driver list](hardware/lenovo-e50-80/drivers.list) selects the reusable
 [AR9565](hardware/drivers/ar9565/) and [Elantech](hardware/drivers/elantech-ps2/) recipes.

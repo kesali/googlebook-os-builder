@@ -1,7 +1,16 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-04 — Lenovo recipe pilot: 47 focused recipe/module/overlay/touchpad/Mesa
+**Last verified:** 2026-11-04 — Automatic kernel patch recipes: 40 focused source/recipe/module
+tests pass. All four moved patches match `4504b6b` byte-for-byte, in the same order, keeping
+the existing source-cache hash; `make -n sources JOBS=12` is a no-op. The image build passes
+all 4,501 Google exports and signed-module/518-entry metadata/fit checks; all 37 recorded output
+hashes/sizes match the baseline. Initial vendor_dlkm rebuild changes only its output timestamp;
+the 21.2 s repeat preserves all 37 output timestamps too. Neither build writes disk partitions
+or boot files. No new QEMU or physical boot; runtime bytes unchanged.
+[Evidence](../../out/kernel-recipe-patches/).
+
+Earlier, 2026-11-04 — Lenovo recipe pilot: 47 focused recipe/module/overlay/touchpad/Mesa
 tests pass. Expanded declarations match `eb7a787`; image build preserves all 37 recorded
 output hashes/sizes, including full disk, kernel config and symbol CRCs. All 4,501 Google exports,
 signed modules and filesystem metadata/fit checks pass. The 21.4 s repeat preserves timestamps
@@ -44,6 +53,14 @@ Build Google's Googlebook kernel from source with the instruction emulator compi
 enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEMU drivers) load.
 
 ## Current state
+Verified: driver-specific kernel fixes moved unchanged into AMD display, Renoir ACP
+and i915 recipes. [hardware/kernel.mk](../../hardware/kernel.mk) selects them in baseline order;
+each selected `kernel.mk` appends its own patches automatically. Shared firmware handoff and
+instruction emulation remain common. The existing patch runner, ABI checks and content hash
+are unchanged; patch timestamps are now order-only prerequisites because content selects the
+source tree. An unknown selected recipe fails Make's required include rather than being skipped.
+Patch lists are explicit, not wildcard-discovered; adding a recipe does not automatically select it.
+
 Verified native-format recipe pilot: Lenovo AR9565 and Elantech options/module
 paths/install entries/verified aliases now live under [hardware/](../../hardware/).
 Explicit includes preserve ordering in the existing base declarations; Google's module
@@ -70,7 +87,7 @@ Lenovo evidence (2026-11-03): i915 binds Broadwell and exposes `intel_backlight`
 Iris renders as HD Graphics 5500. The earlier boot failed framebuffer creation with -EINVAL.
 The owner's MSI boot of the expanded image succeeds (not a full peripheral regression).
 Approved candidate: reuse Churro commit `70538d7`'s
-[primary-alpha patch](../../kernel/i915-gen4-primary-alpha.patch) without changing its code hunks.
+[primary-alpha patch](../../hardware/drivers/i915/i915-gen4-primary-alpha.patch) without changing its code hunks.
 Gen4-8 primaries accept Android ARGB/ABGR client targets as opaque scanout; VLV/CHV retain
 native alpha, sprites/Gen9+/AMD are unchanged. Built and regression-checked as above;
 the owner subsequently reaches desktop in guest/another profile and reports good performance
@@ -91,9 +108,9 @@ all nine then-existing module hashes and the kernel bytes, not just amdgpu. No p
 [drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) releases the firmware
 framebuffer before a PCI display driver takes a DRM minor. It works with virtio in QEMU and is
 based on the owner's working Churro setup; the owner subsequently reached physical setup.
-[msi-backlight.patch](../../kernel/msi-backlight.patch) changes only the first panel's registered
+[msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) changes only the first panel's registered
 name on the exact MSI model so Google's unchanged lights HAL can discover it.
-[amdgpu-fast-flips.patch](../../kernel/amdgpu-fast-flips.patch) keeps page flips on amdgpu's fast
+[amdgpu-fast-flips.patch](../../hardware/drivers/amdgpu/amdgpu-fast-flips.patch) keeps page flips on amdgpu's fast
 path when an HDMI monitor is connected (owner saw the frame rate halve); the owner subsequently
 retested the updated stick and reports HDMI performance is now fine (frame rate not instrumented).
 
@@ -111,7 +128,7 @@ working on 2026-11-02. Fresh capture logs and recording-quality measurements wer
 QEMU has no ACP hardware. The separate audio route is tracked in
 [laptop hardware](laptop-hardware.md).
 
-Built and checked: [renoir-capture-buffers.patch](../../kernel/renoir-capture-buffers.patch) allows
+Built and checked: [renoir-capture-buffers.patch](../../hardware/drivers/renoir-acp/renoir-capture-buffers.patch) allows
 2–4 periods and a 1024-byte minimum for the desktop HAL's observed two-period buffers.
 Only two Renoir header constants change; maxima, fixed DMA allocation and driver selection
 are unchanged. 44 focused tests pass; the 11 min 36 s image rebuild preserves all 4501 Google
@@ -154,7 +171,7 @@ functionality; generic ACP migration and other machines remain untested.
   buffers or the old driver is replaced and verified.
 
 ## Files
-- [kernel/i915-gen4-primary-alpha.patch](../../kernel/i915-gen4-primary-alpha.patch) — Churro's
+- [i915-gen4-primary-alpha.patch](../../hardware/drivers/i915/i915-gen4-primary-alpha.patch) — Churro's
   older Intel primary-plane client-target compatibility candidate.
 - [scripts/gki-kernel.sh](../../scripts/gki-kernel.sh) — configure, build, check, publish `out/gki/`.
 - [kernel/gki.config](../../kernel/gki.config) — the complete list of config changes.
@@ -162,12 +179,13 @@ functionality; generic ACP migration and other machines remain untested.
   [tools/kernel_certs.py](../../tools/kernel_certs.py) — config, ABI and certificate checks.
 - [scripts/git-fetch.sh](../../scripts/git-fetch.sh), [scripts/pahole.sh](../../scripts/pahole.sh) — toolchain.
 - [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + the emulator patch
-  and the Makefile's `KERNEL_PATCHES`, in order; a new patch hash creates a separate tree.
+  and selected recipes' `KERNEL_PATCHES`, in order; a new patch hash creates a separate tree.
 - [kernel/drm-firmware-handoff.patch](../../kernel/drm-firmware-handoff.patch) — early PCI
   framebuffer handoff before DRM minor allocation.
-- [kernel/msi-backlight.patch](../../kernel/msi-backlight.patch) — exact-model panel naming.
-- [kernel/amdgpu-fast-flips.patch](../../kernel/amdgpu-fast-flips.patch) — no full update for plain flips on DCN < 3.2.
-- [kernel/renoir-capture-buffers.patch](../../kernel/renoir-capture-buffers.patch) — isolated
+- [hardware/kernel.mk](../../hardware/kernel.mk) — ordered combined-image kernel recipe selection.
+- [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) — exact-model panel naming.
+- [amdgpu-fast-flips.patch](../../hardware/drivers/amdgpu/amdgpu-fast-flips.patch) — no full update for plain flips on DCN < 3.2.
+- [renoir-capture-buffers.patch](../../hardware/drivers/renoir-acp/renoir-capture-buffers.patch) — isolated
   Renoir capture-period compatibility candidate for the desktop audio HAL.
 - [tests/test_kernel_source.py](../../tests/test_kernel_source.py) — source preparation and patch checks.
 - [scripts/laptop-modules.sh](../../scripts/laptop-modules.sh), [kernel/laptop-modules.list](../../kernel/laptop-modules.list) — explicit signed-module publication.
@@ -203,6 +221,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Four unchanged fixes now come from selected native Make recipes.
+  40 tests, exact patch/order/cache and image ABI/module/metadata checks pass. All 37 output
+  hashes/sizes match; repeat preserves timestamps and writes no partitions/boot files. No new boot.
 - 2026-11-04 (this commit) — Native-format AR9565/Elantech recipes retain explicit Google patches.
   47 tests, exact effective declarations, image/ABI/module/metadata checks and 37-output binary
   equality/no-write repeat pass. No new QEMU/hardware boot; owner-confirmed baseline preserved.
