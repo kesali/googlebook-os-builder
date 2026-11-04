@@ -248,6 +248,9 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 - Reuse the owner's gbos video findings at source level, not its binary patches.
   External-only AHB formats use Mesa's common gralloc query; planar YUV fallback allocations
   have 256-byte-aligned chroma pitches for RADV. Keep directly supported formats unchanged.
+  Still required: a Lenovo trial without the RADV query patch aborted SurfaceFlinger on video
+  (`Failed to create a valid texture … format:842094169`, i.e. YV12). Retry only once
+  upstream RADV returns an external format for external-only AHBs.
 - QEMU loads Google's virtio-gpu; the laptop adds amdgpu with official firmware.
   Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
   DRM node labels: [file-contexts.patch](../../hardware/msi-modern-15-b7m/vendor/file-contexts.patch).
@@ -317,7 +320,10 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
-- 2026-11-04 (this commit) — Keep GL HWUI and remove the unsupported Vulkan menu/profile.
+- 2026-11-05 (this commit) — Removing only the RADV YV12 query patch failed on the Lenovo:
+  opening video aborted SurfaceFlinger's RenderEngine importing a 1920x1080 YV12 AHB.
+  Patch, fragment and tests restored unchanged; local trial evidence in `out/amd-yv12-removal/`.
+- 2026-11-04 — Keep GL HWUI and remove the unsupported Vulkan menu/profile.
   11 focused tests and image/metadata checks pass; owner confirms recovery. Fresh 23:43 logs
   have no queue aborts or AMD page faults; separate GMS updater exceptions persist.
 - 2026-11-04 (this commit) — Owner reports no visible issues on the post-removal AMD boot.
