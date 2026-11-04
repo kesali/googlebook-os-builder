@@ -260,9 +260,9 @@ from Google's signed ART/Rust code, which we cannot replace with generic builds.
 
 ## 10. The reference projects
 
-Both references are in [reference/](../reference). Both boot Googlebook OS on this laptop. We took
-working ideas from both, Churro most of all, and rebuilt them in a form that is easier to read and
-safer to run.
+This historical comparison describes two earlier hobby ports; their local copies have been
+removed. Their fixes are hypotheses, not independent evidence. Current investigations use
+authoritative upstream sources and this project's logs and controlled tests.
 
 ### Churro (`project-churro-msi-modern-15-B7M`)
 

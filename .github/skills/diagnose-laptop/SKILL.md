@@ -1,6 +1,6 @@
 ---
 name: diagnose-laptop
-description: "Use when diagnosing gbos-builder laptop boot loops, app crashes, missing devices or slow behavior: safely recover saved Android logs, identify the failing layer and compare upstream and local reference ports."
+description: "Use when diagnosing gbos-builder laptop boot loops, app crashes, missing devices or slow behavior: safely recover saved Android logs, identify the failing layer and verify against authoritative upstream sources."
 ---
 
 # Diagnose a laptop failure
@@ -42,9 +42,10 @@ local; report only relevant filtered excerpts.
    - App exit: inspect the fatal/tombstone evidence, app ABI and selected native bridge.
      Distinguish translator, graphics, codec and app errors; do not infer one from the symptom.
    - Slowness: measure the bottleneck and compare the smallest practical options first.
-6. Trace the relevant upstream implementation and local reference ports under `reference/`.
+6. Trace the relevant implementation in authoritative upstream source and issue discussions.
+   Treat earlier hobby-port findings as hypotheses; verify them against local logs and tests.
    Try unchanged upstream, a suitable pinned fix, settings, then whole-file additions/removals
-   before proposing a source patch. Do not edit reference trees or compiled executables.
+   before proposing a source patch. Do not edit compiled executables.
 7. Present the evidence, uncertainty, one focused recommendation and its verification method.
    Wait for implementation approval. Keep HDMI, camera, microphone and unrelated failures
    separate unless evidence establishes a shared cause.

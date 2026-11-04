@@ -41,9 +41,10 @@ The priority is that a person can understand how to build, update and deploy it,
   goal. A passing test establishes behavior, not that the approach is the best fit.
 - During guided reviews, explain one decision at a time: why it exists, alternatives,
   trade-offs and verification. Pause for feedback before edits.
-- Before adding custom integration, search upstream documentation, source, releases and
-  relevant external projects, as well as local references. Do not limit investigation to
-  the repository or send private code, logs or credentials to external services.
+- Before adding custom integration, search authoritative upstream documentation, source,
+  releases and issue discussions. Treat earlier hobby-port fixes as hypotheses, not evidence
+  of necessity; verify against this project's logs and controlled tests. Do not send private
+  code, logs or credentials to external services.
 - Present existing solutions first. Explain the verified compatibility gap before proposing
   custom code; distinguish findings from assumptions.
 - Prefer adopting or minimally adapting maintained solutions over reinventing them.

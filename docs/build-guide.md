@@ -643,5 +643,5 @@ use `make deploy`, **not** another whole-stick flash.
   publishing its patch or resulting images. The project's MIT license does not relicense this
   third-party patch.
 
-The two original working ports remain under ignored `reference/` for comparison. Their build
-scripts and prebuilt kernels are not used. None of this pipeline edits executable bytes.
+The original local reference ports have been removed. Investigate fixes through authoritative
+upstream sources and this project's logs and tests. None of this pipeline edits executable bytes.

@@ -259,8 +259,6 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - [HDA tests](../../hardware/drivers/hda-audio/tests/test_audio.py),
   [AMD kernel tests](../../hardware/drivers/amdgpu/tests/test_kernel_source.py)
   — selector failures, exact card-ID bytes and model-specific backlight naming.
-- Reference ports (local, not in Git): `reference/project-churro-msi-modern-15-B7M`,
-  `reference/gbos-x86-msi-modern-15-B7M`.
 
 ## Verify
 1. `make test`, then `make android-image JOBS=12`. Check kABI/filesystem metadata and a repeat

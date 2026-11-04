@@ -117,9 +117,9 @@ Validation: 16 graphics/overlay tests pass; the image rebuild changed only vendo
 build wrote nothing. Enforcing QEMU reaches the inspected setup screen; explicit
 `c2.android.avc.encoder` screen recording succeeds with `media.swcodec` still at `Seccomp: 2`,
 and the guest can read the installed rule ([evidence](../../out/video-codec-runtime/)).
-After installing it, the owner reports that video crashes the desktop. The owner previously fixed
-the same symptom in gbos: YV12 format reporting and chroma-plane pitch
-([reference handoff](../../reference/gbos-x86-msi-modern-15-B7M/HANDOFF.md)).
+After installing it, the owner reports that video crashes the desktop. The owner previously
+addressed the same symptom in gbos with YV12 format reporting and chroma-plane pitch changes;
+that historical finding is not independent verification.
 The pinned sources still contain both gaps: RADV reports no external format for YV12, and the
 allocator's planar fallback does not align chroma pitches for GFX9. Source patches now reuse
 Mesa's common gralloc-aware format query and align planar luma to 512 bytes (chroma to 256).

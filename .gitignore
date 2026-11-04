@@ -1,9 +1,6 @@
 # Everything the build generates.
 /out/
 
-# The working ports we learn from; separate git repositories, not part of this one.
-/reference/
-
 # Google's images and other big downloads never go into git.
 *.bin
 *.img
