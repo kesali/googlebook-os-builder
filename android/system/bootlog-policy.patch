@@ -1,8 +1,8 @@
-The one-shot boot snapshot reads backlight, sound-card, display-connector, CPU-frequency and loaded-module metadata only; it never opens sound devices or writes sysfs. Drop this dedicated enforcing domain after diagnostics.
+Dedicated enforcing logging domains: persistent logcat, a read-only hardware snapshot and temporary bounded Elantech input capture. Input permits reads and identification/capability/axis/state-query ioctls, never grabs, setting changes or event injection. Drop the touchpad domain with its collector after diagnosis.
 
 --- a/system/etc/selinux/plat_sepolicy.cil
 +++ b/system/etc/selinux/plat_sepolicy.cil
-@@ -87210,3 +87210,78 @@
+@@ -87210,3 +87210,100 @@
  (typeattributeset gpu_sphal_domain (hal_graphics_allocator))
  (typeattributeset gpu_sphal_domain (hal_graphics_composer))
  (typeattributeset gpu_sphal_domain (hal_neuralnetworks))
@@ -81,3 +81,25 @@ The one-shot boot snapshot reads backlight, sound-card, display-connector, CPU-f
 +(allow dali_hardware_diag sysfs_leds (lnk_file (getattr read)))
 +(allow dali_hardware_diag sysfs_leds (file (getattr open read)))
 +(allow dali_hardware_diag device (dir (search)))
++
++; Temporary read-only Elantech event collector, separate from hardware snapshots.
++(type dali_touchpad_diag)
++(roletype object_r dali_touchpad_diag)
++(typeattributeset domain (dali_touchpad_diag))
++(typeattributeset coredomain (dali_touchpad_diag))
++(allow init dali_touchpad_diag (process (transition siginh rlimitinh)))
++(dontaudit init dali_touchpad_diag (process (noatsecure)))
++(allow dali_touchpad_diag shell_exec (file (read getattr map execute open entrypoint execute_no_trans)))
++(allow dali_touchpad_diag toolbox_exec (file (read getattr map execute open execute_no_trans)))
++(allow dali_touchpad_diag self (process (fork signal sigkill sigchld setpgid)))
++(allow dali_touchpad_diag metadata_file (dir (search)))
++(allow dali_touchpad_diag dali_bootlog_file (dir (read getattr open search write add_name)))
++(allow dali_touchpad_diag dali_bootlog_file (file (read getattr open write append create)))
++(allow dali_touchpad_diag kmsg_debug_device (chr_file (write append)))
++(allow dali_touchpad_diag sysfs (dir (getattr open read search)))
++(allow dali_touchpad_diag sysfs (lnk_file (getattr read)))
++(allow dali_touchpad_diag sysfs (file (getattr open read)))
++(allow dali_touchpad_diag device (dir (search)))
++(allow dali_touchpad_diag input_device (dir (getattr search)))
++(allow dali_touchpad_diag input_device (chr_file (getattr open read ioctl)))
++(allowx dali_touchpad_diag input_device (ioctl chr_file (0x4501 0x4502 0x4506 0x4507 0x4508 0x4509 (range 0x4518 0x451b) (range 0x4521 0x453f) (range 0x4540 0x457f))))

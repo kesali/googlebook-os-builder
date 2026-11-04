@@ -9,6 +9,7 @@ import unittest
 REPO = Path(__file__).resolve().parents[1]
 PREPARE = REPO / "android/system_ext/bootlog-prepare.sh"
 SNAPSHOT = REPO / "android/system_ext/hardware-snapshot.sh"
+TOUCHPAD = REPO / "android/system_ext/touchpad-capture.sh"
 BOOT_ONE = "11111111-1111-1111-1111-111111111111"
 BOOT_TWO = "22222222-2222-2222-2222-222222222222"
 BOOT_THREE = "33333333-3333-3333-3333-333333333333"
@@ -84,6 +85,7 @@ class BootlogTests(unittest.TestCase):
         for stream in ("kernel", "android", "android-boot", "crash"):
             for suffix in ("", ".1", ".2", ".3", ".4", ".5", ".6", ".7"):
                 (current / f"{stream}.log{suffix}").write_text("old\n")
+        (current / "touchpad.log").write_text("status=capturing\n")
         self.assert_ready(self.prepare(BOOT_TWO))
         self.assertEqual((self.logs / "previous/boot-id").read_text(), BOOT_ONE + "\n")
         (current / "android.log").write_text("new\n")
@@ -137,6 +139,17 @@ class BootlogTests(unittest.TestCase):
         self.assertEqual(target.read_text(), "keep\n")
         self.assertEqual((self.logs / "current/boot-id").read_text(), BOOT_TWO + "\n")
 
+    def test_previous_touchpad_symlink_stops_rotation(self):
+        self.assert_ready(self.prepare())
+        self.assert_ready(self.prepare(BOOT_TWO))
+        target = self.work / "outside"
+        target.write_text("keep\n")
+        (self.logs / "previous/touchpad.log").symlink_to(target)
+        result = self.prepare(BOOT_THREE)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.ready.exists())
+        self.assertEqual(target.read_text(), "keep\n")
+
     def test_symlinked_directory_or_marker_is_rejected(self):
         outside = self.work / "outside"
         outside.mkdir()
@@ -171,6 +184,7 @@ class BootlogTests(unittest.TestCase):
         self.assertIn("on property:sys.dali.bootlog.ready=1", text)
         self.assertIn("on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1\n"
                       "    start dali_hardware_snapshot\n"
+                      "    start dali_touchpad_capture\n"
                       "    stop dali_android_boot_log\n", text)
         self.assertIn("seclabel u:r:dali_hardware_diag:s0", text)
         commands = [line.split() for line in text.splitlines()

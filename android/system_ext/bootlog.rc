@@ -25,12 +25,22 @@ service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare
 
 on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1
     start dali_hardware_snapshot
+    start dali_touchpad_capture
     stop dali_android_boot_log
 
 service dali_hardware_snapshot /system/bin/sh /system_ext/etc/dali/hardware-snapshot.sh /metadata/dali-bootlog /sys /proc /dev
     user logd
     group log
     seclabel u:r:dali_hardware_diag:s0
+    disabled
+    oneshot
+    stdio_to_kmsg
+
+# Temporary Lenovo diagnostic: never open all inputs or grab the device.
+service dali_touchpad_capture /system/bin/sh /system_ext/etc/dali/touchpad-capture.sh /metadata/dali-bootlog /sys /dev
+    user logd
+    group log input
+    seclabel u:r:dali_touchpad_diag:s0
     disabled
     oneshot
     stdio_to_kmsg

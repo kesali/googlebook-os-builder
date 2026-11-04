@@ -53,6 +53,14 @@ class LaptopLogTests(unittest.TestCase):
         del self.root_entries["previous"]
         self.assertFalse((self.retrieve() / "previous").exists())
 
+    def test_partial_touchpad_capture_is_retrieved_without_treating_it_as_finished(self):
+        data = b"status=capturing\n[   60.000002] 0000 0000 00000000\n"
+        self.files["touchpad.log"] = data
+        self.entries["touchpad.log"] = (stat.S_IFREG | 0o600, len(data))
+        destination = self.retrieve()
+        for boot in ("current", "previous"):
+            self.assertEqual((destination / boot / "touchpad.log").read_bytes(), data)
+
     def test_unfinished_snapshot_does_not_block_completed_logs(self):
         self.entries["hardware.txt.tmp"] = (stat.S_IFREG | 0o600, 399)
         destination = self.retrieve()
@@ -70,6 +78,7 @@ class LaptopLogTests(unittest.TestCase):
 
     def test_rejects_symlinks_unknown_files_and_oversized_logs_before_reading(self):
         for name, entry in (("hardware.txt", (stat.S_IFLNK | 0o777, 5)),
+                            ("touchpad.log", (stat.S_IFLNK | 0o777, 5)),
                             ("private-state", (stat.S_IFREG | 0o600, 5)),
                             ("kernel.log", (stat.S_IFREG | 0o600, (10 << 20) + 1))):
             with self.subTest(name=name):

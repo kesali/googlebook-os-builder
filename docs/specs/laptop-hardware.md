@@ -44,7 +44,16 @@ upstream psmouse/Elantech and normal protocol defaults, with AUX hotplug and bui
 helpers. Compiled psmouse has no module dependencies; libps2/I2C imports resolve in the kernel.
 The combined candidate passes 41 tests, ABI/module/image checks, no-write repeat of 35
 output/disk hashes/timestamps and enforcing QEMU setup/input (screens inspected).
-Physical Wi-Fi and touchpad tests remain. [Evidence](../../out/lenovo-touchpad/).
+The owner now confirms Wi-Fi works. Touchpad initialization and Android classification pass,
+but single-finger movement stalls even without typing; the USB mouse and system remain usable.
+The [latest logs](../../out/laptop-logs/20261103-193411-6wi12hz7/current/) show the Elantech v4
+device (`0x594f03`) without retained packet/reset errors. Live CachyOS `7.1.6-1-cachyos`
+works normally by owner report, using the same `ETPS/2` protocol, firmware and capability
+values. This does not yet distinguish a kernel difference from Android input filtering.
+The same Android boot shows a Chrome GPU-process abort, an audio HAL/card-name mismatch
+despite ALC233 analog playback/capture enumeration, and an enumerated USB EasyCamera.
+These are separate investigations, not evidence that all need new kernel drivers.
+[Candidate validation evidence](../../out/lenovo-touchpad/).
 
 Verified on the laptop: the normal framebuffer-handoff boot, setup over Wi-Fi, keyboard and
 touchpad. The owner finds app launches/graphics faster than Churro and gbos-x86; this is an
@@ -253,6 +262,64 @@ Each boot contains `boot-id`, `boot.txt`, rotated kernel/Android logs, `hardware
 The snapshot records backlight values/permissions/SELinux labels, ALSA IDs/codecs and modules.
 Keep app/account logs private; share only relevant filtered excerpts.
 
+The initial [touchpad collector](../../android/system_ext/touchpad-capture.sh) passes 54 focused
+tests and an image build. It was deployed to the Lenovo: the owner confirms a stall during
+the captured interval. At boot completion it selects only the exact
+`ETPS/2 Elantech Touchpad` name, never the keyboard or all input devices. It records numeric
+timestamped events and capability metadata in `touchpad.log`, stopping after 180 seconds or
+32,768 events (under 2 MiB of event text), whichever comes first, with a two-second kill grace
+if `getevent` does not exit on timeout. It does not grab the device,
+change settings or inject events. The approved extension (validated locally, not yet deployed)
+first runs a five-second-bounded `getevent -p` query on that same device. It records axis ranges,
+fuzz, flat and resolutions; capture refuses to start if position, width or pressure metadata
+is missing, even if `getevent` exits successfully. Its separate enforcing domain permits
+input reads and identification/capability/axis/state-query ioctls only, not device grabs,
+axis setters, event injection or clock-setting ioctls.
+An interrupted capture remains retrievable, with `status=capturing` rather than a completion
+marker. A successful ending says `event-limit` or `time-limit`; failures retain their status.
+Once deployed, move one finger continuously during this early window and note when the cursor
+stalls. Then shut down normally and run `make laptop-logs`. Continuing raw motion events during
+a visible stall point above the kernel; gaps alone are inconclusive without continuous movement.
+Remove the collector and its policy after this diagnosis; it captures touch coordinates/buttons,
+not keyboard input. Enforcing QEMU reaches setup, responds to an injected accessibility tap
+(screens inspected), and saves `status=not-present` without opening an input device.
+The initial physical-device read path is now verified by the
+[owner's capture](../../out/laptop-logs/20261103-202734-f4936ex7/current/touchpad.log):
+11,729 events over 40.64 seconds, no `SYN_DROPPED`, typical frame spacing about 10 ms.
+The monotonic-clock request is denied but realtime timestamps are recorded; capture ended
+with signal 143 rather than its event/time completion marker. Large raw widths alone do not
+prove palm rejection: upstream libgestures scales them by axis resolution, absent from this
+first capture. The extended capability-query path remains unverified on physical hardware.
+The extension passes 56 focused tests, including query failure, timeout and missing-axis
+refusal. Its image build verifies the same metadata entry counts below and unchanged 4,501
+Google kernel exports. Enforcing bounded QEMU again reaches setup and responds to the
+accessibility tap (both screens inspected); the collector saves `status=not-present`.
+A repeat preserves all 35 output/disk hashes, sizes and timestamps with no partition or boot
+writes. The VM exited; [extension evidence](../../out/touchpad-axis/).
+The [next capture](../../out/laptop-logs/20261104-010558-braykix7/current/touchpad.log)
+verifies both position resolutions as 32 units/mm. Its single-contact widths commonly convert
+to 24–34 mm: 422 of 462 frames exceed upstream's 21.2 mm single-contact palm threshold;
+none reaches the default 200 pressure threshold. The owner reports fingertip motion works
+longer, finger-pad motion is suppressed, multi-finger gestures still work and clicking briefly
+restores motion. This supports width-based rejection, not a directly observed classifier result.
+The [name-scoped IDC](../../android/vendor/ETPS_2_Elantech_Touchpad.idc) is a locally validated A/B
+candidate: `gestureProp.Palm_Width = 50.0`, above both captures' single-finger widths (maximum
+48.125 mm). It preserves pressure, multi-contact, edge and other gesture settings, and does
+not affect differently named MSI/I2C touchpads. This is not a measured optimal calibration;
+verify loaded IDC/property, sustained finger-pad movement, clicks/scroll and real palm rejection.
+The candidate passes 57 focused tests, a vendor image rebuild (1,623 metadata entries and fit),
+unchanged 4,501 Google exports, and a 35-output hash/size/timestamp no-write repeat.
+Bounded enforcing QEMU reaches setup and responds to the accessibility tap (screens inspected);
+the VM exited. QEMU does not exercise this device-name-specific calibration.
+[Candidate evidence](../../out/elantech-calibration/). The owner subsequently confirms the
+touchpad works after this update. This verifies usable pointer behavior by owner report,
+not independent read-back of the loaded gesture property. Accidental palm rejection remains
+unverified; do not describe the 50 mm threshold as an optimal measured calibration.
+The initial image build verifies 3,642 system
+and 238 system_ext metadata entries; both images fit. A repeat preserves all 35 published
+output/disk hashes, sizes and timestamps and writes no partitions or boot files.
+[Validation evidence](../../out/touchpad-diagnostic/). The disposable VM exited.
+
 An unclean shutdown can leave stale inodes. Ask before copying metadata (which also contains
 security state) to private tmpfs for journal replay; verify no disk-backed swap, recover only
 on that regular copy and remove it afterwards. Never repair the USB directly. A hang before
@@ -282,9 +349,10 @@ metadata/logd starts still needs a screen photo.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
 
 ## Actions
-- [ ] Owner tests Lenovo Wi-Fi and touchpad after `make update-usb JOBS=12` — done when
-  ath9k binds and connects, psmouse exposes the touchpad, and pointer/click/scroll work.
-  Retrieve logs after normal shutdown; no physical writes by the agent.
+- [ ] Owner updates the USB and tests the bounded Lenovo touchpad diagnostic — done when
+  the owner retrieves a capture made while continuously moving through a cursor stall
+  during the first three minutes after boot completion (or before the event limit).
+  Wi-Fi is owner-confirmed; do not change its working driver. No agent physical writes.
 - [ ] Remaining physical checks — done when the owner reports
   the brightness slider visibly changing the panel, and boot/app speed with the
   generic bionic and without the firmware early console (104 s to `boot_completed` before). The
@@ -332,6 +400,18 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Owner confirms the Elantech palm-width candidate fixes touchpad
+  use. Retain the bounded diagnostic evidence and unchanged pressure/multi-contact filters;
+  accidental palm rejection remains unverified. Recipe work is a separate milestone.
+- 2026-11-04 uncommitted — Axis capture verifies 32 units/mm; 422/462 single-contact
+  frames exceed upstream's 21.2 mm palm threshold. Added name-scoped 50 mm IDC A/B candidate,
+  preserving other filters; 57 tests, image/no-write repeat and enforcing QEMU pass. Owner retest pending.
+- 2026-11-04 uncommitted — First Lenovo capture contains raw events during owner-reported
+  stalls; no overflow. Added bounded axis metadata query and query-only SELinux permissions;
+  56 tests, image checks, no-write repeat and enforcing QEMU pass. Physical query test remains.
+- 2026-11-03 uncommitted — Owner confirms Wi-Fi and normal live-Linux Elantech behavior,
+  but Android cursor stalls. Bounded touchpad-only capture passes 54 tests, metadata/fit,
+  35-output no-write repeat and enforcing QEMU setup/tap; physical capture awaits owner update.
 - 2026-11-03 (this commit) — Added upstream psmouse/Elantech after Wi-Fi as owner requested;
   no source patch, MSI input change or DPI change. Combined image passes 41 tests, ABI/import/
   metadata/no-write repeat and enforcing QEMU setup/input; owner Wi-Fi/touchpad retest remains.

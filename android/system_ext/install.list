@@ -7,6 +7,7 @@ etc/init/zz-dali-bootlog.rc 0644 0:0 system_file ./bootlog.rc
 etc/dali/              0755 0:0   system_file  -
 etc/dali/bootlog-prepare.sh 0644 0:0 system_file ./bootlog-prepare.sh
 etc/dali/hardware-snapshot.sh 0644 0:0 system_file ./hardware-snapshot.sh
+etc/dali/touchpad-capture.sh 0644 0:0 system_file ./touchpad-capture.sh
 etc/dali/graphics-softpipe.rc 0644 0:0 system_file ./graphics-softpipe.rc
 etc/dali/graphics-amd.rc 0644 0:0 system_file ./graphics-amd.rc
 etc/dali/graphics-amd-vulkan.rc 0644 0:0 system_file ./graphics-amd-vulkan.rc

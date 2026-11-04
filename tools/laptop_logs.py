@@ -15,7 +15,7 @@ import uuid
 
 from update_usb import check_unused, choose, disks, run
 
-LOG_NAME = re.compile(r"(?:boot-id|boot\.txt|hardware\.txt|"
+LOG_NAME = re.compile(r"(?:boot-id|boot\.txt|hardware\.txt|touchpad\.log|"
                       r"(?:kernel|android|android-boot|crash)\.log(?:\.[0-9]+)?)\Z")
 
 
