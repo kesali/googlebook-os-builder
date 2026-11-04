@@ -179,9 +179,8 @@ Intel instructions that Zen 3 lacks.
     firmware framebuffer before amdgpu takes a DRM minor.
   - [msi-backlight.patch](../hardware/drivers/amdgpu/msi-backlight.patch): on this exact DMI model only, name the
     first panel `backlight` so Google's unchanged lights HAL finds it.
-  - [amdgpu-fast-flips.patch](../hardware/drivers/amdgpu/amdgpu-fast-flips.patch): on DCN < 3.2, do a full update
-    only when a CRTC really needs a modeset. This fixes the halved frame rate with HDMI and is
-    small enough to upstream.
+  - The earlier AMD fast-flips override was removed in favor of upstream behavior; the owner's
+    HDMI frame-rate retest is pending ([kernel](specs/kernel.md)).
 
 ## 6. Graphics
 
@@ -202,8 +201,9 @@ SurfaceFlinger and HWUI renderers have not been independently measured on the la
   expat are linked statically.
 - **Mesa patch:** [mesa-drm-master.patch](../hardware/drivers/drm-handoff/mesa-drm-master.patch) drops DRM master so
   the composer can drive the display.
-- **minigbm:** LineageOS minigbm with [minigbm-amd.patch](../hardware/drivers/amdgpu/minigbm-amd.patch). An ABI
-  gate ([minigbm_abi.py](../tools/minigbm_abi.py)) checks it.
+- **minigbm:** LineageOS minigbm with upstream's Mesa GBM path and
+  [minigbm-yuv-pitch.patch](../hardware/drivers/amdgpu/minigbm-yuv-pitch.patch), which aligns
+  planar YUV pitches for RADV. An ABI gate ([minigbm_abi.py](../tools/minigbm_abi.py)) checks it.
 - **GL HWUI is the MSI AMD default.** Vulkan HWUI aborts in SystemUI and desktop login
   because it requires two graphics queues and upstream RADV exposes one. The unsupported
   Vulkan GRUB choice is removed; Vulkan RenderEngine remains unchanged.
