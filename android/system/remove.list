@@ -14,7 +14,9 @@ system/etc/init/gscutil.rc
 # older CPUs every such instruction traps into the kernel's emulator; these files caused most
 # traps on the MSI (Ryzen 5 7530U). install.list puts back the emulator image's generic x86-64
 # builds of the same files from the same Android release; scripts/check-replacements.sh checks
-# they are drop-in replacements. Drop this group when the CPU has GFNI and AVX-VNNI.
+# they are drop-in replacements. Keep bionic, linker and runtime APEX as one generic set:
+# selecting them per CPU requires safe selection before affected processes start. Revisit only
+# with a measured benefit and verified early-boot integration; see docs/specs/os-image.md.
 # libz: Adler-32 and inflate (APKs, PNGs, downloads).
 system/lib64/libz.so
 # bionic for init and the processes that start before APEXes are mounted.

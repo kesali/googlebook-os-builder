@@ -206,6 +206,10 @@ QEMU test used a reflinked copy.
   instruction traps into the kernel emulator. The same files from the pinned Android 17 emulator
   image (generic x86-64, same API) replace them, as Churro does. This removed about 99.7% of
   traps in QEMU (15.3 M → 44,644) and the softpipe boot animation ended at 66 s instead of 110 s.
+- Keep bionic, linker and the runtime APEX as one generic replacement set; do not add CPU-based
+  runtime selection unless measurements show a meaningful benefit and selection is verified to
+  happen before affected processes start. A standalone library such as libz can be evaluated
+  separately if there's evidence of a benefit.
 - Rebuild without root: `fsck.erofs` extraction and `mkfs.erofs` under fakeroot; original UUID
   kept; output must not exceed its declared allocation in [super-layout.json](../../android/super-layout.json).
   LZ4HC level 9 with 256 KiB clusters:
@@ -330,6 +334,8 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Record that bionic/linker/runtime stay a coherent generic set;
+  revisit CPU-conditional selection only with measured benefit and verified early-boot safety.
 - 2026-11-04 (this commit) — Folded the config-only AMD I2C-HID recipe into shared kernel
   configuration. Expanded input is byte-identical; 33 focused recipe/kernel-source tests pass.
   Richer recipes unchanged; no kernel/image rebuild or physical test needed for identical input.
