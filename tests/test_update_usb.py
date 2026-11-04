@@ -57,7 +57,7 @@ class USBUpdateTests(unittest.TestCase):
             target.seek(self.metadata[0])
             target.write(self.image.read_bytes()[self.metadata[0]:sum(self.metadata)])
             target.seek(82 * 512 + 71)
-            target.write(b"DALI-BOOT  FAT32   ")
+            target.write(b"GBOS-BOOT  FAT32   ")
         inputs = self.root / "inputs"
         inputs.mkdir()
         for name in COMPONENTS:
@@ -243,7 +243,7 @@ class USBUpdateTests(unittest.TestCase):
         (self.bundle / "manifest.json").write_text(json.dumps(manifest))
         planned = install(self.bundle, self.boot, dry_run=True)
         self.assertEqual(len(planned), 2)
-        self.assertEqual(planned[-1], "dali/grub.cfg")
+        self.assertEqual(planned[-1], "gbos-builder/grub.cfg")
         self.assertEqual(before, {str(p): (p.read_bytes(), p.stat().st_mtime_ns)
                                   for p in self.boot.rglob("*") if p.is_file()})
         self.assertEqual(install(self.bundle, self.boot), planned)
@@ -277,6 +277,17 @@ class USBUpdateTests(unittest.TestCase):
                 patch.object(update_usb.fcntl, "ioctl", return_value=(512).to_bytes(4, "little")), \
                 patch.object(update_usb, "boot_mount", side_effect=fake_mount) as mounts, \
                 patch.object(update_usb, "snapshot_bundle", side_effect=fake_snapshot):
+            with self.target.open("r+b") as target:
+                target.seek(82 * 512 + 71)
+                target.write(b"DALI-BOOT  ")
+            legacy_before = self.target.read_bytes()
+            with patch("builtins.input", side_effect=AssertionError("must refuse before confirmation")), \
+                    self.assertRaisesRegex(ValueError, "GBOS-BOOT"):
+                update_usb.update(self.image, self.bundle)
+            self.assertEqual(self.target.read_bytes(), legacy_before)
+            with self.target.open("r+b") as target:
+                target.seek(82 * 512 + 71)
+                target.write(b"GBOS-BOOT  ")
             before = self.target.read_bytes()
             boot_before = {p: p.read_bytes() for p in self.boot.rglob("*") if p.is_file()}
             for answer in ("", "n", "no", "wrong confirmation", "UPDATE test-serial"):
@@ -291,7 +302,7 @@ class USBUpdateTests(unittest.TestCase):
                 with self.subTest(answer=answer):
                     self.target.write_bytes(before)
                     # An updated boot menu must be installed alongside the OS.
-                    (self.boot / "dali/grub.cfg").write_bytes(b"old boot menu")
+                    (self.boot / "gbos-builder/grub.cfg").write_bytes(b"old boot menu")
                     with patch("builtins.input", return_value=answer):
                         update_usb.update(self.image, self.bundle)
                     self.assertNotEqual(self.target.read_bytes(), before)

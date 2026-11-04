@@ -100,7 +100,7 @@ class AndroidUefiTests(unittest.TestCase):
         self.assertNotIn("-kernel", invocation)
         self.assertNotIn("-initrd", invocation)
         self.assertNotIn("-append", invocation)
-        self.assertIn("nvme,id=decoy,drive=internal,serial=DALI-DECOY,addr=3", invocation)
+        self.assertIn("nvme,id=decoy,drive=internal,serial=GBOS-BUILDER-DECOY,addr=3", invocation)
         self.assertIn("virtio-gpu-pci,addr=2,xres=1280,yres=720", invocation)
         self.assertIn("if=none,id=internal,format=raw,file=/work/nvme.img", invocation)
         self.assertIn("usb-storage,bus=xhci.0,drive=stick,bootindex=1", invocation)

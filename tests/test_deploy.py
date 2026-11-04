@@ -68,24 +68,24 @@ class DeployTests(unittest.TestCase):
         self.publish()
         changed = deploy.install(self.bundle, self.usb)
         self.assertEqual(len(changed), 2)
-        self.assertTrue(changed[0].startswith("dali/initramfs-"))
-        self.assertEqual(changed[1], "dali/grub.cfg")
+        self.assertTrue(changed[0].startswith("gbos-builder/initramfs-"))
+        self.assertEqual(changed[1], "gbos-builder/grub.cfg")
         after = self.snapshot()
         for name, original in before.items():
-            if name != "dali/grub.cfg":
+            if name != "gbos-builder/grub.cfg":
                 self.assertEqual(after[name], original, name)
-        self.assertEqual(after["dali/grub.previous.cfg"][0], before["dali/grub.cfg"][0])
+        self.assertEqual(after["gbos-builder/grub.previous.cfg"][0], before["gbos-builder/grub.cfg"][0])
 
     def test_kernel_only_update_does_not_rewrite_initramfs(self):
         (self.inputs / "kernel").write_bytes(b"new source-built kernel")
         self.publish()
         changed = deploy.install(self.bundle, self.usb)
         self.assertEqual(len(changed), 2)
-        self.assertTrue(changed[0].startswith("dali/kernel-"))
-        self.assertEqual(changed[1], "dali/grub.cfg")
+        self.assertTrue(changed[0].startswith("gbos-builder/kernel-"))
+        self.assertEqual(changed[1], "gbos-builder/grub.cfg")
 
     def test_corrupt_destination_is_repaired_without_trusting_a_manifest(self):
-        kernel = next((self.usb / "dali").glob("kernel-*"))
+        kernel = next((self.usb / "gbos-builder").glob("kernel-*"))
         kernel.write_bytes(b"broken")
         self.assertEqual(deploy.install(self.bundle, self.usb), [str(kernel.relative_to(self.usb))])
         self.assertEqual(kernel.read_bytes(), b"kernel")
@@ -99,34 +99,55 @@ class DeployTests(unittest.TestCase):
 
     def test_unknown_destination_is_rejected(self):
         before = self.snapshot()
-        (self.usb / "dali/format").unlink()
-        with self.assertRaisesRegex(ValueError, "Not a Dali"):
+        (self.usb / "gbos-builder/format").unlink()
+        with self.assertRaisesRegex(ValueError, "Not a gbos-builder"):
             deploy.install(self.bundle, self.usb)
         self.assertEqual(len(self.snapshot()), len(before) - 1)
 
+    def test_legacy_marker_is_rejected_without_writes(self):
+        (self.usb / "gbos-builder/format").write_bytes(b"gbos-dali-diagnostic-v1\n")
+        before = self.snapshot()
+        with self.assertRaisesRegex(ValueError, "Not a gbos-builder"):
+            deploy.install(self.bundle, self.usb)
+        self.assertEqual(before, self.snapshot())
+
+    def test_legacy_directory_is_rejected_without_writes(self):
+        (self.usb / "gbos-builder/format").write_bytes(b"gbos-dali-diagnostic-v1\n")
+        (self.usb / "gbos-builder").rename(self.usb / "dali")
+        before = self.snapshot()
+        with self.assertRaisesRegex(ValueError, "Not a gbos-builder"):
+            deploy.install(self.bundle, self.usb)
+        self.assertEqual(before, self.snapshot())
+
+    def test_new_markers_use_the_project_identity(self):
+        self.assertEqual(deploy.FORMATS, {
+            "android": b"gbos-builder-android-v1\n",
+            "diagnostic": b"gbos-builder-diagnostic-v1\n",
+        })
+
     def test_android_menu_gets_the_command_line_on_one_line_and_the_android_marker(self):
         stage = self.android_stage()
-        self.assertEqual((stage / "dali/format").read_bytes(), b"gbos-dali-android-v1\n")
-        kernel = next((stage / "dali").glob("kernel-*")).name
-        initramfs = next((stage / "dali").glob("initramfs-*")).name
+        self.assertEqual((stage / "gbos-builder/format").read_bytes(), b"gbos-builder-android-v1\n")
+        kernel = next((stage / "gbos-builder").glob("kernel-*")).name
+        initramfs = next((stage / "gbos-builder").glob("initramfs-*")).name
         self.assertEqual(
-            (stage / "dali/grub.cfg").read_text(),
+            (stage / "gbos-builder/grub.cfg").read_text(),
             f"linux {kernel} log_buf_len=1M root=/dev/ram0 bootconfig panic=0\ninitrd {initramfs}\n",
         )
 
     def test_a_new_command_line_rewrites_only_the_menu(self):
         stage = self.android_stage()
         self.cmdline.write_text("root=/dev/ram0\n")
-        self.assertEqual(deploy.install(self.publish_android(), stage), ["dali/grub.cfg"])
+        self.assertEqual(deploy.install(self.publish_android(), stage), ["gbos-builder/grub.cfg"])
 
     def test_a_bundle_installs_only_onto_its_own_kind(self):
         # The marker of the already flashed diagnostic USB must stay what it was.
-        self.assertEqual((self.usb / "dali/format").read_bytes(), b"gbos-dali-diagnostic-v1\n")
+        self.assertEqual((self.usb / "gbos-builder/format").read_bytes(), b"gbos-builder-diagnostic-v1\n")
         stage = self.android_stage()
         usb_before, stage_before = self.snapshot(), self.snapshot(stage)
-        with self.assertRaisesRegex(ValueError, "Not a Dali android"):
+        with self.assertRaisesRegex(ValueError, "Not a gbos-builder android"):
             deploy.install(self.publish_android(), self.usb)
-        with self.assertRaisesRegex(ValueError, "Not a Dali diagnostic"):
+        with self.assertRaisesRegex(ValueError, "Not a gbos-builder diagnostic"):
             deploy.install(self.bundle, stage)
         self.assertEqual(usb_before, self.snapshot())
         self.assertEqual(stage_before, self.snapshot(stage))
@@ -200,34 +221,34 @@ class DeployTests(unittest.TestCase):
         self.assertLess(menu.index(normal_entry), menu.index(debug_entry))
         self.assertIn(
             'menuentry "Previous build (may write UEFI crash records)" {\n'
-            '        configfile ($root)/dali/grub.previous.cfg\n    }',
+            '        configfile ($root)/gbos-builder/grub.previous.cfg\n    }',
             menu,
         )
 
     def test_symlink_is_rejected_before_writes(self):
-        (self.usb / "dali/grub.previous.cfg").symlink_to(self.inputs / "kernel")
+        (self.usb / "gbos-builder/grub.previous.cfg").symlink_to(self.inputs / "kernel")
         with self.assertRaisesRegex(ValueError, "symlink"):
             deploy.install(self.bundle, self.usb)
         self.assertEqual((self.inputs / "kernel").read_bytes(), b"kernel")
 
     def test_failed_payload_write_does_not_switch_menu(self):
-        old_menu = (self.usb / "dali/grub.cfg").read_bytes()
+        old_menu = (self.usb / "gbos-builder/grub.cfg").read_bytes()
         (self.inputs / "kernel").write_bytes(b"new kernel")
         (self.inputs / "initramfs.gz").write_bytes(b"new ramdisk")
         self.publish()
         replace = deploy.replace_file
 
         def interrupted(root, name, data):
-            if name.startswith("dali/initramfs-"):
+            if name.startswith("gbos-builder/initramfs-"):
                 raise OSError("simulated unplug")
             return replace(root, name, data)
 
         with patch.object(deploy, "replace_file", side_effect=interrupted):
             with self.assertRaisesRegex(OSError, "simulated unplug"):
                 deploy.install(self.bundle, self.usb)
-        self.assertEqual((self.usb / "dali/grub.cfg").read_bytes(), old_menu)
+        self.assertEqual((self.usb / "gbos-builder/grub.cfg").read_bytes(), old_menu)
         deploy.install(self.bundle, self.usb)
-        self.assertNotEqual((self.usb / "dali/grub.cfg").read_bytes(), old_menu)
+        self.assertNotEqual((self.usb / "gbos-builder/grub.cfg").read_bytes(), old_menu)
 
     def test_mount_guard_rejects_root_symlinks_and_non_usb(self):
         with self.assertRaises(ValueError):

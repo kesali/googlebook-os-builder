@@ -1,7 +1,7 @@
 #!/vendor/bin/sh
 # Read: sysfs root and codec name. Rename only that codec's card for Google's audio HAL.
 set -eu
-trap 'status=$?; if [ "$status" -ne 0 ]; then log -p e -t dali-audio "dali audio preparation failed (status $status)"; fi' EXIT
+trap 'status=$?; if [ "$status" -ne 0 ]; then log -p e -t gbos-builder-audio "gbos-builder audio preparation failed (status $status)"; fi' EXIT
 
 sys_root=$1
 codec_name=$2
@@ -18,16 +18,16 @@ while [ "$attempt" -lt 150 ]; do
             printf '%s' sofrt5682 > "$card/id"
             id=$(cat "$card/id")
             [ "$id" = sofrt5682 ] || {
-                log -p e -t dali-audio "ALSA rejected the card ID on $card"
+                log -p e -t gbos-builder-audio "ALSA rejected the card ID on $card"
                 exit 1
             }
         fi
-        log -t dali-audio "$codec_name on ${card##*/}, id=$id"
-        setprop vendor.audio.dali.ready 1
+        log -t gbos-builder-audio "$codec_name on ${card##*/}, id=$id"
+        setprop vendor.audio.gbos_builder.ready 1
         exit 0
     done
     sleep 0.1
     attempt=$((attempt + 1))
 done
-log -p e -t dali-audio "No $codec_name sound card appeared; keeping Google's audio service unchanged"
+log -p e -t gbos-builder-audio "No $codec_name sound card appeared; keeping Google's audio service unchanged"
 exit 1

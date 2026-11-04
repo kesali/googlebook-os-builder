@@ -25,7 +25,7 @@ export LIBCLANG_PATH=$toolchain/clang/lib # bindgen reads C headers with Google'
 # Rust symbol names contain a hash of the compiler's version string. Google's build fixes
 # that string (Kleaf's kernel_env.bzl), so the Rust symbols we export have Google's names.
 export RUSTC_FORCE_RUSTC_VERSION=rustc-android
-export KBUILD_BUILD_USER=dali KBUILD_BUILD_HOST=builder
+export KBUILD_BUILD_USER=gbos-builder KBUILD_BUILD_HOST=builder
 export KBUILD_BUILD_TIMESTAMP='2026-10-01 00:00:00 UTC'
 # Google's build number (#1); otherwise Kbuild counts links and every relink changes the bytes.
 export KBUILD_BUILD_VERSION=1

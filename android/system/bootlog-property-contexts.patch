@@ -8,7 +8,7 @@ Drop this entry with the dedicated boot logger.
  #line 50 "system/sepolicy/flagging/flagging_macros"
  
  #line 1 "out/soong/.intermediates/system/sepolicy/contexts/plat_property_contexts/android_common/newline"
-+sys.dali.bootlog.ready u:object_r:dali_bootlog_ready_prop:s0 exact bool
++sys.gbos_builder.bootlog.ready u:object_r:gbos_builder_bootlog_ready_prop:s0 exact bool
  
  #line 1 "system/sepolicy/private/property_contexts"
  ##########################

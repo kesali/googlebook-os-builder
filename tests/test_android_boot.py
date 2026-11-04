@@ -42,7 +42,7 @@ class AndroidBootTests(unittest.TestCase):
             image.truncate(DISK_SECTORS * SECTOR)
         subprocess.run(["sfdisk", "--quiet", "--no-reread", str(self.disk)],
                        input="\n".join(table) + "\n", text=True, check=True)
-        subprocess.run(["mkfs.vfat", "-F", "32", "-s", "8", "-n", "DALI-BOOT", "--offset", str(ESP_START),
+        subprocess.run(["mkfs.vfat", "-F", "32", "-s", "8", "-n", "GBOS-BOOT", "--offset", str(ESP_START),
                         str(self.disk), str(ESP_SECTORS // 2)], capture_output=True, check=True)
         # Data on both sides of the boot partition: writing must stop at its edges.
         self.write(MIB * SECTOR, b"B" * MIB * SECTOR)
@@ -85,7 +85,7 @@ class AndroidBootTests(unittest.TestCase):
     def files_in_esp(self):
         """The boot files as the partition holds them, copied out with mtools."""
         directory = Path(tempfile.mkdtemp(dir=self.work))
-        subprocess.run(["mcopy", "-s", "-n", "-i", self.esp, "::EFI", "::dali", str(directory)], check=True)
+        subprocess.run(["mcopy", "-s", "-n", "-i", self.esp, "::EFI", "::gbos-builder", str(directory)], check=True)
         return {str(path.relative_to(directory)): path.read_bytes()
                 for path in directory.rglob("*") if path.is_file()}
 
@@ -102,15 +102,15 @@ class AndroidBootTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
         files = self.files_in_esp()
-        kernel = f"dali/kernel-{deploy.digest(b'kernel one')}"
+        kernel = f"gbos-builder/kernel-{deploy.digest(b'kernel one')}"
         self.assertEqual(sorted(files), sorted([
-            "EFI/BOOT/BOOTX64.EFI", "dali/format", "dali/grub.cfg", kernel,
-            f"dali/initramfs-{deploy.digest(b'initrd')}",
+            "EFI/BOOT/BOOTX64.EFI", "gbos-builder/format", "gbos-builder/grub.cfg", kernel,
+            f"gbos-builder/initramfs-{deploy.digest(b'initrd')}",
         ]))
         self.assertEqual(files["EFI/BOOT/BOOTX64.EFI"], b"grub")
         self.assertEqual(files[kernel], b"kernel one")
-        self.assertEqual(files["dali/format"], b"gbos-dali-android-v1\n")
-        self.assertIn(kernel.encode(), files["dali/grub.cfg"])
+        self.assertEqual(files["gbos-builder/format"], b"gbos-builder-android-v1\n")
+        self.assertIn(kernel.encode(), files["gbos-builder/grub.cfg"])
         self.assertEqual(self.outside_esp(), outside)
 
     def test_a_second_run_with_the_same_files_writes_nothing(self):
@@ -127,24 +127,24 @@ class AndroidBootTests(unittest.TestCase):
         result = self.run_script(self.make_bundle(b"kernel two"))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         files = self.files_in_esp()
-        self.assertIn(f"dali/kernel-{deploy.digest(b'kernel two')}", files)
-        self.assertNotIn(f"dali/kernel-{deploy.digest(b'kernel one')}", files)
+        self.assertIn(f"gbos-builder/kernel-{deploy.digest(b'kernel two')}", files)
+        self.assertNotIn(f"gbos-builder/kernel-{deploy.digest(b'kernel one')}", files)
 
     def test_an_interrupted_run_is_repaired_by_running_again(self):
         bundle = self.make_bundle(b"kernel one")
         self.assertEqual(self.run_script(bundle).returncode, 0)
-        subprocess.run(["mdel", "-i", self.esp, f"::dali/kernel-{deploy.digest(b'kernel one')}"], check=True)
+        subprocess.run(["mdel", "-i", self.esp, f"::gbos-builder/kernel-{deploy.digest(b'kernel one')}"], check=True)
         result = self.run_script(bundle)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self.files_in_esp()[f"dali/kernel-{deploy.digest(b'kernel one')}"], b"kernel one")
+        self.assertEqual(self.files_in_esp()[f"gbos-builder/kernel-{deploy.digest(b'kernel one')}"], b"kernel one")
 
-    def test_refuses_a_partition_that_is_not_the_dali_boot_file_system(self):
+    def test_refuses_a_partition_that_is_not_the_gbos_builder_boot_file_system(self):
         subprocess.run(["mlabel", "-i", self.esp, "::OTHER"], check=True)
-        self.assert_refused("not the DALI-BOOT file system")
+        self.assert_refused("not the GBOS-BOOT file system")
 
     def test_refuses_a_partition_without_a_file_system(self):
         self.write(ESP_START * SECTOR, bytes(MIB * SECTOR))
-        self.assert_refused("not the DALI-BOOT file system")
+        self.assert_refused("not the GBOS-BOOT file system")
 
     def test_refuses_a_disk_without_an_efi_system_partition(self):
         subprocess.run(["sfdisk", "--quiet", "--no-reread", "--delete", str(self.disk), "2"], check=True)

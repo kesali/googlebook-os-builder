@@ -18,12 +18,12 @@ def main():
         # Test mode changes only the text menu in this disposable copy.
         fat = f"{disk}@@1048576"
         menu = work / "grub.cfg"
-        subprocess.run(["mcopy", "-i", fat, "::/dali/grub.cfg", str(menu)], check=True)
+        subprocess.run(["mcopy", "-i", fat, "::/gbos-builder/grub.cfg", str(menu)], check=True)
         text = menu.read_text()
-        if text.count("dali.test=0") != 1:
+        if text.count("gbos_builder.test=0") != 1:
             raise ValueError("Expected one diagnostic menu entry")
-        menu.write_text(text.replace("dali.test=0", "dali.test=1"))
-        subprocess.run(["mcopy", "-o", "-i", fat, str(menu), "::/dali/grub.cfg"], check=True)
+        menu.write_text(text.replace("gbos_builder.test=0", "gbos_builder.test=1"))
+        subprocess.run(["mcopy", "-o", "-i", fat, str(menu), "::/gbos-builder/grub.cfg"], check=True)
         variables = work / "OVMF_VARS.fd"
         shutil.copyfile("/usr/share/OVMF/OVMF_VARS_4M.fd", variables)
         command = [
@@ -43,7 +43,7 @@ def main():
         log.write_bytes(result.stdout + result.stderr)
         text = log.read_text(errors="replace")
         required = (
-            "DALI_DIAGNOSTIC_READY", "ISA_SMOKE_OK",
+            "GBOS_BUILDER_DIAGNOSTIC_READY", "ISA_SMOKE_OK",
             "churro-vexemu: gf2p8mulb", "churro-vexemu: vpdpbusd",
         )
         if result.returncode or any(marker not in text for marker in required):

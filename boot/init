@@ -11,16 +11,16 @@ mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
 
 fail() {
-    echo "DALI BOOT ERROR: $*" >/dev/console
-    echo "DALI BOOT ERROR: $*" >/dev/kmsg
+    echo "GBOS-BUILDER BOOT ERROR: $*" >/dev/console
+    echo "GBOS-BUILDER BOOT ERROR: $*" >/dev/kmsg
     exec setsid cttyhack sh
 }
 
 boot_uuid= test_mode=0
 for option in $(cat /proc/cmdline); do
     case "$option" in
-        dali.boot_uuid=*) boot_uuid=${option#*=} ;;
-        dali.test=*) test_mode=${option#*=} ;;
+        gbos_builder.boot_uuid=*) boot_uuid=${option#*=} ;;
+        gbos_builder.test=*) test_mode=${option#*=} ;;
     esac
 done
 case "$boot_uuid" in
@@ -45,7 +45,7 @@ for attempt in $(seq 1 20); do
 done
 [ -n "$device" ] || fail "USB boot filesystem $boot_uuid not found"
 mount -t vfat -o rw,nodev,nosuid,noexec "$device" /boot || fail "Cannot mount $device"
-[ "$(cat /boot/dali/format)" = gbos-dali-diagnostic-v1 ] || fail "Not a Dali diagnostic USB"
+[ "$(cat /boot/gbos-builder/format)" = gbos-builder-diagnostic-v1 ] || fail "Not a gbos-builder diagnostic USB"
 mkdir -p /boot/logs || fail "Cannot create log directory"
 if [ -f /boot/logs/kernel.log ]; then
     mv /boot/logs/kernel.log /boot/logs/kernel.previous.log || fail "Cannot rotate log"
@@ -72,8 +72,8 @@ section() { printf '\n== %s\n' "$1"; }
 /bin/isa-smoke >/dev/kmsg 2>&1 || fail "CPU instruction emulation self-test failed"
 dmesg > /boot/logs/kernel.log || fail "Cannot write kernel log"
 sync
-echo "DALI_DIAGNOSTIC_READY"
-echo "DALI_DIAGNOSTIC_READY" >/dev/kmsg
+echo "GBOS_BUILDER_DIAGNOSTIC_READY"
+echo "GBOS_BUILDER_DIAGNOSTIC_READY" >/dev/kmsg
 echo "Diagnostic shell. Android is not started. Logs: /boot/logs"
 echo "Use 'umount /boot && poweroff -f' before removing the USB."
 if [ "$test_mode" = 1 ]; then

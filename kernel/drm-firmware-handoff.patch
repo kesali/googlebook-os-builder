@@ -13,7 +13,7 @@ handles gaps in DRM device numbers.
  }
  
 +/* Keep PCI headers out of DRM core: they change Google module CRCs. */
-+int dali_remove_firmware_fb(struct device *dev, const char *name);
++int gbos_builder_remove_firmware_fb(struct device *dev, const char *name);
 +
  static int drm_dev_init(struct drm_device *dev,
  			const struct drm_driver *driver,
@@ -23,7 +23,7 @@ handles gaps in DRM device numbers.
  		return ret;
  
 +	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-+		ret = dali_remove_firmware_fb(parent, driver->name);
++		ret = gbos_builder_remove_firmware_fb(parent, driver->name);
 +		if (ret) {
 +			dev_err(parent, "Failed to remove firmware framebuffer: %d\n", ret);
 +			goto err;
@@ -41,8 +41,8 @@ handles gaps in DRM device numbers.
  }
  EXPORT_SYMBOL(aperture_remove_conflicting_pci_devices);
 +
-+int dali_remove_firmware_fb(struct device *dev, const char *name);
-+int dali_remove_firmware_fb(struct device *dev, const char *name)
++int gbos_builder_remove_firmware_fb(struct device *dev, const char *name);
++int gbos_builder_remove_firmware_fb(struct device *dev, const char *name)
 +{
 +	if (!dev_is_pci(dev))
 +		return 0;

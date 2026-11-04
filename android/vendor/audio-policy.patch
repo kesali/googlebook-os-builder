@@ -9,13 +9,13 @@ write access. Drop together with the MSI audio selector.
  ;;* lme
  
 +; Only the MSI analog card's id is writable; never grant generic sysfs writes.
-+(type dali_audio_id)
-+(roletype object_r dali_audio_id)
-+(typeattributeset fs_type (dali_audio_id))
-+(typeattributeset sysfs_type (dali_audio_id))
-+(allow get_variant_audio dali_audio_id (file (getattr open read write)))
-+(allow dali_hardware_diag dali_audio_id (file (getattr open read)))
-+(allow hal_audio_default dali_audio_id (file (getattr open read)))
++(type gbos_builder_audio_id)
++(roletype object_r gbos_builder_audio_id)
++(typeattributeset fs_type (gbos_builder_audio_id))
++(typeattributeset sysfs_type (gbos_builder_audio_id))
++(allow get_variant_audio gbos_builder_audio_id (file (getattr open read write)))
++(allow gbos_builder_hardware_diag gbos_builder_audio_id (file (getattr open read)))
++(allow hal_audio_default gbos_builder_audio_id (file (getattr open read)))
 --- a/etc/ueventd.rc
 +++ b/etc/ueventd.rc
 @@ -166,3 +166,6 @@

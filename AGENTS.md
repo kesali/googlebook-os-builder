@@ -1,6 +1,6 @@
 # Agent guide
 
-gbos-dali: a small, readable, source-built Googlebook OS (Android 17 desktop) port for the
+gbos-builder: a small, readable, source-built Googlebook OS (Android 17 desktop) port for the
 MSI Modern 15 B7M, developed in QEMU first. Human documentation: [README.md](README.md).
 The priority is that a person can understand how to build, update and deploy it, not the fewest lines.
 

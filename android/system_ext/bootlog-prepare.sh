@@ -3,7 +3,7 @@
 # Signal readiness only after successful preparation; collector restarts do not rotate boots.
 set -eu
 umask 077
-trap 'status=$?; if [ "$status" -ne 0 ]; then echo "dali_bootlog_prepare failed (status $status)" >&2; fi' EXIT
+trap 'status=$?; if [ "$status" -ne 0 ]; then echo "gbos_builder_bootlog_prepare failed (status $status)" >&2; fi' EXIT
 
 logs=$1
 read -r boot_id < "$2"
@@ -50,7 +50,7 @@ fi
 printf '%s\n' "$boot_id" > current/boot-id
 fingerprint=$(getprop ro.build.fingerprint)
 test -n "$fingerprint"
-graphics=$(getprop ro.boot.dali.graphics)
+graphics=$(getprop ro.boot.gbos_builder.graphics)
 native_bridge=$(getprop ro.dalvik.vm.native.bridge)
 test -n "$native_bridge"
 bootreason=$(getprop ro.boot.bootreason)
@@ -62,4 +62,4 @@ bootreason=$(getprop ro.boot.bootreason)
     echo "bootreason=$bootreason"
 } > current/boot.txt
 sync
-setprop sys.dali.bootlog.ready 1
+setprop sys.gbos_builder.bootlog.ready 1

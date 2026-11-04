@@ -1,6 +1,6 @@
 ---
 name: bring-up-driver
-description: "Use when adding or enabling a missing gbos-dali laptop kernel driver: establish host binding, prefer upstream configuration, package signed modules and aliases, preserve Google kABI, then verify physical enumeration before HAL routing."
+description: "Use when adding or enabling a missing gbos-builder laptop kernel driver: establish host binding, prefer upstream configuration, package signed modules and aliases, preserve Google kABI, then verify physical enumeration before HAL routing."
 ---
 
 # Bring up one missing driver

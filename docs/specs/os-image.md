@@ -1,11 +1,19 @@
 # OS image and disk
 
-**Status:** working — declared change lists and patches, verified rebuilds, data-preserving updates.
+**Status:** working — gbos-builder fresh image, verified rebuilds and guarded updates.
 USB updater validation (2026-11-02): `make test` passes 129 tests, including regular-file combined
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-04 — Restored official Ruby recovery matches the unchanged image
+**Last verified:** 2026-11-04 — Clean-break rename: 246 tests pass, including legacy label/
+marker/directory refusal without writes. New `out/gbos-builder/disk.img` passes kernel ABI,
+signed modules and filesystem metadata/fit checks. The 22.6 s repeat preserves 38 complete
+output hashes/sizes/timestamps and writes no partitions or boot files. Direct/USB-UEFI QEMU
+reach inspected setup with enforcing SELinux; an injected tap opens Accessibility.
+Both older disks and all editable source trees remain preserved. No physical writes or retest.
+[Evidence](../../out/gbos-builder-validation/).
+
+Earlier, 2026-11-04 — Restored official Ruby recovery matches the unchanged image
 SHA-256 pin; five offline fetch and four source-extraction tests pass. Image rebuild passes
 all ABI/module/metadata/fit checks and preserves all 37 recorded output hashes/sizes, including
 the full disk. A 21.4 s repeat preserves timestamps and writes no partitions/boot files.
@@ -71,6 +79,15 @@ Turn Google's read-only recovery image into a private QEMU disk with a short lis
 changes, and update only the changed OS partitions without touching Android's data.
 
 ## Current state
+Verified: clean-break gbos-builder identity uses a separate `out/gbos-builder/disk.img`,
+FAT label `GBOS-BOOT`, boot directory `gbos-builder/` and new format markers.
+Existing Dali media are deliberately rejected before updater writes; the owner must explicitly
+flash a fresh image to use this generation. No compatibility aliases or data migration.
+Both existing private disk images remain untouched. Tests/build/QEMU validation pass above.
+Mesa/minigbm source prerequisites are order-only: their bytes already select content-keyed
+trees, so newer timestamps must not attempt to replace editable caches. Regression-tested.
+Not verified: renamed media on physical hardware; a fresh flash remains an explicit owner action.
+
 Recovery-source restoration verified: the old reference file no longer matched the pinned
 baseline, so the build refused it before extraction. A separate official Ruby `16658739`
 download now matches the unchanged image SHA-256 and is the default hash-named source cache.
@@ -84,7 +101,7 @@ product 3 GiB, system_ext 1 GiB and both module partitions 64 MiB. Logical B par
 unused group are removed; small physical B entries and the 12 GiB outer super allocation remain.
 [android_fresh.py](../../tools/android_fresh.py) builds the super through upstream lpmake,
 creates a new disk from recovery, checks super read-back, installs vbmeta/boot files, then
-publishes privately and atomically. The working path is now `out/android-expanded/disk.img`;
+publishes privately and atomically. The working path is now `out/gbos-builder/disk.img`;
 the old `out/android/disk.img` is never replaced. New userdata starts empty, not copied from the
 old disk. Later builds update only OS/boot files and enforce the declared logical allocations.
 To deploy, the owner must flash the fresh image once: this erases the USB's existing data.
@@ -127,7 +144,7 @@ migrate a USB; the fresh expanded pipeline above supersedes it.
 
 Verified: `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a` rebuilt as EROFS with every file's bytes,
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
-`out/android/disk.img` with a 32 GiB sparse userdata and a 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`,
+`out/android/disk.img` with a 32 GiB sparse userdata and a 576 MiB FAT32 EFI-SYSTEM (`DALI-BOOT`, pre-rename,
 Google's PARTUUID) holding the laptop's boot files; updates copy only changed partitions
 with read-back hashes; unchanged builds write no disk partitions; updates refuse to run while the VM holds the disk lock.
 OVMF reads the FAT32 ESP and Android finds its partitions over USB (`make android-uefi-check`,
@@ -143,6 +160,8 @@ the OS partitions named above; Android userdata, metadata and layout were preser
 QEMU test used a reflinked copy.
 
 ## Decisions
+- Clean-break gbos-builder rename: new boot/Android identities, no legacy aliases or migration.
+  Use a separate new disk path; preserve older images, editable source caches and history.
 - Pin the local Google recovery image by SHA-256 in [config.mk](../../config.mk). Verify it before
   clearing or extracting `out/google`; alternate images must supply their own verified hash.
 - Change Google's files only through the change directory of each partition,
@@ -184,7 +203,7 @@ QEMU test used a reflinked copy.
   QEMU's direct-kernel boot ignores it.
 - The boot files go into that partition with mtools, never a mount or loop device
   ([scripts/android-boot.sh](../../scripts/android-boot.sh)), and only when the partition is
-  the FAT32 labelled `DALI-BOOT`. `EFI/` and `dali/` are replaced as a whole and read back; if
+  the FAT32 labelled `GBOS-BOOT`. `EFI/` and `gbos-builder/` are replaced as a whole and read back; if
   they already match, nothing is written. Only these two trees are touched.
 - The updater may write only `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a`, `vbmeta_a` — never
   userdata, metadata, the GPT or the dynamic-partition (liblp) metadata.
@@ -290,6 +309,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Clean-break identity/new image path; old disks/trees preserved.
+  246 tests, ABI/metadata/fit, enforcing direct/UEFI/input, Berberis and no-write repeat pass.
+  Fix timestamp-only Mesa/minigbm re-extraction; physical media/hardware remain untested.
 - 2026-11-04 (this commit) — Restored pinned Ruby source into a separate cache after the
   reference file changed only in metadata. Five fetch/four source tests and rebuilt output
   equality/no-write repeat pass; old source preserved, no new QEMU or physical writes.

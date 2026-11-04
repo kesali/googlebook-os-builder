@@ -48,7 +48,7 @@ esp_sectors=$((esp_sectors + kern_sectors))
 echo "$esp_start,$esp_sectors" | sfdisk --quiet --no-reread -N "$(number EFI-SYSTEM)" "$disk"
 # mkfs.vfat sizes clusters for the whole disk file, not this partition: a disk this big would get
 # 16 KiB clusters, too few for FAT32, and firmware tells FAT12/16/32 apart by cluster count.
-mkfs.vfat -F 32 -s 8 -n DALI-BOOT --offset "$esp_start" "$disk" $((esp_sectors / 2))
+mkfs.vfat -F 32 -s 8 -n GBOS-BOOT --offset "$esp_start" "$disk" $((esp_sectors / 2))
 
 end=$(sfdisk --dump "$disk" | sed -n 's/.*start= *\([0-9]*\), size= *\([0-9]*\).*/\1 \2/p' |
     awk '{ if ($1 + $2 > end) end = $1 + $2 } END { print end }')

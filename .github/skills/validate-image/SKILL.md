@@ -1,6 +1,6 @@
 ---
 name: validate-image
-description: "Use when validating a finished gbos-dali change: focused tests, kernel ABI, Android image metadata and fit, no-write repeat builds, and bounded graphical QEMU regression checks."
+description: "Use when validating a finished gbos-builder change: focused tests, kernel ABI, Android image metadata and fit, no-write repeat builds, and bounded graphical QEMU regression checks."
 ---
 
 # Validate an image change

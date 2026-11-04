@@ -27,6 +27,13 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), following the working Chu
 with readable source changes and incremental USB updates.
 
 ## Current state
+Clean-break gbos-builder rename aligns vendor audio readiness/service names
+with boot profiles and renamed SELinux types. No mixer, buffer, calibration or driver changes.
+The log reader now reads only `/gbos-builder-bootlog`; historical local evidence is untouched.
+246 tests, signed modules/image metadata and enforcing QEMU diagnostics pass
+([evidence](../../out/gbos-builder-validation/)); renamed AMD audio services and physical
+peripherals are not verified on hardware. Previous owner confirmations below predate the rename.
+
 Lenovo Broadwell (2026-11-03): owner reaches desktop in guest and another profile and reports
 good performance and working video; the first profile froze with flashing Caps Lock.
 [Recovered failure logs](../../out/laptop-logs/20261103-184303-hottd2ca/recovered-current/)
@@ -159,7 +166,7 @@ BUP Slim received the current image: boot files (kernel `39b8f05…`, new menu),
 [update-os.log](../../out/usb-flash-android/update-os.log)) and a 215.1 GiB `userdata` with its first
 MiB blanked (14:49 in [grow-data.log](../../out/usb-flash-android/grow-data.log)), so Android
 formats `/data` and runs setup again on the next boot. The stick's newest kernel before that was the
-02:25 one (the `dali/` directory held no later file), so the HDMI page-flip patch and the later menu
+02:25 one (the pre-rename `dali/` directory held no later file), so the HDMI page-flip patch and the later menu
 changes were not on it until now. A re-check found the ESP's kernel, initramfs and `BOOTX64.EFI`
 hashes equal to the bundle manifest and `deploy.py` reported nothing to update; the OS partitions
 are in [os-image](os-image.md). The host was not restarted and no disk but the BUP Slim was written.
@@ -186,7 +193,7 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
   Keep `console=drm_log`, `initcall_blacklist=nvme_init`, the TPM/SPI-flash blacklist and EFI
   pstore safeguard. The framebuffer-free experiment panicked; use the normal entry.
 - Same disk layout for QEMU and USB: Google's EFI-SYSTEM absorbs only blank `KERN-A`, becomes
-  576 MiB FAT32 `DALI-BOOT` and retains its PARTUUID. Other partitions and data stay intact.
+  576 MiB FAT32 `GBOS-BOOT` and retains its PARTUUID. Other partitions and data stay intact.
 - Boot files update through the mounted ESP with [deploy.py](../../tools/deploy.py): new files
   first, menu last, previous build retained. `make deploy-android` selects the Android bundle;
   `make deploy` is the diagnostic OS. The image's ESP uses mtools without root or mounts.
@@ -254,7 +261,7 @@ including temporary-file safety and real ext4 read-only retrieval.
 
 After returning to Linux, use the checked USB by-id path, not an ambiguous `/dev/sdX`. Metadata
 is currently partition 17; verify the layout. Mount it `ro,noload` or read it with debugfs and
-copy only `/dali-bootlog/current/` and `previous/` into a pre-created ignored evidence directory.
+copy only `/gbos-builder-bootlog/current/` and `previous/` into a pre-created ignored evidence directory.
 The files are owned by logd, so retrieval may require the owner's locally authorized sudo.
 
 Each boot contains `boot-id`, `boot.txt`, rotated kernel/Android logs, `hardware.txt` and
@@ -343,7 +350,7 @@ metadata/logd starts still needs a screen photo.
 - `update-os.sh` and `grow-data.sh` end by deleting the stick's SCSI device, so Linux stops seeing it
   while it stays plugged in. Re-attach it without unplugging by rescanning its host as root:
   `echo '- - -' > /sys/class/scsi_host/host0/scan` (the host name is listed under
-  `/sys/bus/usb/devices/<port>:1.0/`). Mount DALI-BOOT for `make deploy-android` before running them.
+  `/sys/bus/usb/devices/<port>:1.0/`). Mount GBOS-BOOT for `make deploy-android` before running them.
   The tracked `make update-usb` replaces `update-os.sh` and leaves the USB attached; it requires all
   partitions unmounted and handles its own private boot mounts.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.
@@ -400,6 +407,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Rename audio service/readiness and diagnostic paths consistently
+  with gbos-builder policy. 246 tests, image checks and enforcing saved-diagnostic QEMU pass;
+  physical AMD audio/GPU and other peripheral regression remain untested.
 - 2026-11-04 (this commit) — Backlight and capture fixes moved unchanged into kernel recipes.
   40 tests, exact patch/cache equality and image preservation pass; HAL/routing/calibration
   unchanged. No new physical or QEMU boot.

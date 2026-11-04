@@ -1,7 +1,14 @@
 # QEMU VM
 
-**Status:** parked — boots to the setup screen with keyboard and mouse; setup not finished, paused while the laptop comes first.
-**Last verified:** 2026-11-02 — `make qemu-check JOBS=12` PASS with `sys.boot_completed` at 20.5 s
+**Status:** parked — gbos-builder screen/input regression verified; setup not finished.
+**Last verified:** 2026-11-04 — New renamed image passes the existing bounded graphical
+verifier through a session harness: stable system/graphics/key-service PIDs, SELinux enforcing,
+softpipe, new collector domain and saved logs. Setup and Accessibility after an injected tap
+are inspected. `make android-uefi-check JOBS=12` passes both runs with the NVMe decoy unchanged.
+Optional renamed Berberis argument also checked. All test VMs exited.
+[Evidence](../../out/gbos-builder-validation/).
+
+Earlier, 2026-11-02 — `make qemu-check JOBS=12` PASS with `sys.boot_completed` at 20.5 s
 (4 CPUs); [setup screen](../../out/qemu-boot-speed/qemu-check-screen.png) inspected. 2026-10-31: a
 VNC mouse click reached the language picker (`out/qemu/input-screen.png`).
 
@@ -10,6 +17,9 @@ A fast, safe place to develop Googlebook OS: one command builds what changed and
 with a screen, input, network and a shell, and a bounded check that proves a real boot.
 
 ## Current state
+Verified: gbos-builder build/boot identifiers and diagnostic path rename; runner and standalone
+helpers use the new image path. Existing VM disks are preserved. Graphical/input checks pass above.
+
 Verified: KVM VM (`-cpu host`, 4 CPUs, 6 GB, q35) boots the private NVMe disk; VNC on
 localhost:5900; virtio keyboard and relative mouse; virtual Ethernet gets `10.0.2.15/24`;
 serial shell and QMP via Unix sockets; clean guest shutdown. Boot completes in about 20 s
@@ -44,7 +54,7 @@ Evidence in `out/qemu/`. Then **look at `screen.png`**. For input, use `make qem
 - `***** BOOT TIMEOUT: forcing display enabled` means WindowManager waited 30 s for a window or
   the boot animation. To see which, run `cmd protolog_configuration logcat enable WM_DEBUG_BOOT`
   over the console before `boot_progress_enable_screen`. The serial shell cannot read the result in
-  `/metadata/dali-bootlog/current/android-boot.log*`; after the VM stops, copy the metadata partition
+  `/metadata/gbos-builder-bootlog/current/android-boot.log*`; after the VM stops, copy the metadata partition
   out of `out/android/disk.img` and read it with `debugfs` ([boot spec](boot.md)).
 - A 1280x720 screenshot can still be QEMU's inactive-display placeholder; inspect it.
 - Unbounded `logcat -b all -d` over serial can time out and leave the shell busy; filter on the
@@ -70,6 +80,9 @@ Parked while the laptop is the focus (owner, 2026-10-31); these are still the ag
 - Keep the guest awake (for example Android's stay-awake setting) so it does not enter s2idle.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Rename runner/console identities and standalone image defaults;
+  no VM geometry or enforcement change. Direct/UEFI setup screens inspected, accessibility
+  tap responds, saved diagnostics and Berberis selection checked. VMs exited; setup not completed.
 - 2026-11-02 (this commit) — Softpipe profile skips shader priming and the boot animation; boot
   completes at ~20 s instead of ~50 s (WindowManager no longer hits its 30 s BOOT TIMEOUT).
 - 2026-10-31 `9c78a5d` — Parked: the owner is satisfied that QEMU boots Android to setup and

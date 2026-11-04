@@ -77,9 +77,9 @@ def metadata_device(selected):
 
 def retrieve(selected, output):
     device = metadata_device(selected)
-    boots = directory(device, "/dali-bootlog")
+    boots = directory(device, "/gbos-builder-bootlog")
     if "current" not in boots or not stat.S_ISDIR(boots["current"][0]):
-        raise ValueError("No current boot logs; this may not be the Dali Android USB")
+        raise ValueError("No current boot logs; this may not be the gbos-builder Android USB")
     output.mkdir(parents=True, exist_ok=True, mode=0o700)
     latest = output / "latest"
     if latest.exists() and not latest.is_symlink():
@@ -94,7 +94,7 @@ def retrieve(selected, output):
                 continue
             if not stat.S_ISDIR(boots[boot][0]):
                 raise ValueError(f"USB log directory {boot} is not a directory")
-            source = f"/dali-bootlog/{boot}"
+            source = f"/gbos-builder-bootlog/{boot}"
             entries = directory(device, source)
             if "boot-id" not in entries:
                 raise ValueError(f"{boot} logs have no boot-id")

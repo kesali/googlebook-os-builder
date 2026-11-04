@@ -9,14 +9,14 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial | Driver-patch recipes verified; owner checks panel brightness |
-| [Boot chain](boot.md) | partial | Berberis fixes tested laptop apps; retrieve logs after subsequent retests |
-| [OS image and disk](os-image.md) | working (expanded fresh image) | Owner retries larger-USB update after GPT compatibility fix |
+| [Kernel (GKI)](kernel.md) | partial | Renamed kernel/ABI verified; owner checks panel brightness |
+| [Boot chain](boot.md) | partial | Renamed direct/UEFI boots verified; physical retest remains |
+| [OS image and disk](os-image.md) | working (gbos-builder fresh image) | Old media need an explicit owner-run fresh flash, not an update |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial | Lenovo desktop/video owner-confirmed; original-profile freeze unresolved |
-| [QEMU VM](qemu.md) | parked | — (SetupWizard and networking can wait) |
-| [Laptop hardware](laptop-hardware.md) | partial | Lenovo touchpad owner-confirmed; palm rejection and audio/camera remain |
-| [USB diagnostics](usb-diagnostic.md) | parked | — (first laptop boot/shutdown confirmed; logs reviewed) |
+| [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
+| [Laptop hardware](laptop-hardware.md) | partial | Physical renamed-image retest; Lenovo audio/camera remain |
+| [USB diagnostics](usb-diagnostic.md) | parked | Renamed UEFI smoke passes; no new physical retest |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
 `planned` = agreed, not started · `parked` = works, not being developed now.

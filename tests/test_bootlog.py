@@ -29,7 +29,7 @@ class BootlogTests(unittest.TestCase):
         self.tool("getprop", 'test "${FAIL_GETPROP:-0}" = 0 || exit 1\n'
                   'case "$1" in\n'
                   'ro.build.fingerprint) echo test/fingerprint ;;\n'
-                  'ro.boot.dali.graphics) echo amd ;;\n'
+                  'ro.boot.gbos_builder.graphics) echo amd ;;\n'
                   'ro.dalvik.vm.native.bridge) echo "${NATIVE_BRIDGE:-libhoudini.so}" ;;\n'
                   'ro.boot.bootreason) echo cold ;;\n'
                   '*) exit 1 ;;\n'
@@ -52,7 +52,7 @@ class BootlogTests(unittest.TestCase):
 
     def assert_ready(self, result):
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.ready.read_text(), "sys.dali.bootlog.ready 1\n")
+        self.assertEqual(self.ready.read_text(), "sys.gbos_builder.bootlog.ready 1\n")
 
     def test_first_boot_records_identity_before_readiness(self):
         self.assert_ready(self.prepare())
@@ -118,7 +118,7 @@ class BootlogTests(unittest.TestCase):
         unknown.write_text("do not delete\n")
         result = self.prepare(BOOT_THREE)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("dali_bootlog_prepare failed", result.stderr)
+        self.assertIn("gbos_builder_bootlog_prepare failed", result.stderr)
         self.assertFalse(self.ready.exists())
         self.assertEqual(unknown.read_text(), "do not delete\n")
         self.assertEqual((self.logs / "current/boot-id").read_text(), BOOT_TWO + "\n")
@@ -168,7 +168,7 @@ class BootlogTests(unittest.TestCase):
     def test_identity_command_failure_is_not_hidden(self):
         result = self.prepare(FAIL_GETPROP="1")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("dali_bootlog_prepare failed", result.stderr)
+        self.assertIn("gbos_builder_bootlog_prepare failed", result.stderr)
         self.assertFalse(self.ready.exists())
 
     def test_invalid_boot_id_is_rejected(self):
@@ -181,14 +181,14 @@ class BootlogTests(unittest.TestCase):
     def test_collectors_are_native_bounded_and_readiness_gated(self):
         text = (REPO / "android/system_ext/bootlog.rc").read_text()
         self.assertIn("setprop ro.logd.kernel true", text)
-        self.assertIn("on property:sys.dali.bootlog.ready=1", text)
-        self.assertIn("on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1\n"
-                      "    start dali_hardware_snapshot\n"
-                      "    start dali_touchpad_capture\n"
-                      "    stop dali_android_boot_log\n", text)
-        self.assertIn("seclabel u:r:dali_hardware_diag:s0", text)
+        self.assertIn("on property:sys.gbos_builder.bootlog.ready=1", text)
+        self.assertIn("on property:sys.boot_completed=1 && property:sys.gbos_builder.bootlog.ready=1\n"
+                      "    start gbos_builder_hardware_snapshot\n"
+                      "    start gbos_builder_touchpad_capture\n"
+                      "    stop gbos_builder_android_boot_log\n", text)
+        self.assertIn("seclabel u:r:gbos_builder_hardware_diag:s0", text)
         commands = [line.split() for line in text.splitlines()
-                    if line.startswith("service dali_") and "/system/bin/logcat" in line]
+                    if line.startswith("service gbos_builder_") and "/system/bin/logcat" in line]
         self.assertEqual(len(commands), 4)
         rotate_kib = {}
         for command in commands:
@@ -198,41 +198,41 @@ class BootlogTests(unittest.TestCase):
             rotate_kib[command[1]] = int(command[command.index("-r") + 1])
             # The live file plus seven archives must stay within 16 MiB per stream per boot.
             self.assertLessEqual(rotate_kib[command[1]] * 8, 16 * 1024)
-            self.assertTrue(command[-1].startswith("/metadata/dali-bootlog/current/"))
-        self.assertEqual(rotate_kib, {"dali_kernel_log": 256, "dali_android_log": 256,
-                                      "dali_android_boot_log": 1024, "dali_crash_log": 256})
+            self.assertTrue(command[-1].startswith("/metadata/gbos-builder-bootlog/current/"))
+        self.assertEqual(rotate_kib, {"gbos_builder_kernel_log": 256, "gbos_builder_android_log": 256,
+                                      "gbos_builder_android_boot_log": 1024, "gbos_builder_crash_log": 256})
         self.assertEqual(commands[0][commands[0].index("-b") + 1], "kernel")
         self.assertEqual(commands[1][commands[1].index("-b") + 1], "main,system,crash,events")
-        self.assertEqual(commands[2][1], "dali_android_boot_log")
+        self.assertEqual(commands[2][1], "gbos_builder_android_boot_log")
 
         def without_rotate_size(command):
             index = command.index("-r")
             return command[2:index] + command[index + 2:-1]
 
         self.assertEqual(without_rotate_size(commands[2]), without_rotate_size(commands[1]))
-        self.assertEqual(commands[2][-1], "/metadata/dali-bootlog/current/android-boot.log")
+        self.assertEqual(commands[2][-1], "/metadata/gbos-builder-bootlog/current/android-boot.log")
         self.assertEqual(commands[3][commands[3].index("-b") + 1], "crash")
-        self.assertEqual(commands[3][-1], "/metadata/dali-bootlog/current/crash.log")
-        self.assertNotIn("stop dali_crash_log", text)
+        self.assertEqual(commands[3][-1], "/metadata/gbos-builder-bootlog/current/crash.log")
+        self.assertNotIn("stop gbos_builder_crash_log", text)
         for command in commands:
             self.assertIn(f"    start {command[1]}\n", text)
 
     def test_policy_allows_rotation_only_in_our_directory_type(self):
         policy = (REPO / "android/system/bootlog-policy.patch").read_text()
         permissions = [line for line in policy.splitlines()
-                       if line.startswith("+(allow dali_bootlog dali_bootlog_file (dir")]
+                       if line.startswith("+(allow gbos_builder_bootlog gbos_builder_bootlog_file (dir")]
         self.assertEqual(len(permissions), 1)
         self.assertIn("rename", permissions[0])
         self.assertIn("rmdir", permissions[0])
         self.assertNotIn("(permissive", policy)
         self.assertNotIn("(capability", policy)
         self.assertNotIn("blk_file", policy)
-        self.assertIn("dali_hardware_diag proc_asound", policy)
-        self.assertIn("dali_hardware_diag proc_modules", policy)
-        self.assertIn("dali_hardware_diag audio_device", policy)
-        self.assertIn("dali_hardware_diag sysfs", policy)
-        self.assertIn("dali_hardware_diag device (dir (search))", policy)
-        self.assertNotIn("allow dali_hardware_diag audio_device (chr_file", policy)
+        self.assertIn("gbos_builder_hardware_diag proc_asound", policy)
+        self.assertIn("gbos_builder_hardware_diag proc_modules", policy)
+        self.assertIn("gbos_builder_hardware_diag audio_device", policy)
+        self.assertIn("gbos_builder_hardware_diag sysfs", policy)
+        self.assertIn("gbos_builder_hardware_diag device (dir (search))", policy)
+        self.assertNotIn("allow gbos_builder_hardware_diag audio_device (chr_file", policy)
 
     def test_hardware_snapshot_reads_only_declared_device_metadata(self):
         script = SNAPSHOT.read_text()
@@ -354,7 +354,7 @@ class HardwareSnapshotTests(unittest.TestCase):
         (self.logs / "current/hardware.txt").symlink_to(target)
         result = self.snapshot()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("dali hardware snapshot failed", result.stderr)
+        self.assertIn("gbos-builder hardware snapshot failed", result.stderr)
         self.assertEqual(target.read_text(), "keep\n")
 
     def test_empty_proc_file_keeps_next_section_on_a_new_line(self):
@@ -369,7 +369,7 @@ class HardwareSnapshotTests(unittest.TestCase):
         (self.logs / "current/hardware.txt").mkdir()
         result = self.snapshot()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("dali hardware snapshot failed", result.stderr)
+        self.assertIn("gbos-builder hardware snapshot failed", result.stderr)
         self.assertEqual(list((self.logs / "current/hardware.txt").iterdir()), [])
 
 

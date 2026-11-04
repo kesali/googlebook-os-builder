@@ -5,7 +5,7 @@ set -euo pipefail
 source=$(realpath "$1") build=$(realpath -m "$2") profile=$(realpath "$3")
 mkdir -p "$build"
 config_hash=$({ printf '%s\n' "$source"; cat "$profile" "$0"; } | sha256sum | cut -d' ' -f1)
-export KBUILD_BUILD_USER=dali KBUILD_BUILD_HOST=builder
+export KBUILD_BUILD_USER=gbos-builder KBUILD_BUILD_HOST=builder
 export KBUILD_BUILD_TIMESTAMP='2026-10-01 00:00:00 UTC'
 mk=(make --no-print-directory -C "$source" O="$build" ARCH=x86_64 -j"${JOBS:-4}")
 

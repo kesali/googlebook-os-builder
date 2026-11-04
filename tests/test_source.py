@@ -1,5 +1,6 @@
 """Verify that release sources are patched in order without replacing existing trees."""
 
+import os
 from pathlib import Path
 import subprocess
 import tarfile
@@ -66,6 +67,26 @@ class SourcePreparationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Refusing to replace", result.stderr)
         self.assertEqual(original.read_text(), "keep\n")
+
+    def test_newer_input_timestamps_do_not_recreate_content_keyed_sources(self):
+        self.destination.mkdir()
+        ready = self.destination / ".ready"
+        ready.touch()
+        os.utime(ready, (1, 1))
+        edit = self.destination / "owner-edit"
+        edit.write_text("keep\n")
+        for component in ("MESA", "MINIGBM"):
+            with self.subTest(component=component):
+                result = subprocess.run(
+                    ["make", "--no-print-directory", "-n", str(ready),
+                     f"{component}_SRC={self.destination}", f"{component}_TAR={self.archive}",
+                     f"{component}_PATCHES={self.first_patch}"],
+                    cwd=REPO, capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("scripts/source.sh", result.stdout)
+                self.assertEqual(ready.stat().st_mtime_ns, 1_000_000_000)
+                self.assertEqual(edit.read_text(), "keep\n")
 
 
 if __name__ == "__main__":

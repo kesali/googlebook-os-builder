@@ -95,7 +95,7 @@ class AudioTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((analog / "id").read_text(), "sofrt5682")
         self.assertEqual((hdmi / "id").read_text(), "Generic\n")
-        self.assertEqual(self.ready.read_text(), "vendor.audio.dali.ready 1\n")
+        self.assertEqual(self.ready.read_text(), "vendor.audio.gbos_builder.ready 1\n")
 
     def test_card_id_write_contains_no_whitespace(self):
         card = self.card(1, "ALC256", "Generic")
@@ -135,7 +135,7 @@ class AudioTests(unittest.TestCase):
         (card / "id").mkdir()
         result = self.prepare()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("dali audio preparation failed", result.stderr)
+        self.assertIn("gbos-builder audio preparation failed", result.stderr)
         self.assertFalse(self.ready.exists())
 
     def test_property_failure_is_reported(self):
@@ -143,20 +143,20 @@ class AudioTests(unittest.TestCase):
         self.tool("setprop", "exit 1\n")
         result = self.prepare()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("dali audio preparation failed", result.stderr)
+        self.assertIn("gbos-builder audio preparation failed", result.stderr)
 
     def test_service_is_laptop_only_and_restarts_hal_after_readiness(self):
         text = (REPO / "android/vendor/audio-msi.rc").read_text()
-        self.assertIn("on boot && property:ro.boot.dali.graphics=amd", text)
-        self.assertIn("on boot && property:ro.boot.dali.graphics=amd-vulkan", text)
+        self.assertIn("on boot && property:ro.boot.gbos_builder.graphics=amd", text)
+        self.assertIn("on boot && property:ro.boot.gbos_builder.graphics=amd-vulkan", text)
         self.assertIn("/vendor/bin/get_variant_audio /sys ALC256", text)
-        self.assertIn("on property:vendor.audio.dali.ready=1\n    restart vendor.audio-hal-aidl", text)
+        self.assertIn("on property:vendor.audio.gbos_builder.ready=1\n    restart vendor.audio-hal-aidl", text)
         self.assertNotIn("mount", text)
 
     def test_policy_does_not_grant_generic_sysfs_write(self):
         patch = (REPO / "android/vendor/audio-policy.patch").read_text()
         allows = [line for line in patch.splitlines() if line.startswith("+(allow ")]
-        self.assertIn("+(allow get_variant_audio dali_audio_id (file (getattr open read write)))",
+        self.assertIn("+(allow get_variant_audio gbos_builder_audio_id (file (getattr open read write)))",
                       allows)
         self.assertFalse(any("sysfs_" in line or "sysfs " in line for line in allows))
         self.assertNotIn("(permissive", patch)

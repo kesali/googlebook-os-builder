@@ -1,6 +1,6 @@
 ---
 name: update-usb
-description: "Use when preparing a gbos-dali Android USB OS update: build approved changes, guide the owner through USB selection and confirmation, preserve userdata and metadata, and verify updater results without agent physical-disk writes."
+description: "Use when preparing a gbos-builder Android USB OS update: build approved changes, guide the owner through USB selection and confirmation, preserve userdata and metadata, and verify updater results without agent physical-disk writes."
 ---
 
 # Update the existing Android USB

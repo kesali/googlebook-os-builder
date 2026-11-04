@@ -30,7 +30,7 @@ def recipe_patch(name):
 
 
 class KernelRecipeTests(unittest.TestCase):
-    def test_selected_patches_preserve_baseline_order_bytes_and_source_cache(self):
+    def test_selected_patches_keep_order_and_only_rename_the_shared_helper(self):
         result = inspect_kernel_recipes()
         self.assertEqual(result.returncode, 0, result.stderr)
         paths, digest, source = result.stdout.splitlines()
@@ -41,10 +41,13 @@ class KernelRecipeTests(unittest.TestCase):
             "hardware/drivers/renoir-acp/renoir-capture-buffers.patch",
             "hardware/drivers/i915/i915-gen4-primary-alpha.patch",
         ])
-        self.assertEqual(digest, "28b9b8b1e7af2eff86399844b1a1242331637f29b8b4b32f176cfbcd541fd11f")
+        patch_bytes = b"".join((ROOT / path).read_bytes() for path in paths.split())
+        before_rename = patch_bytes.replace(b"gbos_builder_remove_firmware_fb",
+                                           b"dali_remove_firmware_fb")
+        self.assertEqual(hashlib.sha256(before_rename).hexdigest(),
+                         "28b9b8b1e7af2eff86399844b1a1242331637f29b8b4b32f176cfbcd541fd11f")
         self.assertTrue(source.endswith("-" + digest))
-        self.assertEqual(hashlib.sha256(
-            b"".join((ROOT / path).read_bytes() for path in paths.split())).hexdigest(), digest)
+        self.assertEqual(hashlib.sha256(patch_bytes).hexdigest(), digest)
 
     def test_selection_and_order_change_only_the_source_patch_hash(self):
         original = inspect_kernel_recipes()
@@ -490,7 +493,7 @@ class FramebufferPatchTests(unittest.TestCase):
                 cwd=source, check=True, capture_output=True, text=True,
             )
             drm_text = drm.read_text()
-            handoff = "ret = dali_remove_firmware_fb(parent, driver->name);"
+            handoff = "ret = gbos_builder_remove_firmware_fb(parent, driver->name);"
             self.assertLess(drm_text.index("drmm_add_action_or_reset"), drm_text.index(handoff))
             self.assertLess(drm_text.index(handoff), drm_text.index("drm_minor_alloc"))
             self.assertIn('dev_err(parent, "Failed to remove firmware framebuffer: %d\\n", ret);',

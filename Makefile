@@ -30,7 +30,7 @@ GKI := $(OUT)/gki
 LP_CORE := $(OUT)/src/lp-core-$(LP_CORE_REV)
 LP_EXTRAS := $(OUT)/src/lp-extras-$(LP_EXTRAS_REV)
 ANDROID := $(OUT)/android
-ANDROID_DISK := $(OUT)/android-expanded/disk.img
+ANDROID_DISK := $(OUT)/gbos-builder/disk.img
 ANDROID_LAYOUT := android/super-layout.json
 MESA := $(OUT)/mesa
 MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
@@ -152,13 +152,13 @@ $(OUT)/initramfs.gz: $(BUSYBOX) boot/init $(OUT)/isa-smoke scripts/initramfs.sh
 $(OUT)/boot/manifest.json: $(OUT)/kernel/bzImage $(OUT)/initramfs.gz $(OUT)/grub/BOOTX64.EFI boot/menu.cfg tools/deploy.py
 	$(BUILDER) python3 tools/deploy.py bundle --kind diagnostic "$(OUT)/kernel/bzImage" "$(OUT)/initramfs.gz" \
 		"$(OUT)/grub/BOOTX64.EFI" boot/menu.cfg "$(OUT)/boot"
-image: $(USB_IMAGE) ## Assemble out/dali-usb.img (no root or physical disk writes)
+image: $(USB_IMAGE) ## Assemble out/gbos-builder-usb.img (no root or physical disk writes)
 usb: image ## Alias for image; flash it with your preferred USB imaging tool
 $(USB_IMAGE): $(OUT)/boot/manifest.json scripts/image.sh tools/deploy.py
 	$(BUILDER) bash scripts/image.sh "$(OUT)/boot" "$@"
 
 deploy: $(OUT)/boot/manifest.json ## Update changed boot files: make deploy USB=/mounted/USB
-	@test -n "$(USB)" || { echo "Set USB to the mounted DALI-BOOT partition; no raw devices." >&2; exit 1; }
+	@test -n "$(USB)" || { echo "Set USB to the mounted GBOS-BOOT partition; no raw devices." >&2; exit 1; }
 	python3 tools/deploy.py usb "$(OUT)/boot" "$(USB)"
 
 test: $(BUILD_READY) ## Run focused update/safety tests (no physical disks)
@@ -221,8 +221,9 @@ $(NDK_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(NDK_URL)" "$(NDK_SHA)" "$@"
 $(ANDROID_EMU_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(ANDROID_EMU_URL)" "$(ANDROID_EMU_SHA)" "$@"
-$(MESA_SRC)/.ready: $(MESA_TAR) $(MESA_PATCHES) scripts/source.sh
-	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" $(MESA_PATCHES)
+# Input bytes already select these editable trees; timestamps must not replace them.
+$(MESA_SRC)/.ready: | $(MESA_TAR) $(MESA_PATCHES) scripts/source.sh
+	$(BUILDER) bash scripts/source.sh "$(MESA_TAR)" "$(@D)" $(MESA_PATCHES)
 $(LIBDRM_SRC)/.ready: $(LIBDRM_TAR)
 	$(BUILDER) bash scripts/source.sh "$<" "$(@D)"
 $(EXPAT_SRC)/.ready: $(EXPAT_TAR)
@@ -246,8 +247,8 @@ $(FIRMWARE)/manifest: $(FIRMWARE_TAR) kernel/msi-firmware.list scripts/firmware.
 	$(BUILDER) bash scripts/firmware.sh "$<" "$(FIRMWARE_VERSION)" kernel/msi-firmware.list "$(FIRMWARE)"
 $(MINIGBM_TAR): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(MINIGBM_URL)" "$(MINIGBM_SHA)" "$@"
-$(MINIGBM_SRC)/.ready: $(MINIGBM_TAR) $(MINIGBM_PATCHES) scripts/source.sh
-	$(BUILDER) bash scripts/source.sh "$<" "$(@D)" $(MINIGBM_PATCHES)
+$(MINIGBM_SRC)/.ready: | $(MINIGBM_TAR) $(MINIGBM_PATCHES) scripts/source.sh
+	$(BUILDER) bash scripts/source.sh "$(MINIGBM_TAR)" "$(@D)" $(MINIGBM_PATCHES)
 $(BUILDTOOLS_ZIP): | $(BUILD_READY)
 	$(BUILDER) bash scripts/fetch.sh "$(ANDROID_BUILDTOOLS_URL)" "$(ANDROID_BUILDTOOLS_SHA)" "$@"
 $(dir $(AIDL))lib64/libc++.so: $(BUILDTOOLS_ZIP)
@@ -366,7 +367,7 @@ $(ANDROID)/boot/manifest.json: $(GKI)/bzImage $(ANDROID)/initrd.img $(OUT)/grub/
 	$(BUILDER) python3 tools/deploy.py bundle --kind android --cmdline android/cmdline.txt "$(GKI)/bzImage" \
 		"$(ANDROID)/initrd.img" "$(OUT)/grub/BOOTX64.EFI" boot/android-menu.cfg "$(ANDROID)/boot"
 deploy-android: $(ANDROID)/boot/manifest.json ## Update Android boot files: make deploy-android USB=/mounted/USB
-	@test -n "$(USB)" || { echo "Set USB to the mounted DALI-BOOT partition; no raw devices." >&2; exit 1; }
+	@test -n "$(USB)" || { echo "Set USB to the mounted GBOS-BOOT partition; no raw devices." >&2; exit 1; }
 	python3 tools/deploy.py usb "$(ANDROID)/boot" "$(USB)"
 android-boot: $(ANDROID_DISK) $(ANDROID)/boot/manifest.json ## Put the laptop's boot files into the disk's boot partition
 	$(BUILDER) bash scripts/android-boot.sh "$(ANDROID_DISK)" "$(ANDROID)/boot"

@@ -4,76 +4,76 @@ on early-init
     setprop ro.logd.kernel true
 
 on post-fs
-    mkdir /metadata/dali-bootlog 0700 logd log
-    restorecon_recursive /metadata/dali-bootlog
-    start dali_bootlog_prepare
+    mkdir /metadata/gbos-builder-bootlog 0700 logd log
+    restorecon_recursive /metadata/gbos-builder-bootlog
+    start gbos_builder_bootlog_prepare
 
 # Failed preparation never signals readiness; init reports collector failures to kmsg.
-on property:sys.dali.bootlog.ready=1
-    start dali_kernel_log
-    start dali_android_log
-    start dali_android_boot_log
-    start dali_crash_log
+on property:sys.gbos_builder.bootlog.ready=1
+    start gbos_builder_kernel_log
+    start gbos_builder_android_log
+    start gbos_builder_android_boot_log
+    start gbos_builder_crash_log
 
-service dali_bootlog_prepare /system/bin/sh /system_ext/etc/dali/bootlog-prepare.sh /metadata/dali-bootlog /proc/sys/kernel/random/boot_id
+service gbos_builder_bootlog_prepare /system/bin/sh /system_ext/etc/gbos-builder/bootlog-prepare.sh /metadata/gbos-builder-bootlog /proc/sys/kernel/random/boot_id
     user logd
     group log
-    seclabel u:r:dali_bootlog:s0
+    seclabel u:r:gbos_builder_bootlog:s0
     disabled
     oneshot
     stdio_to_kmsg
 
-on property:sys.boot_completed=1 && property:sys.dali.bootlog.ready=1
-    start dali_hardware_snapshot
-    start dali_touchpad_capture
-    stop dali_android_boot_log
+on property:sys.boot_completed=1 && property:sys.gbos_builder.bootlog.ready=1
+    start gbos_builder_hardware_snapshot
+    start gbos_builder_touchpad_capture
+    stop gbos_builder_android_boot_log
 
-service dali_hardware_snapshot /system/bin/sh /system_ext/etc/dali/hardware-snapshot.sh /metadata/dali-bootlog /sys /proc /dev
+service gbos_builder_hardware_snapshot /system/bin/sh /system_ext/etc/gbos-builder/hardware-snapshot.sh /metadata/gbos-builder-bootlog /sys /proc /dev
     user logd
     group log
-    seclabel u:r:dali_hardware_diag:s0
+    seclabel u:r:gbos_builder_hardware_diag:s0
     disabled
     oneshot
     stdio_to_kmsg
 
 # Temporary Lenovo diagnostic: never open all inputs or grab the device.
-service dali_touchpad_capture /system/bin/sh /system_ext/etc/dali/touchpad-capture.sh /metadata/dali-bootlog /sys /dev
+service gbos_builder_touchpad_capture /system/bin/sh /system_ext/etc/gbos-builder/touchpad-capture.sh /metadata/gbos-builder-bootlog /sys /dev
     user logd
     group log input
-    seclabel u:r:dali_touchpad_diag:s0
+    seclabel u:r:gbos_builder_touchpad_diag:s0
     disabled
     oneshot
     stdio_to_kmsg
 
 # Long format has one header per record, avoiding multiline message expansion.
 # Eight 256-KiB files per stream leave headroom below the agreed 16-MiB limit.
-service dali_kernel_log /system/bin/logcat -b kernel -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/kernel.log
+service gbos_builder_kernel_log /system/bin/logcat -b kernel -v long -v year -r 256 -n 7 -f /metadata/gbos-builder-bootlog/current/kernel.log
     user logd
     group log
-    seclabel u:r:dali_bootlog:s0
+    seclabel u:r:gbos_builder_bootlog:s0
     disabled
     stdio_to_kmsg
 
-service dali_android_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/android.log
+service gbos_builder_android_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 256 -n 7 -f /metadata/gbos-builder-bootlog/current/android.log
     user logd
     group log
-    seclabel u:r:dali_bootlog:s0
+    seclabel u:r:gbos_builder_bootlog:s0
     disabled
     stdio_to_kmsg
 
 # Startup alone overflows android.log's 2 MiB (QEMU writes about 3.5 MB before boot completes),
 # so this copy gets 8 MiB and stops at boot completion. A stuck boot keeps its newest 8 MiB.
-service dali_android_boot_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 1024 -n 7 -f /metadata/dali-bootlog/current/android-boot.log
+service gbos_builder_android_boot_log /system/bin/logcat -b main,system,crash,events -v long -v year -r 1024 -n 7 -f /metadata/gbos-builder-bootlog/current/android-boot.log
     user logd
     group log
-    seclabel u:r:dali_bootlog:s0
+    seclabel u:r:gbos_builder_bootlog:s0
     disabled
     stdio_to_kmsg
 
 # Keep fatal records independently: game-session transition spam can roll android.log in seconds.
-service dali_crash_log /system/bin/logcat -b crash -v long -v year -r 256 -n 7 -f /metadata/dali-bootlog/current/crash.log
+service gbos_builder_crash_log /system/bin/logcat -b crash -v long -v year -r 256 -n 7 -f /metadata/gbos-builder-bootlog/current/crash.log
     user logd
     group log
-    seclabel u:r:dali_bootlog:s0
+    seclabel u:r:gbos_builder_bootlog:s0
     disabled
     stdio_to_kmsg

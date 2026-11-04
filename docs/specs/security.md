@@ -1,13 +1,21 @@
 # Security services
 
-**Status:** working (software keys) — KeyMint and Gatekeeper run; storage encryption works.
-**Last verified:** 2026-10-31 — `make qemu-check`: stable KeyMint/Gatekeeper PIDs, encrypted userdata mounted, SELinux enforcing.
+**Status:** working (software keys) — renamed policy enforcing; key services stable.
+**Last verified:** 2026-11-04 — 246 tests, source-derived policy comparison (identity changes
+only), image metadata checks and enforcing direct/UEFI QEMU pass. KeyMint/Gatekeeper PIDs stable;
+renamed collectors persist logs and hardware snapshot without project-domain denials.
+[Evidence](../../out/gbos-builder-validation/).
 
 ## Goal
 Provide the key and lock-screen services Android requires to boot, without the Googlebook
 security chip or Trusty VM that QEMU cannot provide — and without weakening SELinux.
 
 ## Current state
+Verified: project-owned SELinux type names change to `gbos_builder_*` together with
+their service labels and file/property contexts. Android patches are regenerated from Google's
+originals; permissions and enforcing policy are unchanged. Renamed image runtime checks pass.
+Not verified: hardware-only audio policy on the physical laptop after renaming.
+
 Verified: software KeyMint and Gatekeeper from Google's Android 17 emulator image run unmodified;
 vold unlocks file-based encryption; boot completes; SELinux enforcing.
 Not verified: SetupWizard lock-screen setup, Google account sign-in, Play Integrity.
@@ -34,7 +42,7 @@ non-rollback-resistant keys, as expected). This is a development device, not a s
 - [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts; API check.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/remove.list](../../android/vendor/remove.list) — services installed and removed.
 - [android/system_ext/vintf-manifest.patch](../../android/system_ext/vintf-manifest.patch) — Trusty-only HAL declarations removed.
-- [android/vendor/gatekeeper.rc](../../android/vendor/gatekeeper.rc), [android/system_ext/dali.rc](../../android/system_ext/dali.rc) — software-security services shared by QEMU and the laptop.
+- [android/vendor/gatekeeper.rc](../../android/vendor/gatekeeper.rc), [android/system_ext/gbos-builder.rc](../../android/system_ext/gbos-builder.rc) — software-security services shared by QEMU and the laptop.
 - [android/crossystem-qemu.c](../../android/crossystem-qemu.c) — firmware-command stand-in.
 - [android/bootconfig.txt](../../android/bootconfig.txt) — StrongBox disabled.
 
@@ -53,11 +61,14 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-04 (this commit) — Rename policy identifiers/init filename and regenerate Android
+  patches; permission comparison unchanged. Enforcing direct/UEFI runs keep key services stable
+  and save renamed logs with no project-domain denials. Hardware-only audio policy untested.
 - 2026-11-02 (this commit) — Removed `gscutil.rc`; the laptop and QEMU logs both showed init
   blocked 10 s on `wait /dev/tpm0`. QEMU `boot_completed` 59.7 s → 49.9 s; setup screen inspected.
 - 2026-11-02 (this commit) — Disabled `udsattestation` and the face feature. QEMU kernel log:
   IGsc start requests 389 → 0, face IVirtualHal 356 → 0; KeyMint/Gatekeeper PIDs stable, enforcing.
-- 2026-11-01 (this commit) — Common security settings moved to `dali.rc`; graphics profiles are
+- 2026-11-01 (this commit) — Common security settings moved to `dali.rc` (pre-rename); graphics profiles are
   separate. The AMD-candidate image still has stable KeyMint/Gatekeeper PIDs and enforcing
   SELinux in the UEFI graphical check; no new policy permissions.
 - 2026-10-31 `357470d` — Security changes moved to android/vendor/ lists and the system_ext VINTF patch; donor API check moved to emulator.sh.

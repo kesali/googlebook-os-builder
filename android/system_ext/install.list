@@ -2,13 +2,13 @@
 # Sources: ./ is this directory.
 #
 # path                   mode owner selinux type source
-etc/init/zz-dali.rc     0644 0:0   system_file  ./dali.rc
-etc/init/zz-dali-bootlog.rc 0644 0:0 system_file ./bootlog.rc
-etc/dali/              0755 0:0   system_file  -
-etc/dali/bootlog-prepare.sh 0644 0:0 system_file ./bootlog-prepare.sh
-etc/dali/hardware-snapshot.sh 0644 0:0 system_file ./hardware-snapshot.sh
-etc/dali/touchpad-capture.sh 0644 0:0 system_file ./touchpad-capture.sh
-etc/dali/graphics-softpipe.rc 0644 0:0 system_file ./graphics-softpipe.rc
-etc/dali/graphics-amd.rc 0644 0:0 system_file ./graphics-amd.rc
-etc/dali/graphics-amd-vulkan.rc 0644 0:0 system_file ./graphics-amd-vulkan.rc
-etc/dali/graphics-intel.rc 0644 0:0 system_file ./graphics-intel.rc
+etc/init/zz-gbos-builder.rc     0644 0:0   system_file  ./gbos-builder.rc
+etc/init/zz-gbos-builder-bootlog.rc 0644 0:0 system_file ./bootlog.rc
+etc/gbos-builder/              0755 0:0   system_file  -
+etc/gbos-builder/bootlog-prepare.sh 0644 0:0 system_file ./bootlog-prepare.sh
+etc/gbos-builder/hardware-snapshot.sh 0644 0:0 system_file ./hardware-snapshot.sh
+etc/gbos-builder/touchpad-capture.sh 0644 0:0 system_file ./touchpad-capture.sh
+etc/gbos-builder/graphics-softpipe.rc 0644 0:0 system_file ./graphics-softpipe.rc
+etc/gbos-builder/graphics-amd.rc 0644 0:0 system_file ./graphics-amd.rc
+etc/gbos-builder/graphics-amd-vulkan.rc 0644 0:0 system_file ./graphics-amd-vulkan.rc
+etc/gbos-builder/graphics-intel.rc 0644 0:0 system_file ./graphics-intel.rc

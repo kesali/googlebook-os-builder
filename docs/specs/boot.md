@@ -1,7 +1,13 @@
 # Boot chain
 
 **Status:** partial — the laptop completed setup; its boot logs and snapshot are retrieved after each test.
-**Last verified:** 2026-11-02 — 53 focused tests pass; the image rebuild changed only system
+**Last verified:** 2026-11-04 — Rename: 246 tests and enforcing direct/UEFI QEMU pass.
+Setup and Accessibility after an injected tap are inspected. New collector domains, saved
+boot/snapshot logs, serial identity and optional Berberis argument are checked, with no
+project-domain denials. Old disks preserved; physical retest pending.
+[Evidence](../../out/gbos-builder-validation/).
+
+Earlier, 2026-11-02 — 53 focused tests pass; the image rebuild changed only system
 and system_ext, with metadata verified. A repeat preserves image/bundle timestamps and writes
 no partitions. Two enforcing UEFI/QEMU runs reached inspected setup screens, selected Houdini
 then Berberis, persisted bridge identity and controlled fatal records, and retained the previous
@@ -20,12 +26,12 @@ still shows the kernel's drm_log and the graphical run reached [setup](../../out
 The laptop's shorter boot is not yet measured.
 Before that, an enforcing 12-vCPU QEMU boot kept the whole startup in
 `android-boot.log*`: 25,419 entries (4,010,284 bytes, no archive dropped) from logd's first
-entry to boot completion, after which the copy stopped; no `dali_*` denials
+entry to boot completion, after which the copy stopped; no `dali_*` denials (pre-rename)
 ([summary](../../out/boot-window-log-validation/summary.txt)). `make qemu-check JOBS=12` passed
 and its setup [screen](../../out/boot-window-log-validation/screen.png) was inspected.
 Before that, the snapshot gained display connectors and cpufreq
 policies. An enforcing 12-vCPU QEMU boot recorded the virtual connector's status and modes, the
-service exited 0 with no `dali_hardware_diag` denials, and QEMU correctly shows no cpufreq
+service exited 0 with no `dali_hardware_diag` denials (pre-rename), and QEMU correctly shows no cpufreq
 ([snapshot](../../out/snapshot-display-cpu-validation/hardware.txt),
 [service](../../out/snapshot-display-cpu-validation/service.txt)); `make qemu-check JOBS=12`
 passed and its setup [screen](../../out/snapshot-display-cpu-validation/screen.png) was inspected.
@@ -73,6 +79,12 @@ Assemble what a Googlebook's firmware would hand the kernel — command line, in
 from Google's boot images plus a short, readable list of our changes.
 
 ## Current state
+Verified: gbos-builder clean-break rename aligns GRUB arguments, Android imports,
+services, readiness property and diagnostic paths. `gbos_builder` is used for properties and
+SELinux identifiers; filesystem paths use `gbos-builder`. Old saved evidence is retained under
+its original names. No compatibility with previous Dali boot media. Fresh-image and saved-log
+checks pass; hardware-only services still need physical retesting.
+
 Verified: initrd = Google platform ramdisk + Google module ramdisk extended with our virtio
 modules + Google generic ramdisk + bootconfig; slot A boots normally; first-stage mounts succeed.
 Also verified through OVMF/GRUB on disposable USB disks for the normal and framebuffer-free
@@ -81,7 +93,7 @@ which the normal entry used until this change.
 The normal physical boot completed setup on the AMD desktop with working Wi-Fi, keyboard and
 touchpad. Actual GPU acceleration remains unverified. The framebuffer-free test reached
 Android early-init and panicked; its metadata logs are from the earlier boot.
-Native logcat collectors now save kernel/init and Android logs under `/metadata/dali-bootlog/`.
+Native logcat collectors now save kernel/init and Android logs under `/metadata/gbos-builder-bootlog/`.
 Three QEMU boots verified current/previous retention, archive limits and no logger SELinux
 denials. The largest observed stream was 2,055,373 bytes; policy compilation took 0.54–0.61 s.
 The diagnostic candidate was transferred and booted on the laptop; its saved logs were
@@ -122,7 +134,7 @@ cause; the game-controls loop was not established as the cause.
 - Only the QEMU modules needed are added: `virtio_dma_buf`, `virtio-gpu`, `virtio_input`,
   `failover`, `net_failover`, `virtio_net` — Google's prebuilt, unsigned copies from its
   virtual-device build of our exact kernel release.
-- GRUB detects the MSI's PCI `1002:15e7` and passes `androidboot.dali.graphics=amd`.
+- GRUB detects the MSI's PCI `1002:15e7` and passes `androidboot.gbos_builder.graphics=amd`.
   Otherwise it selects softpipe; Android's shared init file imports the matching profile.
   AMD modules load by PCI alias from vendor_dlkm after vendor firmware is available, not
   from the first-stage module ramdisk.
@@ -142,9 +154,9 @@ cause; the game-controls loop was not established as the cause.
   budget 14 MiB per boot, plus record-size overshoot and the small snapshots.
   Collection begins at `post-fs`, not first-stage init; an earlier hang still needs a photo.
 - Keep Houdini as the default native bridge. An explicit Berberis test entry changes only
-  `androidboot.dali.native_bridge`; early-init sets the read-only bridge property before zygote.
+  `androidboot.gbos_builder.native_bridge`; early-init sets the read-only bridge property before zygote.
   Use Google's bundled translators and existing init hooks unchanged; no new security permissions.
-- A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.dali.bootlog.ready=1`
+- A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.gbos_builder.bootlog.ready=1`
   may read backlight, ALSA and loaded-module metadata
   into the current boot log directory. It must not read sound device nodes or write sysfs, and it
   uses a separate enforcing SELinux domain.
@@ -152,7 +164,7 @@ cause; the game-controls loop was not established as the cause.
 ## Files
 - [android/cmdline.txt](../../android/cmdline.txt) — one argument per line, with reasons.
 - [native-bridge.patch](../../android/system/native-bridge.patch) and
-  [dali.rc](../../android/system_ext/dali.rc) — let early-init select the native bridge.
+  [gbos-builder.rc](../../android/system_ext/gbos-builder.rc) — let early-init select the native bridge.
 - [boot/android-menu.cfg](../../boot/android-menu.cfg) — laptop GRUB menu, also used by the UEFI check; the direct-kernel VM does not use it.
 - [tools/android_uefi_test.py](../../tools/android_uefi_test.py) — OVMF/GRUB and USB-partition checks with an NVMe decoy.
 - [android/bootconfig.txt](../../android/bootconfig.txt), [tools/bootconfig.py](../../tools/bootconfig.py) — settings and packing.
@@ -213,7 +225,7 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   these collectors do not guarantee every final byte survives a hang or power cut.
 
 ## Actions
-- [ ] After each laptop retest, retrieve `/dali-bootlog/current/` from the metadata partition —
+- [ ] After each laptop retest, retrieve `/gbos-builder-bootlog/current/` from the metadata partition —
   done when its snapshot and logs are reviewed for that build.
 
 ### Ideas (not approved)
@@ -221,6 +233,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   successful laptop tests. The current default remains unchanged.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Rename arguments, services, readiness gate and log directory.
+  Regenerate source-derived SELinux patches with unchanged permissions. Enforcing direct/UEFI,
+  saved logs, input response and optional Berberis selection pass; no physical retest.
 - 2026-11-02 (this commit) — Added opt-in Berberis boot selection, preserved Houdini default,
   and isolated crash capture. 53 tests, image/no-op rebuild and two enforcing UEFI runs pass.
   Owner confirms the failing game, another native app and Hearthstone now work with Berberis.

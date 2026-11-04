@@ -23,8 +23,8 @@ esp=$disk@@$((esp_start * 512))
 
 # android-disk.sh made this file system; never write into one that is not its work.
 label=$(mlabel -s -i "$esp" :: 2>/dev/null || true)
-grep -qxE ' *Volume label is DALI-BOOT *' <<<"$label" ||
-    { echo "EFI-SYSTEM in $disk is not the DALI-BOOT file system; refusing to write it." >&2; exit 1; }
+grep -qxE ' *Volume label is GBOS-BOOT *' <<<"$label" ||
+    { echo "EFI-SYSTEM in $disk is not the GBOS-BOOT file system; refusing to write it." >&2; exit 1; }
 
 work=$(mktemp -d "$disk.boot.XXXXXX")
 trap 'rm -rf "$work"' EXIT
@@ -34,7 +34,7 @@ python3 "$tools/deploy.py" stage "$bundle" "$work/new" >/dev/null
 esp_matches_new() { # the partition holds exactly the new files
     rm -rf "$work/current"
     mkdir "$work/current"
-    mcopy -s -n -i "$esp" ::EFI ::dali "$work/current" || return 1
+    mcopy -s -n -i "$esp" ::EFI ::gbos-builder "$work/current" || return 1
     diff -r "$work/new" "$work/current"
 }
 
@@ -43,11 +43,11 @@ if esp_matches_new >/dev/null 2>&1; then
     exit 0
 fi
 
-for tree in EFI dali; do
+for tree in EFI gbos-builder; do
     if mdir -b -i "$esp" "::$tree" >/dev/null 2>&1; then
         mdeltree -i "$esp" "::$tree"
     fi
 done
-mcopy -s -i "$esp" "$work/new/EFI" "$work/new/dali" ::
+mcopy -s -i "$esp" "$work/new/EFI" "$work/new/gbos-builder" ::
 esp_matches_new || { echo "The boot files read back differently from what was written." >&2; exit 1; }
 echo "Boot files written to $disk."

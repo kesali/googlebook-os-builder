@@ -10,15 +10,15 @@ RECOVERY_IMAGE_SHA256 ?= $(RUBY_RECOVERY_SHA)
 OUT ?= out
 
 # Name of the Docker image that holds the build tools (docker/Dockerfile).
-BUILDER_IMAGE ?= gbos-dali-builder
+BUILDER_IMAGE ?= gbos-builder
 
 # Conservative default on this 16 GB laptop. Kbuild remains incremental.
 JOBS ?= 4
 
 # Diagnostic image output. `make usb` never writes a physical disk.
-USB_IMAGE := $(OUT)/dali-usb.img
+USB_IMAGE := $(OUT)/gbos-builder-usb.img
 
-# `make deploy USB=/run/media/...` accepts only an already-mounted Dali USB ESP.
+# `make deploy USB=/run/media/...` accepts only an already-mounted gbos-builder USB ESP.
 USB ?=
 
 # `make qemu`: Android's data partition size (GiB, sparse: uses only what Android writes),

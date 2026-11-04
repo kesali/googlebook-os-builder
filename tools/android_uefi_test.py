@@ -59,10 +59,10 @@ def prepare_menu(disk, work, logs):
         raise ValueError("Expected one EFI-SYSTEM in a 512-byte-sector GPT")
     fat = f"{disk}@@{partitions[0]['start'] * 512}"
     menu = work / "grub.cfg"
-    subprocess.run(["mcopy", "-i", fat, "::/dali/grub.cfg", str(menu)], check=True)
+    subprocess.run(["mcopy", "-i", fat, "::/gbos-builder/grub.cfg", str(menu)], check=True)
     menu.write_text(serial_menu(menu.read_text()))
     shutil.copyfile(menu, logs / "grub.cfg")
-    subprocess.run(["mcopy", "-o", "-i", fat, str(menu), "::/dali/grub.cfg"], check=True)
+    subprocess.run(["mcopy", "-o", "-i", fat, str(menu), "::/gbos-builder/grub.cfg"], check=True)
 
 
 def qemu_command(work, logs, cpus, memory, graphical):
@@ -79,7 +79,7 @@ def qemu_command(work, logs, cpus, memory, graphical):
         # Debian's OVMF cannot discover QEMU's UAS-only device; use USB bulk-only transport.
         "-device", "usb-storage,bus=xhci.0,drive=stick,bootindex=1",
         "-drive", f"if=none,id=internal,format=raw,file={work / 'nvme.img'}",
-        "-device", "nvme,id=decoy,drive=internal,serial=DALI-DECOY,addr=3",
+        "-device", "nvme,id=decoy,drive=internal,serial=GBOS-BUILDER-DECOY,addr=3",
         # Google's sysfs_gpu label covers 00:02.0, also used by the direct-kernel VM.
         "-device", f"{gpu},addr=2,xres=1280,yres=720",
         "-device", "virtio-keyboard-pci", "-device", "virtio-mouse-pci",
@@ -237,11 +237,11 @@ def main():
     parser.add_argument("out", type=Path)
     parser.add_argument("cpus")
     parser.add_argument("memory")
-    parser.add_argument("--image", type=Path, help="Disk image to test instead of OUT/android/disk.img")
+    parser.add_argument("--image", type=Path, help="Disk image to test instead of OUT/gbos-builder/disk.img")
     args = parser.parse_args()
     try:
         for graphical in (False, True):
-            run(args.image or args.out / "android/disk.img", args.out, args.cpus, args.memory, graphical)
+            run(args.image or args.out / "gbos-builder/disk.img", args.out, args.cpus, args.memory, graphical)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"android-uefi-check: {error}\n")
 

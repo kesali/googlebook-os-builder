@@ -1,6 +1,6 @@
 ---
 name: diagnose-laptop
-description: "Use when diagnosing gbos-dali laptop boot loops, app crashes, missing devices or slow behavior: safely recover saved Android logs, identify the failing layer and compare upstream and local reference ports."
+description: "Use when diagnosing gbos-builder laptop boot loops, app crashes, missing devices or slow behavior: safely recover saved Android logs, identify the failing layer and compare upstream and local reference ports."
 ---
 
 # Diagnose a laptop failure
@@ -24,7 +24,7 @@ local; report only relevant filtered excerpts.
    For manual recovery, identify the USB by stable identity, verify its current
    layout and locate metadata by partition name, never a remembered partition number.
    Use read-only debugfs or an owner-approved `ro,noload` mount; retrieve only the relevant
-   `dali-bootlog/current/` and `previous/` files. Let the owner handle sudo credentials.
+   `gbos-builder-bootlog/current/` and `previous/` files. Let the owner handle sudo credentials.
 3. Never replay a journal or repair the USB directly. If unclean shutdown prevents reading,
    explain the problem and ask before recovery on a private copy. Follow the spec's tmpfs
    and swap precautions; never retain copied security state as ordinary evidence.

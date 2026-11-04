@@ -131,7 +131,7 @@ class TouchpadCaptureTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         text = (self.logs / "current/touchpad.log").read_text()
         self.assertIn("status=failed exit=1\n", text)
-        self.assertIn("dali touchpad capture failed", text)
+        self.assertIn("gbos-builder touchpad capture failed", text)
         self.assertNotIn("status=event-limit", text)
 
     def test_axis_query_failure_or_timeout_stops_before_capture(self):
@@ -188,9 +188,9 @@ class TouchpadCaptureTests(unittest.TestCase):
 
     def test_init_and_policy_keep_capture_separate_and_read_only(self):
         init = (REPO / "android/system_ext/bootlog.rc").read_text()
-        service = init.split("service dali_touchpad_capture ", 1)[1].split("\n\n", 1)[0]
+        service = init.split("service gbos_builder_touchpad_capture ", 1)[1].split("\n\n", 1)[0]
         self.assertIn("group log input\n", service)
-        self.assertIn("seclabel u:r:dali_touchpad_diag:s0\n", service)
+        self.assertIn("seclabel u:r:gbos_builder_touchpad_diag:s0\n", service)
         self.assertIn("oneshot\n", service)
         policy = (REPO / "android/system/bootlog-policy.patch").read_text()
         self.assertIn("input_device (dir (getattr search))", policy)

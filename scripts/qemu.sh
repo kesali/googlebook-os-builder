@@ -34,7 +34,7 @@ exec qemu-system-x86_64 \
     -nodefaults -display none -vnc 0.0.0.0:0 -no-reboot \
     -kernel "$kernel" -initrd "$initrd" -append "$args" \
     -drive if=none,id=disk,file="$disk",format=raw,discard=unmap \
-    -device nvme,drive=disk,serial=DALI0001 \
+    -device nvme,drive=disk,serial=GBOS0001 \
     -device virtio-gpu-pci,xres=1280,yres=720 \
     -device virtio-keyboard-pci -device virtio-mouse-pci \
     -netdev user,id=network -device virtio-net-pci,netdev=network \

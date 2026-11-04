@@ -30,7 +30,7 @@ class LaptopLogTests(unittest.TestCase):
         self.addCleanup(self.device_patch.stop)
 
     def listing(self, device, path):
-        return self.root_entries if path == "/dali-bootlog" else self.entries
+        return self.root_entries if path == "/gbos-builder-bootlog" else self.entries
 
     def read(self, device, request):
         return self.files[request.rsplit("/", 1)[-1]]
@@ -103,7 +103,7 @@ class LaptopLogTests(unittest.TestCase):
         result = subprocess.CompletedProcess([], 0, b"", b"debugfs 1.47\ncat: File not found\n")
         with patch.object(laptop_logs.subprocess, "run", return_value=result) as run:
             with self.assertRaisesRegex(ValueError, "File not found"):
-                laptop_logs.debugfs(self.device, "cat /dali-bootlog/current/boot-id")
+                laptop_logs.debugfs(self.device, "cat /gbos-builder-bootlog/current/boot-id")
         command = run.call_args.args[0]
         self.assertEqual(command[:4], ["sudo", "--", "debugfs", "-R"])
         self.assertNotIn("-w", command)
@@ -111,13 +111,13 @@ class LaptopLogTests(unittest.TestCase):
     def test_parses_directory_listing(self):
         listing = b"/12/040700/0/0/./0/\n/13/100600/0/0/boot-id/37/\n"
         with patch.object(laptop_logs, "debugfs", return_value=listing):
-            self.assertEqual(laptop_logs.directory(self.device, "/dali-bootlog/current"),
+            self.assertEqual(laptop_logs.directory(self.device, "/gbos-builder-bootlog/current"),
                              {"boot-id": (0o100600, 37)})
 
     def test_reads_real_ext4_image_without_sudo_or_mounts(self):
         root = self.output.parent
         seed = root / "seed"
-        boot = seed / "dali-bootlog/current"
+        boot = seed / "gbos-builder-bootlog/current"
         boot.mkdir(parents=True)
         for name, data in self.files.items():
             (boot / name).write_bytes(data)

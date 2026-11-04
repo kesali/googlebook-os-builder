@@ -1,7 +1,12 @@
 # USB diagnostics
 
-**Status:** parked — QEMU verified; first laptop boot and shutdown confirmed by the owner.
-**Last verified:** 2026-10-31 — owner's laptop test; saved
+**Status:** parked — renamed diagnostic image verified in QEMU; previous laptop boot confirmed.
+**Last verified:** 2026-11-04 — `make image smoke JOBS=12` passes: new label/marker/path and
+readiness signal reach the source-built kernel through UEFI/GRUB, both emulated instructions
+pass, logs/report persist and guest powers off. No physical write or retest.
+[Evidence](../../out/gbos-builder-validation/diagnostic-smoke.log).
+
+Earlier, 2026-10-31 — owner's laptop test; saved
 [hardware report](../../out/laptop-boot-2026-10-31/hardware.txt) and
 [kernel log](../../out/laptop-boot-2026-10-31/kernel.log) reviewed.
 Image rebuilt from `4360357`; `make test smoke JOBS=12`, physical USB read-back, GPT and FAT checks passed.
@@ -12,6 +17,11 @@ A small Linux USB (not Android) to check this laptop's hardware with our own ker
 with file-level incremental updates instead of reflashing.
 
 ## Current state
+Verified: clean-break gbos-builder identity uses `GBOS-BOOT`, `gbos-builder/`,
+new format marker and kernel arguments. Old diagnostic media are not compatible update
+targets. New output is `out/gbos-builder-usb.img`; existing images are preserved.
+Not verified: renamed diagnostic image on physical hardware or its interactive keyboard path.
+
 Verified in QEMU: GRUB, the source-built kernel and BusyBox boot through UEFI; logs saved to the USB;
 both supported instruction encodings trap into the emulator; clean poweroff; `make deploy`
 writes only changed files and nothing on a no-op.
@@ -33,7 +43,7 @@ The log ends at the self-test; shutdown is the owner's observation, not captured
 - Separate diagnostic kernel ([kernel/msi-diagnostic.config](../../kernel/msi-diagnostic.config)): GCC,
   no modules; **not** GKI-compatible, so it cannot run Android.
 - Internal NVMe/SATA/MMC, SPI flash, TPM and EFI capsule writing are disabled in this kernel.
-- Updates go to an already-mounted USB with the Dali marker; content-addressed kernel/initramfs
+- Updates go to an already-mounted USB with the gbos-builder marker; content-addressed kernel/initramfs
   files; the boot menu switches last; the previous menu is kept.
 
 ## Files
@@ -42,7 +52,7 @@ The log ends at the self-test; shutdown is the owner's observation, not captured
 - [tools/deploy.py](../../tools/deploy.py), [tests/test_deploy.py](../../tests/test_deploy.py), [tools/boot_test.py](../../tools/boot_test.py).
 
 ## Verify
-`make test`, `make smoke`. Deploy: `make deploy USB=/run/media/$USER/DALI-BOOT`.
+`make test`, `make smoke`. Deploy: `make deploy USB=/run/media/$USER/GBOS-BOOT`.
 
 ## Pitfalls
 - Debian's GRUB names the boot device in `$fw_path`, not upstream's `$cmdpath` (Debian patch
@@ -58,6 +68,9 @@ _None agreed._ The BUP Slim moves to the Android layout ([laptop-hardware.md](la
 flash this image again only when a hardware check is needed.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Rename diagnostic marker/path/label, kernel build identity and
+  readiness signal. 246 tests and rebuilt UEFI smoke pass with saved logs and clean poweroff;
+  no physical writes, retest or history changes.
 - 2026-11-01 (this commit) — deploy.py gained a second bundle kind (`android`, for the laptop's
   disk); the diagnostic marker bytes and flow are unchanged. `make test`, `make usb` and `make smoke`
   pass; `make deploy` to a mounted stick was not re-run (its tests are in `test_deploy.py`).

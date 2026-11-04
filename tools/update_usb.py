@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactively update an existing Dali Android USB, never format it or change its data/layout.
+"""Interactively update an existing gbos-builder Android USB, never format it or change its data/layout.
 
 Run on the Linux host as root, after building the image. Only USB disks are offered; the image's
 GPT and liblp layout must match, except that target userdata may be larger. Boot files use the
@@ -180,7 +180,7 @@ def write_os(source, target, updates, before_write, flush):
 
 @contextmanager
 def boot_mount(device, writable=False):
-    directory = Path(tempfile.mkdtemp(prefix="dali-update-mount-", dir="/run"))
+    directory = Path(tempfile.mkdtemp(prefix="gbos-builder-update-mount-", dir="/run"))
     options = "rw" if writable else "ro"
     mounted = False
     try:
@@ -200,7 +200,7 @@ def snapshot_bundle(bundle):
     kind, files, hashes = read_bundle(bundle)
     if kind != "android":
         raise ValueError("Expected an Android boot bundle")
-    with tempfile.TemporaryDirectory(prefix="dali-update-bundle-", dir="/run") as temporary:
+    with tempfile.TemporaryDirectory(prefix="gbos-builder-update-bundle-", dir="/run") as temporary:
         destination = Path(temporary)
         for name, data in files.items():
             (destination / name).write_bytes(data)
@@ -275,12 +275,12 @@ def update(image, bundle):
                 raise ValueError("Boot partition is not a child of the selected USB")
             target.seek(esp["start"] * 512)
             boot_sector = target.read(512)
-            if boot_sector[71:82] != b"DALI-BOOT  " or boot_sector[82:90] != b"FAT32   ":
-                raise ValueError("USB EFI-SYSTEM is not the DALI-BOOT FAT32 filesystem")
+            if boot_sector[71:82] != b"GBOS-BOOT  " or boot_sector[82:90] != b"FAT32   ":
+                raise ValueError("USB EFI-SYSTEM is not the GBOS-BOOT FAT32 filesystem")
             unused()
             with boot_mount(boot_device) as mountpoint:
-                if (mountpoint / "dali/format").read_bytes() != FORMATS["android"]:
-                    raise ValueError("USB does not have the Dali Android boot marker")
+                if (mountpoint / "gbos-builder/format").read_bytes() != FORMATS["android"]:
+                    raise ValueError("USB does not have the gbos-builder Android boot marker")
                 boot_changes = install(frozen_bundle, mountpoint, dry_run=True)
             print("OS updates: " + (", ".join(name for name, _, _ in planned) or "none"))
             print("Boot updates: " + (", ".join(boot_changes) or "none"))

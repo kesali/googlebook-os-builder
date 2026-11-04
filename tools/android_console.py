@@ -11,8 +11,8 @@ import uuid
 
 def command(path, text, timeout=30):
     token = uuid.uuid4().hex
-    start = f"DALI_START_{token}"
-    end = f"DALI_END_{token}"
+    start = f"GBOS_BUILDER_START_{token}"
+    end = f"GBOS_BUILDER_END_{token}"
     line = f"printf '\\n{start}\\n'; {text}; result=$?; printf '\\n{end}:%s\\n' \"$result\"\n"
     deadline = time.monotonic() + timeout
     output = bytearray()

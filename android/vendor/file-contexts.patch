@@ -12,5 +12,5 @@ Drop entries as Google adds support for this hardware.
 +/dev/dri/card[0-9]+ u:object_r:gpu_device:s0
 +/dev/dri/renderD[0-9]+ u:object_r:gpu_device:s0
 +/sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.0/(uevent|vendor|device|subsystem_vendor|subsystem_device|revision|config|resource|irq) u:object_r:sysfs_gpu:s0
-+/sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.6/sound/card[0-9]+/id u:object_r:dali_audio_id:s0
++/sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.6/sound/card[0-9]+/id u:object_r:gbos_builder_audio_id:s0
 +/sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.0/drm/card[0-9]+/card[0-9]+-eDP-1/backlight(/.*)? u:object_r:sysfs_leds:s0

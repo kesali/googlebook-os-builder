@@ -163,12 +163,15 @@ class FreshImageTests(unittest.TestCase):
 
     def test_make_routes_build_vm_and_updater_to_new_disk(self):
         makefile = (REPO / "Makefile").read_text()
-        self.assertIn("ANDROID_DISK := $(OUT)/android-expanded/disk.img", makefile)
+        self.assertIn("ANDROID_DISK := $(OUT)/gbos-builder/disk.img", makefile)
         self.assertIn('--layout "$(ANDROID_LAYOUT)"', makefile)
         self.assertNotIn('"$(ANDROID)/disk.img"', makefile)
         smoke = (REPO / "tools/android_smoke.py").read_text()
         self.assertIn('disk = Path(sys.argv[4])', smoke.split("def main():")[1])
+        self.assertIn('out / "gbos-builder/disk.img"', smoke.split("def main():")[1])
         self.assertNotIn("sys.argv", smoke.split("def verify(")[1].split("def main():")[0])
+        uefi = (REPO / "tools/android_uefi_test.py").read_text().split("def main():")[1]
+        self.assertIn('args.out / "gbos-builder/disk.img"', uefi)
 
 
 if __name__ == "__main__":

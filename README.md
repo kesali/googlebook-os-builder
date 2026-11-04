@@ -1,4 +1,12 @@
-# gbos-dali
+# gbos-builder
+
+This is a clean-break rename from gbos-dali. New boot media use `GBOS-BOOT`,
+`/gbos-builder/` and `gbos-builder-*-v1` markers; Android custom properties and SELinux types
+use `gbos_builder`. Existing Dali media are not update targets: the owner must explicitly
+flash a new image (erasing that USB) rather than use the updater. No automatic migration is
+provided. The new private image is `out/gbos-builder/disk.img`; existing images and saved logs
+are left untouched. Reuse an existing builder with `docker tag gbos-dali-builder gbos-builder`.
+The renamed image is verified in QEMU; physical laptop retesting remains.
 
 A small, readable build for developing a Googlebook OS port on the **MSI Modern 15 B7M**.
 Google's recovery image is a read-only input, not something we patch with byte offsets.
@@ -100,17 +108,17 @@ the touchpad baseline; an unchanged repeat preserves all 37 recorded output hash
 ### Laptop test image
 
 ```sh
-make android-image JOBS=12       # creates/updates out/android-expanded/disk.img
+make android-image JOBS=12       # creates/updates out/gbos-builder/disk.img
 make android-uefi-check JOBS=12  # disposable USB/UEFI boots in QEMU; no physical writes
 ```
 
 The Android image is **49.8 GiB (53,430,190,080 bytes)**, not the small diagnostic image below.
-Use a **64 GB or larger USB**, preferably USB 3. Flash [out/android-expanded/disk.img](out/android-expanded/disk.img)
+Use a **64 GB or larger USB**, preferably USB 3. Flash [out/gbos-builder/disk.img](out/gbos-builder/disk.img)
 with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
 The new image has larger slot-A logical partitions: system 2 GiB, vendor 1 GiB, product 3 GiB,
 system_ext 1 GiB and both module partitions 64 MiB. Logical B partitions are removed; physical
 B GPT entries remain for boot-control compatibility. See [super-layout.json](android/super-layout.json).
-The old local [disk image](out/android/disk.img) is left untouched as a fallback.
+The old local [disk image](out/android/disk.img) and `out/android-expanded/disk.img` are left untouched.
 **An older-layout USB needs a full reflash once**, erasing its accounts and data; the updater
 deliberately refuses mismatched layouts. Afterwards, **update instead of reflashing** to preserve
 Android data. Use the normal GRUB entry. The old framebuffer-free experiment
@@ -144,7 +152,7 @@ for Linux retrieval. These are Android logs, separate from the optional diagnost
 ### Updating the existing Android USB
 
 Stop any VM using the image, plug in the Android USB and unmount its partitions (including
-**DALI-BOOT**) in the file manager. Then run as your normal user:
+**GBOS-BOOT**) in the file manager. Then run as your normal user:
 
 This requires a USB already flashed with the expanded A-only layout above. It cannot upgrade
 the older layout in place.
@@ -159,7 +167,7 @@ capacity and serial; review the planned OS and boot-file changes, then type `y` 
 at the `[y/N]` prompt to confirm. Enter or any other answer cancels without writing.
 
 The updater:
-- Accepts only an **existing Dali Android USB**, not a blank disk or the diagnostic OS.
+- Accepts only an **existing gbos-builder Android USB**, not a blank disk or the diagnostic OS.
 - Refuses internal disks, missing serials, mounted/in-use disks and incompatible GPT/liblp layouts.
 - Derives OS ranges from the built image, copies only changed partitions and verifies read-back.
 - Updates kernel, initrd and GRUB together using the existing menu-last boot installer.
@@ -193,7 +201,7 @@ Safely unplug/replug afterwards, then boot its UEFI entry.
 If interrupted or verification fails, rerun installation before booting; do not trust a partial USB.
 The agent tests this tool on regular files only; physical installation is your operation.
 
-For boot-only manual deployment, `make deploy-android JOBS=12 USB=/path/to/mounted/DALI-BOOT`
+For boot-only manual deployment, `make deploy-android JOBS=12 USB=/path/to/mounted/GBOS-BOOT`
 remains available. **`make deploy` is for the separate diagnostic OS, not Android.**
 
 ### Reading laptop logs
@@ -335,7 +343,7 @@ less out/qemu/kernel.log # kernel and Android init log of the last run
 
 Google's image is the read-only starting point. Only `system`, `system_ext`, `vendor` and `vendor_dlkm` are
 rebuilt, with the changes listed below. QEMU uses this laptop's CPU (`-cpu host`, KVM);
-its only disk is `out/android-expanded/disk.img`. The serial shell and QMP monitor are local Unix sockets
+its only disk is `out/gbos-builder/disk.img`. The serial shell and QMP monitor are local Unix sockets
 under `out/qemu/`. Use Android's shutdown menu for an orderly shutdown; Ctrl-C stops QEMU.
 Virtual ACPI S3/S4 sleep is disabled for reliable development sessions. Input uses a standard
 virtio keyboard and relative mouse; the tablet's absolute pointer protocol is not used.
@@ -346,20 +354,20 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   virtio-gpu, input and network modules, then the boot settings: Google's
   plus [android/bootconfig.txt](android/bootconfig.txt), packed by
   [tools/bootconfig.py](tools/bootconfig.py).
-- **Disk** (`make android-disk`): `out/android-expanded/disk.img`, a new copy of Google's recovery image,
+- **Disk** (`make android-disk`): `out/gbos-builder/disk.img`, a new copy of Google's recovery image,
   with expanded A-only super built by [tools/android_fresh.py](tools/android_fresh.py) using
   upstream lpmake. [scripts/android-disk.sh](scripts/android-disk.sh) moves
   the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), marks
   slot A bootable, and merges Google's empty 64 MiB EFI-SYSTEM with the empty 512 MiB `KERN-A`
-  beside it into one 576 MiB FAT32 partition labelled `DALI-BOOT` for the laptop's boot files
+  beside it into one 576 MiB FAT32 partition labelled `GBOS-BOOT` for the laptop's boot files
   (the script refuses unless both are all zeros). The disk holds Android's data, so it is never recreated
   automatically.
 - **Boot files** (`make android-boot`): GRUB, the GKI kernel, the initrd and the menu
   [boot/android-menu.cfg](boot/android-menu.cfg) are written into that FAT32 partition with
   mtools, without root or a mount. QEMU's direct-kernel boot does not read them; the laptop's
   firmware will. The menu is Google's command line plus laptop-only arguments, including one that
-  hides the internal NVMe. The script refuses any partition not labelled `DALI-BOOT`, replaces the
-  `EFI/` and `dali/` trees as a whole and writes nothing when they already match.
+  hides the internal NVMe. The script refuses any partition not labelled `GBOS-BOOT`, replaces the
+  `EFI/` and `gbos-builder/` trees as a whole and writes nothing when they already match.
 - **Update** (`make android-image`): rebuild changed inputs, copy only changed OS
   partitions into that disk with checksum read-back, and refresh the boot files. `userdata`,
   `metadata` and the partition layout remain unchanged. Stop the VM first: a shared lock
@@ -474,12 +482,12 @@ builder packages. There is no root container, host package installation or loop-
 
 ```sh
 make builder
-make usb                 # kernel from source + BusyBox + GRUB -> out/dali-usb.img
+make usb                 # kernel from source + BusyBox + GRUB -> out/gbos-builder-usb.img
 make smoke               # boot a disposable copy through UEFI in QEMU
 make test                # focused deployment and safety tests
 ```
 
-Flash `out/dali-usb.img` with your preferred USB imaging tool, carefully selecting the USB.
+Flash `out/gbos-builder-usb.img` with your preferred USB imaging tool, carefully selecting the USB.
 **Flashing erases that USB.** `make usb` itself only creates a 514 MiB regular image file;
 it never chooses or writes a physical disk. Disable Secure Boot and boot the USB's UEFI entry.
 The shell uses the laptop screen and keyboard. An external USB keyboard is a fallback while
@@ -512,11 +520,11 @@ device. See [USB diagnostics](docs/specs/usb-diagnostic.md) for the evidence and
 
 ### Updating the diagnostic USB
 
-Back in Linux, mount the USB's **DALI-BOOT** partition through your file manager. Then:
+Back in Linux, mount the USB's **GBOS-BOOT** partition through your file manager. Then:
 
 ```sh
 # Edit boot/init, then:
-make deploy USB=/run/media/$USER/DALI-BOOT
+make deploy USB=/run/media/$USER/GBOS-BOOT
 ```
 
 This invokes the upstream incremental builds, but only changed outputs are published:
@@ -529,15 +537,15 @@ This invokes the upstream incremental builds, but only changed outputs are publi
 | nothing | nothing | **no files** |
 
 Deployment refuses raw devices, non-mountpoints, internal disks, read-only/non-FAT filesystems,
-symlinks and USBs without the Dali marker. It verifies bundle hashes, checks the actual destination
+symlinks and USBs without the gbos-builder marker. It verifies bundle hashes, checks the actual destination
 contents, writes and reads back new files, then changes the menu last. Logs, other user files and
 other partitions are not touched. A failed transfer before that switch leaves the old menu.
 The previous menu is available in GRUB.
 
 Old content-addressed kernel/initramfs files are deliberately retained; they are not automatically
-deleted. If space runs out, deployment fails explicitly. Remove obsolete `dali/kernel-<hash>` and
-`dali/initramfs-<hash>` files only after checking that **neither** `dali/grub.cfg` **nor**
-`dali/grub.previous.cfg` references them. Do not unplug during an update: FAT is not journalled,
+deleted. If space runs out, deployment fails explicitly. Remove obsolete `gbos-builder/kernel-<hash>` and
+`gbos-builder/initramfs-<hash>` files only after checking that **neither** `gbos-builder/grub.cfg` **nor**
+`gbos-builder/grub.previous.cfg` references them. Do not unplug during an update: FAT is not journalled,
 and rename/fsync are not a guarantee against power loss or a USB controller lying about flushes.
 
 `make image` / `make usb` assembles a fresh image when its bundle changes. For rapid iterations

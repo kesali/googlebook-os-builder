@@ -93,7 +93,7 @@ class AndroidDiskTests(unittest.TestCase):
         self.assertEqual((esp["type"], esp["uuid"]), (esp_before["type"], esp_before["uuid"]))
 
         boot_sector = read_sectors(self.output, esp["start"], 1)
-        self.assertEqual(boot_sector[71:90], b"DALI-BOOT  FAT32   ")  # label, then file system type
+        self.assertEqual(boot_sector[71:90], b"GBOS-BOOT  FAT32   ")  # label, then file system type
         total_sectors, clusters = fat32_geometry(boot_sector)
         self.assertLessEqual(total_sectors, esp["size"])
         self.assertGreater(total_sectors, esp["size"] - MIB)  # it fills the partition

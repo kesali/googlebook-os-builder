@@ -13,7 +13,7 @@
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-image=${BUILDER_IMAGE:-gbos-dali-builder}
+image=${BUILDER_IMAGE:-gbos-builder}
 
 mounts=(--volume "$repo:$repo")
 for path in ${EXTRA_MOUNTS:-}; do

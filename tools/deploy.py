@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish a build bundle or update the boot filesystem of a mounted Dali USB.
+"""Publish a build bundle or update the boot filesystem of a mounted gbos-builder USB.
 
 A bundle holds either the diagnostic shell or Android for the laptop, and installs only onto a
 boot filesystem of its own kind. New kernel/initramfs files are content-addressed. The menu
@@ -17,8 +17,8 @@ import stat
 import subprocess
 import tempfile
 
-# The marker file dali/format names what a boot filesystem holds, so one kind never overwrites the other.
-FORMATS = {"diagnostic": b"gbos-dali-diagnostic-v1\n", "android": b"gbos-dali-android-v1\n"}
+# The marker file gbos-builder/format names what a boot filesystem holds, so one kind never overwrites the other.
+FORMATS = {"diagnostic": b"gbos-builder-diagnostic-v1\n", "android": b"gbos-builder-android-v1\n"}
 COMPONENTS = ("kernel", "initramfs.gz", "BOOTX64.EFI", "menu.cfg")
 
 
@@ -48,7 +48,7 @@ def replace_file(root, relative, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".dali-", delete=False) as stream:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".gbos-builder-", delete=False) as stream:
             temporary = Path(stream.name)
             stream.write(data)
             stream.flush()
@@ -124,27 +124,27 @@ def install(source, destination, initialize=False, dry_run=False):
     destination = destination.absolute()
     if destination.is_symlink() or not destination.is_dir():
         raise ValueError("Destination must be a real directory")
-    marker = safe_path(destination, "dali/format")
+    marker = safe_path(destination, "gbos-builder/format")
     if initialize:
         if any(destination.iterdir()):
             raise ValueError("Image staging directory must be empty")
     elif not marker.is_file() or marker.read_bytes() != FORMATS[kind]:
-        raise ValueError(f"Not a Dali {kind} boot filesystem; create and flash a {kind} image first")
+        raise ValueError(f"Not a gbos-builder {kind} boot filesystem; create and flash a {kind} image first")
 
-    kernel = f"dali/kernel-{hashes['kernel']}"
-    initramfs = f"dali/initramfs-{hashes['initramfs.gz']}"
+    kernel = f"gbos-builder/kernel-{hashes['kernel']}"
+    initramfs = f"gbos-builder/initramfs-{hashes['initramfs.gz']}"
     menu = files["menu.cfg"].replace(b"@KERNEL@", hashes["kernel"].encode())
     menu = menu.replace(b"@INITRAMFS@", hashes["initramfs.gz"].encode())
     payloads = {
         kernel: files["kernel"],
         initramfs: files["initramfs.gz"],
         "EFI/BOOT/BOOTX64.EFI": files["BOOTX64.EFI"],
-        "dali/format": FORMATS[kind],
+        "gbos-builder/format": FORMATS[kind],
     }
     # Check all destinations and available space before writing the first byte.
-    for name in (*payloads, "dali/grub.cfg", "dali/grub.previous.cfg"):
+    for name in (*payloads, "gbos-builder/grub.cfg", "gbos-builder/grub.previous.cfg"):
         safe_path(destination, name)
-    current = destination / "dali/grub.cfg"
+    current = destination / "gbos-builder/grub.cfg"
     menu_changed = not current.exists() or current.read_bytes() != menu
     required = sum(
         len(data) for name, data in payloads.items()
@@ -160,16 +160,16 @@ def install(source, destination, initialize=False, dry_run=False):
     if dry_run:
         changed = [name for name, data in payloads.items()
                    if not (destination / name).exists() or (destination / name).read_bytes() != data]
-        return changed + (["dali/grub.cfg"] if menu_changed else [])
+        return changed + (["gbos-builder/grub.cfg"] if menu_changed else [])
 
     changed = []
     for name, data in payloads.items():
         if replace_file(destination, name, data):
             changed.append(name)
     if current.is_file() and current.read_bytes() != menu:
-        replace_file(destination, "dali/grub.previous.cfg", current.read_bytes())
-    if replace_file(destination, "dali/grub.cfg", menu):
-        changed.append("dali/grub.cfg")
+        replace_file(destination, "gbos-builder/grub.previous.cfg", current.read_bytes())
+    if replace_file(destination, "gbos-builder/grub.cfg", menu):
+        changed.append("gbos-builder/grub.cfg")
     return changed
 
 

@@ -2,7 +2,7 @@
 # Read: the boot-log directory and sysfs/procfs/dev roots. Write: one read-only hardware snapshot.
 set -eu
 umask 077
-trap 'status=$?; if [ "$status" -ne 0 ]; then echo "dali hardware snapshot failed (status $status)" >&2; fi' EXIT
+trap 'status=$?; if [ "$status" -ne 0 ]; then echo "gbos-builder hardware snapshot failed (status $status)" >&2; fi' EXIT
 
 logs=$1
 sys_root=$2

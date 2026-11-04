@@ -1,7 +1,12 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-04 — Automatic kernel patch recipes: 40 focused source/recipe/module
+**Last verified:** 2026-11-04 — gbos-builder rename: 246 tests pass; kernel rebuild preserves
+all 4,501 Google exports/CRCs and signed-module metadata. New image passes inspected enforcing
+direct/UEFI QEMU checks; 22.6 s repeat preserves all 38 recorded output hashes/timestamps.
+No new physical hardware test. [Evidence](../../out/gbos-builder-validation/).
+
+Earlier, 2026-11-04 — Automatic kernel patch recipes: 40 focused source/recipe/module
 tests pass. All four moved patches match `4504b6b` byte-for-byte, in the same order, keeping
 the existing source-cache hash; `make -n sources JOBS=12` is a no-op. The image build passes
 all 4,501 Google exports and signed-module/518-entry metadata/fit checks; all 37 recorded output
@@ -53,6 +58,11 @@ Build Google's Googlebook kernel from source with the instruction emulator compi
 enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEMU drivers) load.
 
 ## Current state
+Verified: gbos-builder renames the private framebuffer helper and kernel build-user identity.
+This intentionally selects a new content-keyed source tree; existing editable trees are
+preserved. Driver fixes, config choices and ABI safeguards are unchanged. Rebuild/ABI and
+enforcing QEMU checks pass; physical GPU/peripheral regression remains untested.
+
 Verified: driver-specific kernel fixes moved unchanged into AMD display, Renoir ACP
 and i915 recipes. [hardware/kernel.mk](../../hardware/kernel.mk) selects them in baseline order;
 each selected `kernel.mk` appends its own patches automatically. Shared firmware handoff and
@@ -221,6 +231,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Rename kernel helper/build identity; no driver logic change.
+  New source key preserves old edits. 246 tests, all 4,501 exports, signed-module/image checks,
+  no-write repeat and enforcing direct/UEFI QEMU pass; physical regression untested.
 - 2026-11-04 (this commit) — Four unchanged fixes now come from selected native Make recipes.
   40 tests, exact patch/order/cache and image ABI/module/metadata checks pass. All 37 output
   hashes/sizes match; repeat preserves timestamps and writes no partitions/boot files. No new boot.
