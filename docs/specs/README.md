@@ -9,11 +9,11 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial; recipe refactor validated | Owner tests combined image on both laptops |
-| [Boot chain](boot.md) | partial; opt-in diagnostics verified in QEMU | Owner retests diagnostic GRUB entry on laptop |
+| [Kernel (GKI)](kernel.md) | partial; firmware handoff removed, rebuild/kABI/QEMU pass | Owner retests rebuilt image on both laptops |
+| [Boot chain](boot.md) | partial; simplified menu and firmware-free QEMU pass | Owner retests rebuilt image on both laptops |
 | [OS image and disk](os-image.md) | working; recipe image byte-identical | Owner tests combined image; old media still need a fresh flash |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
-| [Graphics](graphics.md) | partial; portable crypto Lenovo test owner-accepted, native/QEMU checks pass | MSI crypto regression; dedicated HttpEngine request check unverified |
+| [Graphics](graphics.md) | partial; MSI video and firmware-free laptop tests owner-confirmed | Owner retests native-only rebuilt image; camera fallback unverified |
 | [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
 | [Laptop hardware](laptop-hardware.md) | partial; Lenovo fixes and MSI regression owner-confirmed | Remaining headphone, brightness and suspend checks |
 

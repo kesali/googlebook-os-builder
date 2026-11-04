@@ -1,8 +1,14 @@
 # Boot chain
 
-**Status:** partial — opt-in diagnostics and default Berberis selection verified in QEMU;
-physical retest pending.
-**Last verified:** 2026-11-04 — 67 focused deploy/boot/menu tests pass;
+**Status:** partial — firmware-free test entry owner-confirmed on both laptops;
+simplified kernel/menu verified in QEMU, rebuilt-image hardware retest pending.
+**Last verified:** 2026-11-05 — 81 focused tests, kernel/image build and direct/USB-UEFI QEMU
+pass. Setup and injected-tap Accessibility screenshots inspected; SELinux enforcing,
+diagnostic collectors active, NVMe decoys hidden/unchanged. A 22 s repeat writes no partitions
+or boot files and preserves nine published-file sizes/timestamps. All test VMs exited.
+[Evidence](../../out/native-framebuffer-removal/).
+
+Earlier, 2026-11-04 — 67 focused deploy/boot/menu tests pass;
 `grub-script-check` and `make android-uefi-check` pass. Disposable UEFI boots confirm
 Berberis default and Houdini override both reach Android and persist the selected entry in the
 ESP-root environment block. Physical menu selection remains unverified; Houdini's failure cause
@@ -152,10 +158,11 @@ cause; the game-controls loop was not established as the cause.
   Otherwise it selects softpipe; Android's shared init file imports the matching profile.
   AMD modules load by PCI alias from vendor_dlkm after vendor firmware is available, not
   from the first-stage module ramdisk.
-- A separate, non-default GRUB entry tests `initcall_blacklist=sysfb_init` without removing the
-  NVMe blacklist. It is an experiment, not a proven display fix.
+- The owner confirmed the no-firmware-framebuffer entry boots both MSI and Lenovo.
+  The kernel now disables sysfb/simpledrm; the temporary test entry is removed.
+  The rebuilt configuration/image pass direct and USB-UEFI QEMU; physical retest remains.
 - `earlycon=efifb` is only in a separate debug entry, as in Churro: it prints synchronously and
-  cost the laptop a minute per boot. The normal entry's screen log starts with simpledrm.
+  cost the laptop a minute per boot. Normal boots have no on-screen kernel log.
 - Persistent diagnostics use Google's logcat and `ro.logd.kernel=true`, not a custom logger.
   They are opt-in per boot: the GRUB diagnostic entry passes `androidboot.gbos_builder.logs=1`.
   Without it, no project collectors, preparation/rotation or hardware snapshot run, and saved
@@ -231,8 +238,8 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
 - Bootconfig must end the initrd (data, NUL padding to 4 bytes, size, checksum, `#BOOTCONFIG\n`)
   and the command line must contain `bootconfig`.
 - The direct-kernel VM uses NVMe 0; USB boot finds its disk through EFI-SYSTEM's PARTUUID.
-- Google's built-in command line selects `console=ttynull`; the laptop menu must explicitly
-  add `console=drm_log` or the screen log will not register.
+- Google's built-in command line selects `console=ttynull`; normal boots leave screen logging
+  disabled. Use the explicit early-screen debug entry for black screens.
 - `earlycon=efifb` draws and scrolls every early kernel line on the uncached firmware framebuffer
   before the kernel continues (89 ms per line on the laptop). Disposable UEFI checks add a serial
   console, which disables it, so QEMU never shows this cost.
@@ -255,6 +262,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
+- 2026-11-05 (this commit) — Owner confirms firmware-free boots on MSI and Lenovo, plus MSI video.
+  Remove the temporary GRUB entry, firmware handoff machinery and normal DRM screen logging.
+  81 tests, kernel/image rebuild, no-write repeat and inspected direct/UEFI QEMU pass.
 - 2026-11-05 (this commit) — `deploy.py` now knows only the Android bundle; its mounted-USB
   `usb` command went with `make deploy-android`. A stick with the old diagnostic marker is
   refused without writes. The Android marker bytes are unchanged, so existing USBs still update.

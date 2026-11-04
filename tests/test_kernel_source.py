@@ -19,7 +19,6 @@ class KernelRecipeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         paths, digest, source = result.stdout.splitlines()
         self.assertEqual(paths.split(), [
-            "hardware/drivers/drm-handoff/drm-firmware-handoff.patch",
             "hardware/drivers/amdgpu/msi-backlight.patch",
             "hardware/drivers/renoir-acp/renoir-capture-buffers.patch",
             "hardware/drivers/i915/i915-gen4-primary-alpha.patch",
@@ -37,12 +36,12 @@ class KernelRecipeTests(unittest.TestCase):
                 result = inspect_kernel_recipes(f"HARDWARE_DRIVERS=cpu-vex drm-handoff {selected}")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 paths, digest, source = result.stdout.splitlines()
-                self.assertEqual(paths.split()[0], "hardware/drivers/drm-handoff/drm-firmware-handoff.patch")
+                self.assertNotIn("drm-firmware-handoff.patch", paths)
                 self.assertNotEqual(source, original_source)
                 self.assertEqual(source.rsplit("-", 1)[0], original_source.rsplit("-", 1)[0])
                 self.assertTrue(source.endswith("-" + digest))
                 if selected == "i915":
-                    self.assertEqual(len(paths.split()), 2)
+                    self.assertEqual(len(paths.split()), 1)
 
     def test_unknown_selected_recipe_fails_instead_of_silently_omitting_it(self):
         result = inspect_kernel_recipes("HARDWARE_DRIVERS=cpu-vex missing-driver")

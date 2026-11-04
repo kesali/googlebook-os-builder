@@ -18,19 +18,22 @@ Re-check when a pin changes.
 | [msi-backlight.patch](../hardware/drivers/amdgpu/msi-backlight.patch) | No kernel option renames a backlight; `acpi_backlight=` only selects the driver. Google's lights HAL is closed, so a path setting cannot be confirmed. | Keep |
 | [renoir-capture-buffers.patch](../hardware/drivers/renoir-acp/renoir-capture-buffers.patch) | `rn_acp3x.h` limits unchanged; the generic `sound/soc/amd/acp` driver adds Renoir resources but no relaxed limits. | Keep |
 | [i915-gen4-primary-alpha.patch](../hardware/drivers/i915/i915-gen4-primary-alpha.patch) | Mainline `i965_primary_formats` still lacks ARGB/ABGR8888. | Keep |
-| [drm-firmware-handoff.patch](../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) | Still open upstream: a March 2026 dri-devel report shows simpledrm keeping card0 and amdgpu taking card1 on a Linux desktop, worked around by disabling simpledrm. | See below |
+| Firmware framebuffer handoff (removed) | Upstream card0/card1 handoff issue avoided by disabling sysfb/simpledrm instead. | Owner confirms firmware-free boots on both laptops; rebuild/kABI/QEMU pass |
 | [vex-emulate.patch](../hardware/drivers/cpu-vex/vex-emulate.patch) | Needed while Google's userspace targets Panther Lake. | Keep |
 
 ## Simplification candidates
 
-**Drop the firmware-framebuffer screen log.** `CONFIG_DRM_SIMPLEDRM` in the
-[drm-handoff config](../hardware/drivers/drm-handoff/gki.config) only gives an early on-screen
-kernel log. It creates the card0/card1 problem that the handoff kernel patch, the
-[ueventd serialization patch](../hardware/drivers/drm-handoff/vendor/ueventd.patch) and the
-experimental GRUB entry then work around. Without simpledrm the GPU should be card0 directly;
-`earlycon=efifb` in the debug entry remains for black screens. Trade-off: normal boots show no
-kernel log before Android draws. Gate: the existing **test: no firmware framebuffer** entry must
-show setup, input and brightness on both laptops; it has never been tested.
+**Firmware-framebuffer removal implemented and locally validated.** The owner confirmed the
+no-firmware-framebuffer GRUB entry boots on both MSI and Lenovo, and MSI video works.
+The [drm-handoff config](../hardware/drivers/drm-handoff/gki.config) now disables sysfb/simpledrm.
+The handoff kernel patch, ueventd serialization patch and temporary test entry are removed.
+Normal DRM screen logging is disabled too, avoiding an extra DRM client module solely for
+boot logs. `earlycon=efifb` remains in the debug entry; saved diagnostic logging is unchanged.
+Normal boots have no kernel screen log. 81 focused tests, kernel/image/kABI/module checks,
+a 22 s no-write repeat and inspected direct/UEFI QEMU pass
+([evidence](../out/native-framebuffer-removal/)).
+The rebuilt image still needs a physical retest; brightness was not separately reported
+in the owner's earlier test.
 
 **Instruction emulation is still in active use.** Rate-limited emulator lines in the MSI's
 latest boots still show `gf2p8affineqb` from ART's JIT (about 300k–430k total traps per boot)

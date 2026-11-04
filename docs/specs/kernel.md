@@ -1,7 +1,14 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-04 — Full hardware recipes: 263 tests pass; all 4,501 Google exports/
+**Last verified:** 2026-11-05 — Without sysfb/simpledrm or the handoff patch: 81 focused tests,
+kernel/image rebuild (10m46s), all 4,501 Google exports/CRCs and signed-module checks pass.
+22 s repeat preserves nine published-file sizes/timestamps, with no partition/boot writes.
+Direct and USB-UEFI QEMU reach inspected setup; direct injected tap opens Accessibility.
+The owner confirmed the earlier sysfb-blacklist test on both laptops, not this rebuilt image.
+[Evidence](../../out/native-framebuffer-removal/).
+
+Earlier, 2026-11-04 — Full hardware recipes: 263 tests pass; all 4,501 Google exports/
 CRCs preserved. Expanded declarations and patch bytes/order match `d901da2`; all 38 tracked
 output hashes/sizes match the pre-build baseline. A 23.8 s repeat preserves timestamps/inodes
 and writes no partitions or boot files. Enforcing direct/USB-UEFI QEMU screens and direct input
@@ -120,7 +127,8 @@ has no retained panic trace and remains unresolved.
 Verified: release `6.18.21-android17-5-g3938c8d97142-ab16302624` from tag
 `android17-6.18-2026-06_r52` (commit `3938c8d97142`);
 config changes are listed in [kernel/gki.config](../../kernel/gki.config): trusted key, touchpad,
-simpledrm/drm_log, modular amdgpu and its display helpers, and EROFS Zstd support.
+modular amdgpu and its display helpers, and EROFS Zstd support; sysfb and DRM screen logging
+are now disabled.
 Every Google export and CRC is preserved; Google's certificate remains trusted;
 Google's prebuilt virtio GPU/input/net modules load in QEMU, which still reaches the setup screen.
 The thirteen AMD display, MT7922 and Renoir ACP modules in [laptop-modules.list](../../kernel/laptop-modules.list)
@@ -128,9 +136,10 @@ are stripped, signed with this build's trusted key and included in the regular A
 The vendor_dlkm build checks imports against Google's actual helpers; those helpers and the ABI
 whitelist remain unchanged. An earlier source-tree path change caused a full rebuild and changed
 all nine then-existing module hashes and the kernel bytes, not just amdgpu. No physical USB was updated.
-[drm-firmware-handoff.patch](../../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) releases the firmware
-framebuffer before a PCI display driver takes a DRM minor. It works with virtio in QEMU and is
-based on the owner's working Churro setup; the owner subsequently reached physical setup.
+The owner confirmed boots without the firmware framebuffer on MSI and Lenovo. The sysfb and
+simpledrm options and custom PCI framebuffer handoff patch are now removed/disabled so native
+graphics can take card0 directly. Kernel rebuild, ABI checks and QEMU pass; the owner tested
+the GRUB `sysfb_init` blacklist, so the rebuilt image still needs a physical retest.
 [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) changes only the first panel's registered
 name on the exact MSI model so Google's unchanged lights HAL can discover it.
 The earlier fast-flips override is removed for an upstream-baseline trial. Previous owner
@@ -174,8 +183,8 @@ functionality; generic ACP migration and other machines remain untested.
 - Churro's [vex-emulate.patch](../../hardware/drivers/cpu-vex/vex-emulate.patch) (vendored unchanged, content-hashed)
   emulates VEX GFNI/AVX-VNNI — Googlebook
   userspace is built for Intel Panther Lake; this Zen 3 CPU lacks those instructions.
-- The source-level framebuffer handoff follows Churro's PCI display approach; errors are
-  reported and abort DRM initialization. Touchpad settings and security safeguards are unchanged.
+- Disable sysfb/simpledrm rather than patching PCI framebuffer handoff. Normal DRM screen
+  logging is also disabled; early firmware logging remains an explicit debug-menu choice.
 - Only DMI vendor `Micro-Star International Co., Ltd.` / model `Modern 15 B7M`, first panel:
   name the AMD backlight `backlight`, which Google's lights HAL supports. Preserve all brightness
   calculations and other machines' names. Remove this patch when the HAL supports AMD discovery.
@@ -203,8 +212,8 @@ functionality; generic ACP migration and other machines remain untested.
 - [scripts/git-fetch.sh](../../scripts/git-fetch.sh), [scripts/pahole.sh](../../scripts/pahole.sh) — toolchain.
 - [scripts/kernel-source.sh](../../scripts/kernel-source.sh) — source checkout + the emulator patch
   and selected recipes' `KERNEL_PATCHES`, in order; a new patch hash creates a separate tree.
-- [drm-firmware-handoff.patch](../../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) — early PCI
-  framebuffer handoff before DRM minor allocation.
+- [drm-handoff/gki.config](../../hardware/drivers/drm-handoff/gki.config) — disable the firmware
+  framebuffer and normal DRM screen logging.
 - [hardware/kernel.mk](../../hardware/kernel.mk) — ordered combined-image kernel recipe selection.
 - [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) — exact-model panel naming.
 - [renoir-capture-buffers.patch](../../hardware/drivers/renoir-acp/renoir-capture-buffers.patch) — isolated
@@ -243,6 +252,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-05 (this commit) — Owner confirms no-firmware-framebuffer boots on both laptops.
+  Disable sysfb/simpledrm and normal DRM screen logging; remove the PCI handoff patch.
+  81 tests, rebuild/kABI/module checks and inspected direct/UEFI QEMU pass; hardware retest remains.
 - 2026-11-04 (this commit) — Remove only the AMD fast-flips override and its compiled-model
   test. 13 focused tests, 4,501-export kABI, module/metadata checks and enforcing QEMU pass
   (setup screen inspected). Owner panel/HDMI smoothness/hotplug retest remains pending.

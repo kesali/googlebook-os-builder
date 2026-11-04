@@ -106,7 +106,6 @@ class HardwareRecipeTests(unittest.TestCase):
             "android/vendor/powerhint.patch",
             "hardware/msi-modern-15-b7m/vendor/camera-msi.patch",
             "hardware/msi-modern-15-b7m/vendor/file-contexts.patch",
-            "hardware/drivers/drm-handoff/vendor/ueventd.patch",
             "hardware/lenovo-e50-80/vendor/audio-lenovo.patch",
             "hardware/lenovo-e50-80/vendor/audio-policy.patch",
             "hardware/lenovo-e50-80/vendor/camera-lenovo.patch",

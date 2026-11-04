@@ -6,6 +6,5 @@ powerhint.patch
 # recipe: msi-modern-15-b7m/vendor-camera.patches
 # AMD has no vendor text patches.
 # recipe: msi-modern-15-b7m/vendor-policy.patches
-# recipe: drm-handoff/vendor.patches
 # recipe: lenovo-e50-80/vendor-audio.patches
 # recipe: lenovo-e50-80/vendor-camera.patches

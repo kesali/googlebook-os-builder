@@ -1,7 +1,12 @@
 # QEMU VM
 
 **Status:** parked — gbos-builder screen/input regression verified; setup not finished.
-**Last verified:** 2026-11-04 — Full recipe image: disposable direct boot passes stable PIDs,
+**Last verified:** 2026-11-05 — Native-only graphics without sysfb/simpledrm: direct `make qemu-check`
+and graphical USB-UEFI pass stable services, enforcing SELinux and softpipe.
+Setup and direct injected-tap Accessibility screenshots inspected; both UEFI runs keep NVMe decoys unchanged.
+All VMs exited. [Evidence](../../out/native-framebuffer-removal/).
+
+Earlier, 2026-11-04 — Full recipe image: disposable direct boot passes stable PIDs,
 enforcing SELinux and softpipe; setup and Accessibility after a tap inspected. Both USB-UEFI
 runs pass, with inspected graphics setup/early DRM console and hidden unchanged NVMe decoy.
 All VMs exited; final hashes/timestamps confirm source image unchanged.
@@ -86,6 +91,9 @@ Parked while the laptop is the focus (owner, 2026-10-31); these are still the ag
 - Keep the guest awake (for example Android's stay-awake setting) so it does not enter s2idle.
 
 ## Handoff log
+- 2026-11-05 (this commit) — Firmware-free kernel passes direct and USB-UEFI boot checks.
+  UEFI runner now waits for kernel init before sending shell commands, avoiding GRUB input.
+  Setup/input screenshots inspected; NVMe decoys hidden/unchanged and all VMs exited.
 - 2026-11-04 uncommitted — Full recipe image passes disposable direct/USB-UEFI checks;
   setup and direct Accessibility tap screenshots inspected. VMs exited; deliverable unchanged.
 - 2026-11-04 uncommitted — Softpipe profile and first-stage module declarations moved into

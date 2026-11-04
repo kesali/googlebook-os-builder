@@ -440,15 +440,11 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
 beside a writable NVMe decoy. It checks that Android finds the USB partitions, never enumerates
 the decoy and leaves its bytes unchanged. No physical drives are accessed.
 
-There are two display configurations: `virtio-vga` for the firmware framebuffer and DRM log,
-then `virtio-gpu-pci` for Android's setup UI without a firmware framebuffer. This does **not**
-prove a simpledrm-to-GPU handoff or a laptop boot. Both use the installed laptop menu with only
+There are two display configurations: `virtio-vga` for the serial-shell USB boot check,
+then `virtio-gpu-pci` for Android's setup UI. Both reject a firmware framebuffer; neither
+proves a laptop boot. Both use the installed laptop menu with only
 a serial-console argument added to the copy. Logs and screenshots go in fresh
 `out/android-uefi-*` directories; inspect the screenshots, not just the printed PASS.
-An additional [offline handoff check](../out/framebuffer-handoff-check.py) used both the firmware
-framebuffer and virtio GPU in one boot: the GPU took card0 and the
-[setup screen responded to a mouse click](../out/fb2/android-uefi-console-g0b93ipe/after-input.png).
-That verifies QEMU, not the laptop's AMD GPU.
 See [laptop hardware](../docs/specs/laptop-hardware.md) for verified results and limitations.
 
 ### Explicit VM changes

@@ -5,14 +5,32 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from android_uefi_test import check_storage, copy_disk, qemu_command, serial_menu
+from android_uefi_test import check_storage, copy_disk, qemu_command, serial_menu, wait_for_shell
 
 
 class AndroidUefiTests(unittest.TestCase):
+    def test_shell_commands_wait_until_the_kernel_has_left_grub(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            logs = Path(temporary)
+            kernel = logs / "kernel.log"
+            kernel.write_text("GNU GRUB\n")
+            process = Mock()
+            process.poll.return_value = None
+
+            def start_init(_):
+                shell.assert_not_called()
+                kernel.write_text("Run /init as init process\n")
+
+            with patch("android_uefi_test.command", return_value="Enforcing\n") as shell, \
+                    patch("android_uefi_test.time.sleep", side_effect=start_init):
+                wait_for_shell(logs, process)
+            shell.assert_called_once_with(logs / "console.sock", "getenforce", timeout=5)
+
     def test_only_the_linux_entry_gets_a_serial_console(self):
-        menu = "# linux and initcall_blacklist=nvme_init\nlinux kernel console=drm_log initcall_blacklist=nvme_init\ninitrd ramdisk\n"
+        menu = "# linux and initcall_blacklist=nvme_init\nlinux kernel initcall_blacklist=nvme_init\ninitrd ramdisk\n"
         self.assertEqual(serial_menu(menu), menu.replace("\ninitrd", " console=ttyS1,115200\ninitrd"))
 
     def test_ambiguous_or_unsafe_menus_are_rejected(self):
@@ -20,15 +38,15 @@ class AndroidUefiTests(unittest.TestCase):
             "# initcall_blacklist=nvme_init\nlinux kernel\n",
             "linux kernel initcall_blacklist=nvme_init\nlinux other\n",
             "linux kernel initcall_blacklist=nvme_init console=tty0\n",
-            "linux kernel initcall_blacklist=nvme_init\n",
+            "linux kernel initcall_blacklist=nvme_init console=drm_log\n",
             "initrd ramdisk\n",
         ):
             with self.subTest(menu=menu), self.assertRaises(ValueError):
                 serial_menu(menu)
 
-    def test_repository_menu_explicitly_enables_drm_log(self):
+    def test_repository_menu_has_no_drm_screen_log(self):
         menu = Path(__file__).resolve().parents[1] / "boot/android-menu.cfg"
-        self.assertIn("console=drm_log", serial_menu(menu.read_text()))
+        self.assertNotIn("console=drm_log", serial_menu(menu.read_text()))
 
     def test_copy_leaves_original_unchanged(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -59,7 +77,7 @@ class AndroidUefiTests(unittest.TestCase):
 
     def evidence(self):
         return {
-            "kernel": "[drm] Initialized simpledrm\nprintk: console [drm_log0] enabled\n",
+            "kernel": "[drm] Initialized virtio_gpu\n",
             "cmdline": "root=/dev/ram0 initcall_blacklist=nvme_init console=ttyS1,115200\n",
             "blocks": "dm-0\nsda\nsda12\n",
             "controllers": "",
@@ -77,18 +95,23 @@ class AndroidUefiTests(unittest.TestCase):
             with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, "enumerated"):
                 check_storage(**evidence)
 
-    def test_missing_blacklist_usb_path_or_drm_log_is_rejected(self):
+    def test_missing_blacklist_usb_path_or_native_gpu_is_rejected(self):
         for field, value in (("cmdline", "root=/dev/ram0"), ("boot_path", "/sys/block/sda/sda12"),
-                             ("kernel", "[drm] Initialized simpledrm\n")):
+                             ("kernel", "Run /init as init process\n")):
             evidence = self.evidence()
             evidence[field] = value
             with self.subTest(field=field), self.assertRaises(RuntimeError):
                 check_storage(**evidence)
 
+    def test_both_runs_reject_firmware_framebuffer(self):
+        for graphical in (False, True):
+            evidence = self.evidence()
+            evidence["kernel"] += "[drm] Initialized simpledrm\n"
+            with self.subTest(graphical=graphical), self.assertRaisesRegex(RuntimeError, "firmware framebuffer"):
+                check_storage(**evidence, graphical=graphical)
+
     def test_graphical_run_requires_no_firmware_framebuffer_and_nvme_hidden(self):
         evidence = self.evidence()
-        with self.assertRaisesRegex(RuntimeError, "firmware framebuffer"):
-            check_storage(**evidence, graphical=True)
         evidence["kernel"] = "[drm] Initialized virtio_gpu"
         check_storage(**evidence, graphical=True)
         evidence["cmdline"] = "initcall_blacklist=sysfb_init"

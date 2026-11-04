@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Test Android's laptop boot chain on a disposable image, never a physical drive.
 
-OVMF and GRUB load the disk's own kernel and initrd. Two runs check the laptop's
-DRM log console (virtio-vga) and graphical Android over USB (virtio-gpu-pci).
-The latter has no firmware framebuffer; this does not prove a simpledrm-to-GPU
-handoff. Both runs add only serial logging to the copy's text menu and require a
-writable NVMe decoy to stay hidden and byte-identical. The original is only read.
+OVMF and GRUB load the disk's own kernel and initrd. Two runs check USB boot with
+virtio-vga and graphical Android with virtio-gpu-pci, without a firmware framebuffer.
+Both runs add only serial logging to the copy's text menu and require a writable
+NVMe decoy to stay hidden and byte-identical. The original is only read.
 """
 
 import argparse
@@ -44,10 +43,8 @@ def serial_menu(text):
     words = lines[index].split()
     if "initcall_blacklist=nvme_init" not in words:
         raise ValueError("The laptop menu must hide the internal NVMe")
-    if "console=drm_log" not in words:
-        raise ValueError("The laptop menu must enable its DRM log console")
-    if any(word.startswith("console=") and word != "console=drm_log" for word in words):
-        raise ValueError("The laptop menu unexpectedly selects another console")
+    if any(word.startswith("console=") for word in words):
+        raise ValueError("The laptop menu unexpectedly selects a console")
     lines[index] += " console=ttyS1,115200"
     return "\n".join(lines) + "\n"
 
@@ -104,25 +101,6 @@ def qemu_command(work, logs, cpus, memory, graphical):
     ]
 
 
-def early_screen(logs, process):
-    deadline = time.monotonic() + 120
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            raise RuntimeError(f"QEMU exited; see {logs / 'runner.log'}")
-        kernel = logs / "kernel.log"
-        if kernel.exists() and "Run /init as init process" in kernel.read_text(errors="replace"):
-            # Freeze before Android starts trying to own the display.
-            qmp(logs / "monitor.sock", "stop")
-            try:
-                qmp(logs / "monitor.sock", "screendump",
-                    {"filename": str(logs / "early-screen.png"), "format": "png"})
-            finally:
-                qmp(logs / "monitor.sock", "cont")
-            return
-        time.sleep(0.02)
-    raise TimeoutError("UEFI/GRUB did not reach Android's init within 120 seconds")
-
-
 def check_storage(kernel, cmdline, blocks, controllers, boot_path, graphical=False):
     blacklists = [word.split("=", 1)[1] for word in cmdline.split()
                   if word.startswith("initcall_blacklist=")]
@@ -132,10 +110,10 @@ def check_storage(kernel, cmdline, blocks, controllers, boot_path, graphical=Fal
         raise RuntimeError("Linux enumerated the decoy NVMe")
     if not re.search(r"/usb\d+/.*/block/sd[a-z]+/sd[a-z]+\d+$", boot_path.strip()):
         raise RuntimeError(f"Android did not find EFI-SYSTEM on USB: {boot_path}")
-    if graphical and "Initialized simpledrm" in kernel:
-        raise RuntimeError("The graphical test unexpectedly has a firmware framebuffer")
-    if not graphical and ("Initialized simpledrm" not in kernel or "console [drm_log" not in kernel):
-        raise RuntimeError("The firmware framebuffer did not register the DRM log console")
+    if "Initialized simpledrm" in kernel:
+        raise RuntimeError("The test unexpectedly has a firmware framebuffer")
+    if not graphical and "Initialized virtio_gpu" not in kernel:
+        raise RuntimeError("The native GPU did not initialize")
 
 
 def verify_storage(logs, graphical, expected_native_bridge):
@@ -186,6 +164,11 @@ def wait_for_shell(logs, process):
     while time.monotonic() < deadline:
         if process.poll() is not None:
             raise RuntimeError("QEMU exited before the serial shell started")
+        # Sending shell commands while GRUB owns serial input can interrupt its countdown.
+        kernel = logs / "kernel.log"
+        if not kernel.exists() or "Run /init as init process" not in kernel.read_text(errors="replace"):
+            time.sleep(2)
+            continue
         try:
             if command(logs / "console.sock", "getenforce", timeout=5).strip() == "Enforcing":
                 return
@@ -218,7 +201,6 @@ def run(image, output, cpus, memory, graphical, saved_entry, expected_entry, for
                 if graphical:
                     verify(logs, process)
                 else:
-                    early_screen(logs, process)
                     wait_for_shell(logs, process)
                     qmp(logs / "monitor.sock", "screendump",
                         {"filename": str(logs / "screen.png"), "format": "png"})

@@ -155,7 +155,7 @@ plus [android/cmdline.txt](../android/cmdline.txt) and [android/bootconfig.txt](
 - Google's arguments, minus the Intel-only ones and the SPI-flash write enables.
 - Plus a TPM/SPI-flash driver blacklist and `efi_pstore.pstore_disable=1`.
 - `console=null` is dropped.
-- The laptop's GRUB entry adds `console=drm_log`, `initcall_blacklist=nvme_init` (the internal
+- The laptop's GRUB entry adds `initcall_blacklist=nvme_init` (the internal
   disk stays hidden), `mt7921_common.disable_clc=1` and `androidboot.gbos_builder.graphics=amd`.
 
 **Bootconfig:** slot A, orange/unlocked verified boot, external boot source, StrongBox off.
@@ -172,11 +172,12 @@ Intel instructions that Zen 3 lacks.
   unchanged, and the build fails on any difference.
 - **Our modules** are signed with the build's own key ([laptop-modules.list](../kernel/laptop-modules.list)).
   vendor_dlkm uses Zstd so they fit without resizing anything.
-- **Config fragment** ([gki.config](../kernel/gki.config)): trusted key, touchpad, simpledrm and
-  drm_log, modular amdgpu, EROFS Zstd. Unlisted config changes fail the build.
+- **Config fragment** ([gki.config](../kernel/gki.config)): trusted key, touchpad,
+  modular amdgpu, EROFS Zstd; sysfb/simpledrm and DRM screen logging disabled.
+  Unlisted config changes fail the build.
 - **Patches:**
-  - [drm-firmware-handoff.patch](../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) (from Churro): release the
-    firmware framebuffer before amdgpu takes a DRM minor.
+  - The firmware framebuffer handoff patch and ueventd serialization workaround are removed
+    after owner-confirmed firmware-free boots on both laptops; rebuild/kABI and QEMU checks pass.
   - [msi-backlight.patch](../hardware/drivers/amdgpu/msi-backlight.patch): on this exact DMI model only, name the
     first panel `backlight` so Google's unchanged lights HAL finds it.
   - The earlier AMD fast-flips override was removed in favor of upstream behavior; the owner's

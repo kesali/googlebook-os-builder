@@ -2,7 +2,13 @@
 
 **Status:** partial — QEMU softpipe passes; AMD desktop profiles remain, but the camera-only
 RadeonSI VA-API path was removed. Camera behavior after removal is unverified.
-**Last verified:** 2026-11-04 — 289 tests pass; image build and bounded enforcing QEMU pass with
+**Last verified:** 2026-11-05 — Owner confirms MSI video and no-firmware-framebuffer boots on
+both laptops. Simplified kernel/image pass 81 focused tests, kABI/module/metadata checks,
+22 s no-write repeat and enforcing direct/USB-UEFI QEMU. Setup and direct injected-tap
+Accessibility screenshots inspected; physical retest of this rebuilt image remains.
+[Evidence](../../out/native-framebuffer-removal/).
+
+Earlier, 2026-11-04 — 289 tests pass; image build and bounded enforcing QEMU pass with
 softpipe and inspected setup screenshot. Repeat reports no partition or boot-file writes.
 Physical AMD/Intel retest and camera software fallback remain unverified.
 [Evidence](../../out/httpengine-investigation/).
@@ -101,9 +107,10 @@ No Intel Vulkan, audio or network support is claimed.
 Verified: source-built Mesa and minigbm work with Google's unchanged composer, allocator service
 and mapper on virtio-gpu. RADV/Zink and the AMD allocator backend build; all 49 gralloc and 22 GBM
 exports used by Google's clients are present. The prior laptop kernel loaded amdgpu as DRM minor 1,
-but SurfaceFlinger repeatedly reported invalid present fences. The
-[source-level handoff](../../hardware/drivers/drm-handoff/drm-firmware-handoff.patch) gives virtio card0 in QEMU and a
-visible setup screen on the laptop. On the laptop, Chrome renders through ANGLE on RADV; which
+but SurfaceFlinger repeatedly reported invalid present fences. The earlier custom framebuffer
+handoff restored card0; it is now removed after owner-confirmed firmware-free boots on both
+laptops. The rebuilt native-only configuration passes direct/USB-UEFI QEMU; hardware retest remains.
+On the laptop, Chrome renders through ANGLE on RADV; which
 renderer SurfaceFlinger and HWUI use, and the frame rate, are not measured. The opt-in RADV
 two-queue Vulkan HWUI candidate was tested by the owner with no noticeable performance difference;
 the default AMD profile remains GL. QEMU is still CPU-rendered.
@@ -254,11 +261,11 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 - QEMU loads Google's virtio-gpu; the laptop adds amdgpu with official firmware.
   Graphics properties: [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch);
   DRM node labels: [file-contexts.patch](../../hardware/msi-modern-15-b7m/vendor/file-contexts.patch).
-- Live uevents are serialized to prevent a delayed simpledrm remove event deleting amdgpu's reused
-  card0. Only the MSI GPU's identification files get an existing SELinux type (`sysfs_gpu`, the
+- Keep Google's parallel live uevents: disabling sysfb/simpledrm removes the card0 reuse race
+  and its serialization patch. Only the MSI GPU's identification files get an existing SELinux type (`sysfs_gpu`, the
   same file set Google labels for its own GPU); no allow rules change.
-- Use Churro's earlier PCI framebuffer handoff so the real GPU can take card0; preserve
-  simpledrm for early output. It affects PCI display drivers in QEMU as well as the laptop.
+- Native graphics takes card0 without a firmware framebuffer or custom PCI handoff patch.
+  The owner confirmed the firmware-free test entry on both laptops; rebuild and QEMU checks pass.
 - No host-GPU passthrough.
 
 ## Files
@@ -320,6 +327,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-05 (this commit) — Owner confirms MSI video playback and firmware-free boots on both
+  laptops. Remove PCI handoff and ueventd serialization patches; keep Mesa's DRM-master patch.
+  81 tests, kernel/image/ABI checks and inspected direct/UEFI QEMU pass; rebuilt-image hardware retest remains.
 - 2026-11-05 (this commit) — Removed `make minigbm-check` and its C test: it exercised
   `minigbm-amd.patch` wrapper changes dropped in `7c83348` and no longer matches upstream.
 - 2026-11-05 (this commit) — Correct `6e8a8a4`: the YV12 crash boot was the MSI (AMD eDP,
