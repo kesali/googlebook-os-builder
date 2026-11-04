@@ -33,7 +33,7 @@ are written back to the USB. Drop when /data is large and on fast internal stora
  debug.sf.renderengine_gpu_stats=true
  dalvik.vm.heapstartsize=16m
  dalvik.vm.heapgrowthlimit=192m
-@@ -133,17 +130,15 @@
+@@ -133,17 +130,17 @@
  dalvik.vm.heapmaxfree=8m
  ro.boot.hypervisor.vm.supported=1
  ro.boot.hypervisor.protected_vm.supported=1
@@ -43,8 +43,8 @@ are written back to the USB. Drop when /data is large and on fast internal stora
 +ro.surface_flinger.has_HDR_display=false
  vendor.sys_tuner.disable_cpuset_config=true
  ro.vendor.widevine.key_handle_cache.enabled=false
--debug.renderengine.backend=
--debug.renderengine.vulkan=true
+ debug.renderengine.backend=
+ debug.renderengine.vulkan=true
  debug.renderengine.graphite_desktop_optin=true
 -vendor.hwc.drm.enable_color_pipeline=true
 -vendor.hwc.drm.force_color_mode=13

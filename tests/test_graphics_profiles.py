@@ -35,11 +35,27 @@ class GraphicsProfileTests(unittest.TestCase):
                 self.assertIn(f"setprop debug.hwui.renderer {renderer}", profile)
                 self.assertIn(f"etc/gbos-builder/{name}", install_list)
 
+    def test_each_graphics_profile_overrides_google_renderengine_defaults(self):
+        profiles = {
+            "graphics-amd.rc": ("true", "skiavkthreaded"),
+            "graphics-amd-vulkan.rc": ("true", "skiavkthreaded"),
+            "graphics-softpipe.rc": ("false", "skiaglthreaded"),
+            "graphics-intel.rc": ("false", "skiaglthreaded"),
+        }
+
+        for name, (vulkan, backend) in profiles.items():
+            with self.subTest(profile=name):
+                profile = profile_path(name).read_text()
+                self.assertIn(f"setprop debug.renderengine.vulkan {vulkan}", profile)
+                self.assertIn(f"setprop debug.renderengine.backend {backend}", profile)
+
     def test_vendor_build_props_leave_hwui_renderer_to_the_selected_profile(self):
         patch = (REPO / "android/vendor/build-prop.patch").read_text()
         self.assertIn("-ro.hwui.use_vulkan=true\n", patch)
         self.assertNotIn("+ro.hwui.use_vulkan=", patch)
         self.assertNotIn("+debug.hwui.renderer=", patch)
+        self.assertNotIn("-debug.renderengine.backend=", patch)
+        self.assertNotIn("-debug.renderengine.vulkan=true", patch)
 
 
     def test_software_codec_sandbox_allows_only_the_mesa_affinity_query(self):

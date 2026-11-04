@@ -219,6 +219,8 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
   entry is opt-in. The RADV queue patch is compiled into the driver used by both AMD profiles;
   it maps logical queues onto hardware rings and serializes submissions per context. Keep GL as
   the default; the owner saw no noticeable improvement with the optional profile.
+- Preserve Google's base `debug.renderengine.*` properties; each selected early-init graphics
+  profile explicitly chooses its RenderEngine Vulkan setting and backend.
 - LineageOS minigbm's Mesa backend needs the small AMD/FD/mapping fixes in
   [minigbm-amd.patch](../../hardware/drivers/amdgpu/minigbm-amd.patch). Its C++ interface links to Google's actual
   platform libraries, not NDK libc++; an ABI gate checks Google's clients whenever either image or library changes.
@@ -297,6 +299,9 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 uncommitted — Retain Google's RenderEngine property defaults in the vendor patch;
+  assert all graphics profiles explicitly set their own backend. 291 tests, image metadata/fit
+  checks and enforcing QEMU softpipe boot pass; physical AMD/Intel profiles await owner retest.
 - 2026-11-04 (this commit) — Owner accepts Lenovo test; saved `193204` logs show no HttpEngine
   trap samples, with 190,311 SHA/148,506 GFNI/5,654 VNNI maxima over ~351 s, not CPU measurements.
   Video raises CPU; playback decoder, dedicated HttpEngine HTTP/TLS and MSI regression unverified.
