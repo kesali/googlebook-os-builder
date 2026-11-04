@@ -1,2 +1,2 @@
 vendor/audio-msi.patch
-vendor/audio-policy.patch
+vendor/audio-ueventd.patch

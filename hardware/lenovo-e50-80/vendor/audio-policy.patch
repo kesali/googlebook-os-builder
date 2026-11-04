@@ -1,0 +1,20 @@
+Label only the Lenovo's analog HDA card ID (Intel PCH audio, 0000:00:1b.0) with the hda-audio
+recipe's narrow type, applied by ueventd when the card appears, so the selector can rename it.
+No generic sysfs permissions are broadened. Drop together with the Lenovo audio selector.
+
+--- a/etc/selinux/vendor_file_contexts
++++ b/etc/selinux/vendor_file_contexts
+@@ -394,3 +394,4 @@
+ /sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.0/(uevent|vendor|device|subsystem_vendor|subsystem_device|revision|config|resource|irq) u:object_r:sysfs_gpu:s0
+ /sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.6/sound/card[0-9]+/id u:object_r:gbos_builder_audio_id:s0
+ /sys/devices/pci0000:00/0000:00:08\.1/0000:03:00\.0/drm/card[0-9]+/card[0-9]+-eDP-1/backlight(/.*)? u:object_r:sysfs_leds:s0
++/sys/devices/pci0000:00/0000:00:1b\.0/sound/card[0-9]+/id u:object_r:gbos_builder_audio_id:s0
+--- a/etc/ueventd.rc
++++ b/etc/ueventd.rc
+@@ -169,3 +169,6 @@
+ 
+ # Apply the narrow card-ID label when the MSI's analog HDA card appears.
+ /sys/devices/pci0000:00/0000:00:08.1/0000:03:00.6/sound/card* id 0644 root root
++
++# Apply the narrow card-ID label when the Lenovo's analog HDA card appears.
++/sys/devices/pci0000:00/0000:00:1b.0/sound/card* id 0644 root root

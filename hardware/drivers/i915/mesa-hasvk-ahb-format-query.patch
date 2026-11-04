@@ -1,0 +1,18 @@
+# Chrome's ANGLE/Vulkan compositor asks whether an Android hardware buffer can back an image by
+# chaining only VkAndroidHardwareBufferUsageANDROID; VkExternalImageFormatProperties is optional.
+# hasvk accepts the Android handle type only when that optional struct is present, otherwise it
+# reports VK_ERROR_FORMAT_NOT_SUPPORTED, so Chrome cannot create display buffers on Broadwell and
+# restarts its GPU process (grey page). Treat the handle as supported either way, as anv and RADV
+# do. Drop when upstream hasvk no longer requires VkExternalImageFormatProperties here.
+
+--- a/src/intel/vulkan_hasvk/anv_formats.c
++++ b/src/intel/vulkan_hasvk/anv_formats.c
+@@ -1525,6 +1525,8 @@
+             }
+             break;
+          }
++         if (ahw_supported)
++            break;
+          FALLTHROUGH; /* If ahw not supported */
+       default:
+          /* From the Vulkan 1.0.42 spec:

@@ -1,5 +1,6 @@
-# Lenovo AR9565; the same Google cfg80211/mac80211 helpers are reused.
+# Lenovo AR9565/AR3012 combo; reuse Google's wireless and Bluetooth helpers.
 drivers/net/wireless/ath/ath.ko
 drivers/net/wireless/ath/ath9k/ath9k_hw.ko
 drivers/net/wireless/ath/ath9k/ath9k_common.ko
 drivers/net/wireless/ath/ath9k/ath9k.ko
+drivers/bluetooth/ath3k.ko

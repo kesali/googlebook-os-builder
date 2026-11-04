@@ -1,0 +1,147 @@
+Google's board audio configuration is for a Lenovo SOF codec. The Lenovo E50-80's ALC233 uses
+analog PCM 0 for the speaker, headphone, internal mic (pin 0x12) and jack mic (0x19), with the
+HDA jack input devices named by its "HDA Intel PCH" card. Unmute the HDA mixer; keep Google's
+neutral DSP graph and volume curves. HDMI audio is on a separate card and is omitted.
+These are copies of Google's files in this laptop's own directory, bind-mounted over the board
+directory at boot, because the MSI patches the board directory in place.
+Drop when Google supports this laptop.
+
+--- a/etc/audio/gbos-builder-lenovo-e50-80/audio_config.xml
++++ b/etc/audio/gbos-builder-lenovo-e50-80/audio_config.xml
+@@ -7,13 +7,12 @@
+ 	<HiFi>
+ 		<Headphone>
+ 			<PlaybackPCM>hw:sofrt5682,0</PlaybackPCM>
+-			<PlaybackMixerElem>DAC1</PlaybackMixerElem>
+-			<JackDev>sof-rt5682 Headset Jack</JackDev>
++			<JackDev>HDA Intel PCH Headphone</JackDev>
+ 			<JackSwitch>2</JackSwitch>
+ 			<DSPLatency>0</DSPLatency>
+ 		</Headphone>
+ 		<InternalMic>
+-			<CapturePCM>hw:sofrt5682,99</CapturePCM>
++			<CapturePCM>hw:sofrt5682,0</CapturePCM>
+ 			<CaptureChannelMap>
+ 				<FL>0</FL>
+ 				<FR>1</FR>
+@@ -23,39 +22,12 @@
+ 		</InternalMic>
+ 		<Mic>
+ 			<CapturePCM>hw:sofrt5682,0</CapturePCM>
+-			<CaptureMixerElem>Headset Mic</CaptureMixerElem>
+-			<JackDev>sof-rt5682 Headset Jack</JackDev>
++			<JackDev>HDA Intel PCH Mic</JackDev>
+ 			<DSPLatency>0</DSPLatency>
+ 		</Mic>
+ 		<Speaker>
+-			<PlaybackPCM>hw:sofrt5682,1</PlaybackPCM>
++			<PlaybackPCM>hw:sofrt5682,0</PlaybackPCM>
+ 			<DSPLatency>0</DSPLatency>
+ 		</Speaker>
+-		<HDMI1>
+-			<PlaybackPCM>hw:sofrt5682,5</PlaybackPCM>
+-			<JackDev>sof-rt5682 HDMI/DP,pcm=5</JackDev>
+-			<PlaybackChannels>2</PlaybackChannels>
+-		</HDMI1>
+-		<HDMI2>
+-			<PlaybackPCM>hw:sofrt5682,6</PlaybackPCM>
+-			<JackDev>sof-rt5682 HDMI/DP,pcm=6</JackDev>
+-			<PlaybackChannels>2</PlaybackChannels>
+-		</HDMI2>
+-		<HDMI3>
+-			<PlaybackPCM>hw:sofrt5682,7</PlaybackPCM>
+-			<JackDev>sof-rt5682 HDMI/DP,pcm=7</JackDev>
+-			<PlaybackChannels>2</PlaybackChannels>
+-		</HDMI3>
+-		<HDMI4>
+-			<PlaybackPCM>hw:sofrt5682,8</PlaybackPCM>
+-			<JackDev>sof-rt5682 HDMI/DP,pcm=8</JackDev>
+-			<PlaybackChannels>2</PlaybackChannels>
+-		</HDMI4>
+-		<SCOLineOut>
+-			<PlaybackPCM>hw:sofrt5682,2</PlaybackPCM>
+-		</SCOLineOut>
+-		<SCOLineIn>
+-			<CapturePCM>hw:sofrt5682,2</CapturePCM>
+-		</SCOLineIn>
+ 	</HiFi>
+ </audio_config>
+--- a/etc/audio/gbos-builder-lenovo-e50-80/mixer_paths.xml
++++ b/etc/audio/gbos-builder-lenovo-e50-80/mixer_paths.xml
+@@ -3,60 +3,24 @@
+ 	<!--Copyright 2024 The Chromium OS Authors. All rights reserved.
+ Use of this source code is governed by a BSD-style license that can be
+ found in the LICENSE file.-->
+-	<ctl name="Headphone Jack Switch" value="0" />
+-	<ctl name="Stereo1 DAC MIXL DAC L1 Switch" value="0" />
+-	<ctl name="Stereo1 DAC MIXR DAC R1 Switch" value="0" />
+-	<ctl name="Stereo1 ADC L Mux" value="0" />
+-	<ctl name="STO1 ADC Capture Switch" value="1 1" />
+-	<ctl name="Speaker Digital Volume" value="235" />
+-	<ctl name="RECMIX1L CBJ Switch" value="1" />
+-	<ctl name="IF1 01 ADC Swap Mux" value="2" />
+-	<ctl name="CBJ Boost Volume" value="16" />
+-	<ctl name="Dmic0 Capture Volume" value="44 44" />
+-	<ctl name="Stereo1 ADC L1 Mux" value="1" />
+-	<ctl name="Stereo1 ADC R1 Mux" value="1" />
+-	<ctl name="Stereo1 ADC MIXL ADC2 Switch" value="0" />
+-	<ctl name="Stereo1 ADC MIXR ADC2 Switch" value="0" />
+-	<ctl name="Stereo1 ADC MIXL ADC1 Switch" value="1" />
+-	<ctl name="Stereo1 ADC MIXR ADC1 Switch" value="1" />
+-	<ctl name="DAC1 Playback Volume" value="122 122" />
+-	<ctl name="Dmic0 Capture Switch" value="0 0 0 0" />
+-	<ctl name="Headset Mic Switch" value="0" />
+-	<ctl name="Spk Switch" value="0" />
+-	<!-- DAX Controls -->
+-	<!-- For path Speaker -->
+-	<ctl name="DAX Speaker Tuning" bin="/vendor/etc/audio/dax/ruby/dax_param.bin" />
+-	<ctl name="DAX Speaker Switch" value="1" />
+-	<ctl name="DAX Speaker Switch CP" value="1" />
+-	<ctl name="DAX Speaker Switch CTC" value="1" />
+-	<ctl name="DAX Speaker Profile" value="0" />
+-	<ctl name="DAX Speaker Device" value="0" />
+-	<!-- Headphone -->
+-	<ctl name="DAX Headphone Tuning" bin="/vendor/etc/audio/dax/ruby/dax_param.bin" />
+-	<ctl name="DAX Headphone Switch" value="1" />
+-	<ctl name="DAX Headphone Switch CP" value="1" />
+-	<ctl name="DAX Headphone Switch CTC" value="1" />
+-	<ctl name="DAX Headphone Profile" value="0" />
+-	<ctl name="DAX Headphone Device" value="1" />
+-	<!-- End of DAX Controls -->
+-	<path name="Headphone">
+-		<ctl name="Headphone Jack Switch" value="1" />
+-		<ctl name="Stereo1 DAC MIXL DAC L1 Switch" value="1" />
+-		<ctl name="Stereo1 DAC MIXR DAC R1 Switch" value="1" />
+-	</path>
++	<!-- ALC233 is an ALC269-family codec like the MSI ALC256: 87 is 0 dB on the outputs and 23
++	     on the ADC. Android controls volume in software. Auto-Mic switches internal/jack mic. -->
++	<ctl name="Master Playback Volume" value="87" />
++	<ctl name="Master Playback Switch" value="1" />
++	<ctl name="Speaker Playback Volume" value="87 87" />
++	<ctl name="Headphone Playback Volume" value="87 87" />
++	<ctl name="Speaker Playback Switch" value="1 1" />
++	<ctl name="Headphone Playback Switch" value="1 1" />
++	<ctl name="Auto-Mute Mode" value="Enabled" />
++	<ctl name="Capture Switch" value="0 0" />
++	<path name="Headphone" />
++	<path name="Speaker" />
+ 	<path name="InternalMic">
+-		<ctl name="Dmic0 Capture Switch" value="1 1 1 1" />
++		<ctl name="Capture Volume" value="23 23" />
++		<ctl name="Capture Switch" value="1 1" />
+ 	</path>
+ 	<path name="Mic">
+-		<ctl name="Headset Mic Switch" value="1" />
+-	</path>
+-	<path name="Speaker">
+-		<ctl name="Spk Switch" value="1" />
++		<ctl name="Capture Volume" value="23 23" />
++		<ctl name="Capture Switch" value="1 1" />
+ 	</path>
+-	<path name="HDMI1" />
+-	<path name="HDMI2" />
+-	<path name="HDMI3" />
+-	<path name="HDMI4" />
+-	<path name="SCOLineOut" />
+-	<path name="SCOLineIn" />
+ </mixer>

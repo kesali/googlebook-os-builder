@@ -1,0 +1,2 @@
+# Renames the selected HD-audio codec's card to the ID Google's audio HAL expects.
+bin/get_variant_audio 0755 0:2000 get_variant_audio_exec ./vendor/get_variant_audio

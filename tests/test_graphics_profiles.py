@@ -18,10 +18,11 @@ def profile_path(name):
 
 
 class GraphicsProfileTests(unittest.TestCase):
-    def test_broadwell_profile_is_gl_only_and_does_not_select_amd_or_software(self):
+    def test_broadwell_profile_renders_with_gl_and_offers_hasvk_to_apps(self):
         profile = profile_path("graphics-intel.rc").read_text()
         self.assertIn("setprop ro.hardware.egl mesa", profile)
-        self.assertIn("setprop ro.hardware.vulkan none", profile)
+        self.assertIn("setprop ro.hardware.vulkan intel_hasvk", profile)
+        self.assertIn("setprop ro.hwui.use_vulkan false", profile)
         self.assertIn("setprop debug.renderengine.vulkan false", profile)
         self.assertIn("export GALLIUM_DRIVER iris", profile)
         for override in ("LIBGL_ALWAYS_SOFTWARE", "zink", "radv"):

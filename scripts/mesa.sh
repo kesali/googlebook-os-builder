@@ -121,11 +121,12 @@ EOF
 fi
 
 if $configure; then
-    # Google's camera effects require Vulkan 1.2+; strict mode caps RADV at 1.1.
+    # Google's camera effects require Vulkan 1.2+; strict mode caps RADV and Broadwell's
+    # hasvk at 1.1. hasvk is only for Broadwell's camera; Iris GL still renders the screen.
     setup "$build/mesa" "$mesa" --cross-file "$out/cross.ini" \
         --prefix=/ --libdir=lib64 --buildtype=release -Db_ndebug=true --wrap-mode=nofallback \
         -Dplatforms=android -Dplatform-sdk-version=35 -Dandroid-stub=true \
-        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd \
+        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd,intel_hasvk \
         -Dgallium-va=disabled -Dandroid-strict=false \
         -Dllvm=disabled -Damd-use-llvm=false -Dgbm=enabled -Dgbm-backends-path=/vendor/lib64/gbm \
         -Dglx=disabled -Degl=enabled \
@@ -157,7 +158,7 @@ grep -q 'GLOBAL.*DEFAULT.* __vaDriverInit_1_22$' "$build/va-symbols.txt" || {
 test -s "$va_sysroot/lib64/libdrm_amdgpu.so"
 printf '%s\n' "$settings" > "$build/settings"
 for file in libEGL_mesa.so libGLESv1_CM_mesa.so libGLESv2_mesa.so libgallium_dri.so \
-        libvulkan_radeon.so libgbm_mesa.so gbm/dri_gbm.so; do
+        libvulkan_radeon.so libvulkan_intel_hasvk.so libgbm_mesa.so gbm/dri_gbm.so; do
     test -s "$build/install/lib64/$file"
     if ! cmp -s "$build/install/lib64/$file" "$out/install/lib64/$file"; then
         mkdir -p "$(dirname "$out/install/lib64/$file")"

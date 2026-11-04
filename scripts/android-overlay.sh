@@ -6,7 +6,9 @@
 # A change directory holds only declared changes, applied in this order:
 #   remove.list   Paths to delete, one per line. Each must exist.
 #   install.list  New files: path, mode, uid:gid, SELinux type (- for none), source.
-#                 Source ./FILE is in CHANGES; NAME/FILE is FILE in the input NAME=DIR.
+#                 Source ./FILE is in CHANGES; NAME/FILE is FILE in the input NAME=DIR;
+#                 google/FILE is Google's FILE in ROOT, copied before any patch so a
+#                 patch can then derive a variant from Google's original.
 #                 Source - makes a directory. To replace a file, remove it first.
 #   patches.list  Ordered patches, including selected native recipe fragments.
 #   *.patch       Unified diffs (patch -p1); name order when patches.list is absent.
@@ -49,12 +51,19 @@ check_path() {
 # True if the path exists, even as a broken symlink.
 exists() { [ -e "$1" ] || [ -L "$1" ]; }
 
-# Sets $from to the file an install.list source names: ./FILE or NAME/FILE.
+# Sets $from to the file an install.list source names: ./FILE, google/FILE or NAME/FILE.
 find_source() {
     local name=${1%%/*} file=${1#*/} input
     from=
     if [ "$name" = . ]; then
         from=$changes/$file
+    elif [ "$name" = google ]; then
+        check_path "$file"
+        case " $installed " in
+            *" $file "*) fail "google/$file is one of our installs, not Google's file" ;;
+        esac
+        from=$root/$file
+        [ ! -L "$from" ] || fail "google/$file is a symlink"
     fi
     for input in "${inputs[@]}"; do
         if [ "${input%%=*}" = "$name" ]; then
@@ -72,9 +81,11 @@ while read -r path; do
     echo "$changes: remove $path"
 done < <(entries remove.list)
 
+installed=
 while read -r path mode owner type source; do
     check_path "$path"
     test -n "$source" || fail "install.list needs 5 columns: $path"
+    installed="$installed ${path%/}"
     if exists "$root/$path"; then
         fail "$path already exists; remove it first"
     fi

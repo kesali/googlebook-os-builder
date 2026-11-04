@@ -3,6 +3,7 @@ cpu-vex
 drm-handoff
 amdgpu
 renoir-acp
+hda-audio
 i915
 amd-i2c-hid
 mt7922

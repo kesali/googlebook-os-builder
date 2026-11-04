@@ -213,9 +213,13 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - Wi-Fi uses the signed mt76/MT7921E chain, Google's mac80211/cfg80211 and pinned official
   firmware. Keep `mt7921_common.disable_clc=1`; validate imports against Google's modules.
 - Keep Google's HDA/audio and lights HALs. Remove the Lenovo HDA blocklist/SOF override.
-  Audio preparation is AMD-profile-only, matches ALC256, is bounded, logs failures and signals
-  readiness only after verified renaming. SELinux permits writing only this analog controller's
-  card-ID file. No generic sysfs write grant, bind mounts or replacement HAL.
+  The shared [hda-audio](../../hardware/drivers/hda-audio/) selector is bounded, matches one codec
+  per laptop profile (MSI ALC256 on `amd*`, Lenovo ALC233 on `intel`), logs failures and reports
+  that codec only after verified renaming. SELinux permits writing only each laptop's analog
+  card-ID file. No generic sysfs write grant or replacement HAL.
+- The MSI patches Google's board audio directory in place. Pending owner confirmation: the Lenovo
+  gets its own patched copy of Google's files, which init bind-mounts over the board directory
+  (Google already allows init to mount on config directories; no new SELinux rule).
 - Mixer XML uses measured ALC256 controls: mono Master and stereo Speaker/Headphone, volume
   87 = 0 dB; capture defaults off, with 23 = 0 dB when the Mic route is selected.
   Do not advertise missing HDMI/ACP PCMs as working microphones or outputs.
@@ -230,11 +234,19 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - [kernel/gki.config](../../kernel/gki.config), [laptop-modules.list](../../kernel/laptop-modules.list),
   [firmware.list](../../kernel/firmware.list) — explicit drivers and firmware.
 - [msi-backlight.patch](../../hardware/drivers/amdgpu/msi-backlight.patch) — narrow panel-name adaptation.
-- [get_variant_audio](../../hardware/msi-modern-15-b7m/vendor/get_variant_audio),
-  [audio-msi.rc](../../hardware/msi-modern-15-b7m/vendor/audio-msi.rc), [audio-msi.patch](../../hardware/msi-modern-15-b7m/vendor/audio-msi.patch)
-  — card selection, readiness-triggered restart and declarative PCM/mixer configuration.
-- [audio-policy.patch](../../hardware/msi-modern-15-b7m/vendor/audio-policy.patch),
-  [file-contexts.patch](../../hardware/msi-modern-15-b7m/vendor/file-contexts.patch) — scoped labels/permissions.
+- [get_variant_audio](../../hardware/drivers/hda-audio/vendor/get_variant_audio),
+  [audio-policy.patch](../../hardware/drivers/hda-audio/vendor/audio-policy.patch) — shared card
+  selection and its narrow SELinux type.
+- [audio-msi.rc](../../hardware/msi-modern-15-b7m/vendor/audio-msi.rc), [audio-msi.patch](../../hardware/msi-modern-15-b7m/vendor/audio-msi.patch),
+  [audio-ueventd.patch](../../hardware/msi-modern-15-b7m/vendor/audio-ueventd.patch),
+  [file-contexts.patch](../../hardware/msi-modern-15-b7m/vendor/file-contexts.patch) — MSI
+  readiness-triggered restart, PCM/mixer configuration and scoped labels.
+- [audio-lenovo.rc](../../hardware/lenovo-e50-80/vendor/audio-lenovo.rc), [audio-lenovo.patch](../../hardware/lenovo-e50-80/vendor/audio-lenovo.patch),
+  [audio-policy.patch](../../hardware/lenovo-e50-80/vendor/audio-policy.patch) — Lenovo ALC233
+  bind-mounted configuration and card-ID label.
+- [camera-lenovo.patch](../../hardware/lenovo-e50-80/vendor/camera-lenovo.patch) — EasyCamera
+  `0bda:579c` listed as the front camera, without borrowed calibration.
+- [ar9565](../../hardware/drivers/ar9565/) — Lenovo AR9565 Wi-Fi and AR3012 Bluetooth (`ath3k` firmware upload).
 - [modules.patch](../../hardware/drivers/laptop-modules/vendor_dlkm/modules.patch) — codec preload/HDA unblock.
 - [powerhint.patch](../../hardware/msi-modern-15-b7m/vendor/powerhint.patch) — power HAL without 8-CPU masks.
 - [hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — read-only physical evidence.
@@ -386,6 +398,9 @@ metadata/logd starts still needs a screen photo.
 - [ ] Headphone output — done when the owner hears media through the headphone jack.
 - [ ] Bluetooth — done when the owner pairs a device and the kernel log shows `hci0` set up
   without firmware errors. Check Wi-Fi still works: both run on the same MT7922.
+- [x] Lenovo Bluetooth, speaker, mic, camera and Chrome — owner-confirmed 2026-11-04.
+- [ ] MSI regression after the shared hda-audio selector — done when the MSI still has speaker,
+  mic and camera.
 - [ ] Confirm laptop density 160 remains comfortable, with QEMU still 240.
 - [ ] Diagnose the old framebuffer-free hard lockup only with a safe, evidence-based test.
 - [ ] Establish whether the touchpad needs `X86_AMD_PLATFORM_DEVICE` through a separately
@@ -419,6 +434,14 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 uncommitted — Owner confirms the Lenovo camera and Chrome work; MSI audio regression
+  check still pending.
+- 2026-11-04 uncommitted — Owner confirms Lenovo Bluetooth, audio and mic. Boot `20261104-052320`:
+  camera enumerated but labelled external (Google's table omits `0bda:579c`), fixed by
+  camera-lenovo.patch; Chrome grey traced to hasvk (see graphics). 271 tests, image and QEMU pass.
+- 2026-11-04 uncommitted — Lenovo fixes from boot `20261104-010558`: `ath3k` + ar3k firmware
+  (AR3012 `0cf3:3004`, ath9k btcoex), ALC233 audio via shared selector, hasvk for the camera.
+  270 tests, image/kABI/module checks, QEMU setup screenshot and no-write repeat pass; untested on hardware.
 - 2026-11-04 — Owner flashed the recipe image and reports MSI and Lenovo working;
   no new logs reviewed.
 - 2026-11-04 uncommitted — Combined recipe image validated with 263 tests, exact baseline

@@ -1,0 +1,18 @@
+Google's internal USB-camera table omits the Lenovo E50-80 EasyCamera
+(0bda:579c), so the USB HAL advertises it as external and camera apps
+list no camera. Mark this exact USB ID front-facing without inventing
+lens/sensor calibration. Appended at the end so it stays independent of
+the MSI entry. Drop when Google's table includes this webcam.
+
+--- a/etc/camera/internal_usb_camera_info.txtpb
++++ b/etc/camera/internal_usb_camera_info.txtpb
+@@ -305,3 +305,9 @@
+     }
+   }
+ }
++camera_modules {
++  key: "0bda:579c" # Lenovo E50-80 integrated EasyCamera
++  value {
++    facing: FACING_FRONT
++  }
++}

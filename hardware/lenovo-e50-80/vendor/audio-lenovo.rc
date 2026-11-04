@@ -1,0 +1,14 @@
+# Google's audio HAL reads its board directory and card ID; give it the Lenovo ALC233 config.
+# The mount runs as init itself; Google's policy already lets init mount on config directories.
+on boot && property:ro.boot.gbos_builder.graphics=intel
+    start vendor.gbos_builder.audio_lenovo
+
+service vendor.gbos_builder.audio_lenovo /vendor/bin/get_variant_audio /sys ALC233
+    user root
+    group root
+    disabled
+    oneshot
+
+on property:vendor.audio.gbos_builder.ready=ALC233
+    mount none /vendor/etc/audio/gbos-builder-lenovo-e50-80 /vendor/etc/audio/sof-rt5682_alc5682ivs_tas2563 bind
+    restart vendor.audio-hal-aidl

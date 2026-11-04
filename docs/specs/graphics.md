@@ -57,8 +57,14 @@ Owner confirms the expanded image boots MSI; wider regression has not been repor
 
 Broadwell integration (2026-11-03, enumeration verified above): unchanged upstream Iris builds into
 Mesa alongside softpipe/Zink; native `mesa_clc`/`vtn_bindgen2` use builder-only LLVM 19.
-The [Intel profile](../../hardware/drivers/i915/system_ext/graphics-intel.rc) selects GLES without Vulkan,
-software forcing or AMD overrides; GRUB selects it only for the Lenovo's `8086:1616` GPU.
+The [Intel profile](../../hardware/drivers/i915/system_ext/graphics-intel.rc) renders with Iris GLES
+without software forcing or AMD overrides; GRUB selects it only for the Lenovo's `8086:1616` GPU.
+Since 2026-11-04 (owner-confirmed on the Lenovo) it also offers Mesa hasvk Vulkan 1.3 to apps
+for Google's camera HAL; SurfaceFlinger and HWUI stay on GL. Chrome's ANGLE also picks hasvk;
+its pages stayed grey because hasvk rejects the Android-hardware-buffer format query unless the
+optional `VkExternalImageFormatProperties` is chained (Mesa main too), so every shared image failed.
+[mesa-hasvk-ahb-format-query.patch](../../hardware/drivers/i915/mesa-hasvk-ahb-format-query.patch)
+accepts it as anv and RADV do; an upstream candidate. Gralloc never picks CCS on gen8.
 Signed i915/intel-gtt reuse Google's helpers; only that i915 alias is installed.
 The separate enlarged-layout vendor image is 354,205,696 B within its 387,108,864 B limit.
 All 1,622 vendor and 237 system_ext entries pass metadata/import checks; 69 focused tests pass.
@@ -188,8 +194,9 @@ MJPG sessions with none of the earlier import errors. The logs do not independen
 which decoder processed the frames. The webcam LED also flashes under Linux; its cause is unknown.
 
 ## Decisions
-- Expose native RADV Vulkan capabilities with upstream `android-strict=false`: Google's camera
-  effects cannot initialize with the strict-mode 1.1 cap. This also removes Android extension
+- Expose native RADV and Broadwell hasvk Vulkan capabilities with upstream `android-strict=false`
+  (no Churro version patch needed): Google's camera effects cannot initialize with the
+  strict-mode 1.1 cap. This also removes Android extension
   allowlist filtering, so desktop/app rendering requires regression testing; no CTS claim.
 - Owner's overnight request authorizes an AMD test candidate, retaining softpipe as the verified fallback.
 - Mesa 26.3.0-rc3, libdrm 2.4.133, Expat 2.7.3 from source, NDK r30 at API 35;
@@ -285,6 +292,12 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-04 uncommitted — Owner confirms Chrome renders on the Lenovo with the hasvk patch.
+- 2026-11-04 uncommitted — Lenovo Chrome grey: GPU process logged "could not create backing" and
+  restarted; root cause hasvk's AHB format query. Added the one-condition Mesa patch; 271 tests,
+  image and QEMU (softpipe, does not exercise hasvk) pass. Lenovo Chrome retest pending.
+- 2026-11-04 uncommitted — Added hasvk (`vulkan.intel_hasvk.so`, 22 MB) for the Lenovo camera;
+  Intel profile keeps GL rendering. Image fits, QEMU setup screen inspected; Lenovo camera/Chrome untested.
 - 2026-11-04 uncommitted — Recipe source/profile bytes and image outputs match baseline;
   263 tests, metadata checks, no-write repeat and inspected direct/UEFI softpipe boots pass.
   Physical AMD/Intel regression remains with the owner.

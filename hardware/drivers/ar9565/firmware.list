@@ -1,0 +1,3 @@
+# AR3012 Bluetooth: ath3k picks these names from the chip's ROM version and 40 MHz clock.
+ar3k/AthrBT_0x31010000.dfu
+ar3k/ramps_0x31010000_40.dfu

@@ -64,7 +64,8 @@ install)
     mkdir -p "$DESTDIR/lib64/pkgconfig" "$DESTDIR/lib64/gbm"
     printf 'prefix=/\\n' > "$DESTDIR/lib64/pkgconfig/test.pc"
     for file in libEGL_mesa.so libGLESv1_CM_mesa.so libGLESv2_mesa.so \\
-                libgallium_dri.so libvulkan_radeon.so libgbm_mesa.so gbm/dri_gbm.so \\
+                libgallium_dri.so libvulkan_radeon.so libvulkan_intel_hasvk.so \\
+                libgbm_mesa.so gbm/dri_gbm.so \\
                 radeonsi_drv_video.so libdrm_amdgpu.so; do
         printf 'unchanged stripped bytes\\n' > "$DESTDIR/lib64/$file"
     done
@@ -90,7 +91,7 @@ esac
                 f"{cross.parent}/sysroot/lib64/pkgconfig",
                 cross.read_text())
             published = list((root / "out/install").rglob("*.so*")) + [root / "out/manifest"]
-            self.assertEqual(len(published), 10)
+            self.assertEqual(len(published), 11)
             for path in published:
                 os.utime(path, ns=(1_000_000_000, 1_000_000_000))
             before = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in published}
@@ -106,7 +107,7 @@ esac
 
     def test_va_driver_is_explicitly_enabled_and_packaged_without_replacing_libva(self):
         script = (ROOT / "scripts/mesa.sh").read_text()
-        self.assertIn("-Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd", script)
+        self.assertIn("-Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd,intel_hasvk", script)
         self.assertIn("-Dgallium-drivers=radeonsi -Dvulkan-drivers=", script)
         self.assertIn("-Dgallium-va=enabled", script)
         self.assertIn("-Dvideo-codecs=jpegdec", script)

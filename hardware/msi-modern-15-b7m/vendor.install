@@ -1,3 +1,2 @@
 # MSI ALC256 setup; keep Google's audio HAL and select its expected card ID.
-bin/get_variant_audio                                                   0755 0:2000 get_variant_audio_exec      ./vendor/get_variant_audio
 etc/init/gbos-builder-audio.rc                                                   0644 0:0    vendor_configs_file         ./vendor/audio-msi.rc

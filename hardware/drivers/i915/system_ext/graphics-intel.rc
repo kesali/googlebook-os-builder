@@ -1,7 +1,7 @@
-# Experimental Broadwell path: upstream Iris GLES, no Vulkan or AMD overrides.
+# Broadwell: upstream Iris GLES renders; hasvk Vulkan only for apps such as the camera HAL.
 on early-init
     setprop ro.hardware.egl mesa
-    setprop ro.hardware.vulkan none
+    setprop ro.hardware.vulkan intel_hasvk
     setprop ro.hwui.use_vulkan false
     setprop debug.hwui.renderer skiagl
     setprop debug.renderengine.vulkan false

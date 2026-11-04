@@ -4,6 +4,7 @@
 #
 # path                                                                   mode owner  selinux type                source
 
+# recipe: hda-audio/vendor.install
 # recipe: lenovo-e50-80/vendor.install
 # recipe: msi-modern-15-b7m/vendor.install
 
@@ -33,7 +34,9 @@ lib64/libsoft_attestation_cert.so                                        0644 0:
 
 # recipe: drm-handoff/vendor.install
 # recipe: amdgpu/vendor.install
+# recipe: i915/vendor.install
 # recipe: mt7922/vendor.install
+# recipe: ar9565/vendor.install
 
 # No face sensor: stops system_server polling for a face HAL. See no-face.xml.
 etc/permissions/gbos-builder-no-face.xml                                         0644 0:0    vendor_configs_file         ./no-face.xml

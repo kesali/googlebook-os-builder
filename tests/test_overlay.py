@@ -74,6 +74,39 @@ class OverlayTests(unittest.TestCase):
         self.assertEqual((self.root / "bin/tool").read_text(), "tool\n")
         self.assertFalse((self.root / "bin/old").exists())
 
+    def test_google_source_copies_the_original_before_patches(self):
+        self.write("install.list",
+                   "etc/variant/       0755 0:0 vendor_file -\n"
+                   "etc/variant/a.prop 0644 0:0 vendor_file google/etc/build.prop\n")
+        self.write("patches.list", "base.patch\nvariant.patch\n")
+        self.write("base.patch", "--- a/etc/build.prop\n+++ b/etc/build.prop\n"
+                                 "@@ -1,2 +1,2 @@\n-a=1\n+a=base\n b=2\n")
+        self.write("variant.patch", "--- a/etc/variant/a.prop\n+++ b/etc/variant/a.prop\n"
+                                    "@@ -1,2 +1,2 @@\n a=1\n-b=2\n+b=variant\n")
+        result = self.run_overlay()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "etc/build.prop").read_text(), "a=base\nb=2\n")
+        self.assertEqual((self.root / "etc/variant/a.prop").read_text(), "a=1\nb=variant\n")
+
+    def test_google_source_must_be_googles_existing_regular_file(self):
+        cases = {
+            "is one of our installs": "etc/x 0644 0:0 - ./x\netc/y 0644 0:0 - google/etc/x\n",
+            "missing source google/etc/none": "etc/y 0644 0:0 - google/etc/none\n",
+            "not a path inside the partition": "etc/y 0644 0:0 - google/../etc/build.prop\n",
+            "is a symlink": "etc/y 0644 0:0 - google/etc/link\n",
+        }
+        (self.root / "etc/link").symlink_to("build.prop")
+        self.write("x", "ours\n")
+        for message, listing in cases.items():
+            with self.subTest(message):
+                self.write("install.list", listing)
+                result = self.run_overlay()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+                for path in ("etc/x", "etc/y"):
+                    if (self.root / path).exists():
+                        (self.root / path).unlink()
+
     def test_refuses_undeclared_or_unsafe_changes(self):
         patch = "--- a/etc/build.prop\n+++ b/etc/build.prop\n@@ -1 +1 @@\n-a=9\n+a=2\n"
         cases = {

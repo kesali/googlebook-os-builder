@@ -1,5 +1,6 @@
 #!/vendor/bin/sh
-# Read: sysfs root and codec name. Rename only that codec's card for Google's audio HAL.
+# Read: sysfs root and codec name. Rename only that codec's card for Google's audio HAL,
+# then report the codec name so only that laptop's init triggers act on it.
 set -eu
 trap 'status=$?; if [ "$status" -ne 0 ]; then log -p e -t gbos-builder-audio "gbos-builder audio preparation failed (status $status)"; fi' EXIT
 
@@ -23,7 +24,7 @@ while [ "$attempt" -lt 150 ]; do
             }
         fi
         log -t gbos-builder-audio "$codec_name on ${card##*/}, id=$id"
-        setprop vendor.audio.gbos_builder.ready 1
+        setprop vendor.audio.gbos_builder.ready "$codec_name"
         exit 0
     done
     sleep 0.1

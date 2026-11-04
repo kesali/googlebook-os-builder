@@ -1,2 +1,10 @@
 # PS/2 Elantech-only palm-width adjustment; leave other touchpad calibrations unchanged.
 usr/idc/ETPS_2_Elantech_Touchpad.idc                                      0644 0:0    vendor_configs_file         ./vendor/ETPS_2_Elantech_Touchpad.idc
+
+# Lenovo ALC233 audio: Google's board files, patched by vendor/audio-lenovo.patch.
+etc/audio/gbos-builder-lenovo-e50-80/                                     0755 0:0 vendor_configs_file -
+etc/audio/gbos-builder-lenovo-e50-80/audio_config.xml                     0644 0:0 vendor_configs_file google/etc/audio/sof-rt5682_alc5682ivs_tas2563/audio_config.xml
+etc/audio/gbos-builder-lenovo-e50-80/mixer_paths.xml                      0644 0:0 vendor_configs_file google/etc/audio/sof-rt5682_alc5682ivs_tas2563/mixer_paths.xml
+etc/audio/gbos-builder-lenovo-e50-80/volume_curves.xml                    0644 0:0 vendor_configs_file google/etc/audio/sof-rt5682_alc5682ivs_tas2563/volume_curves.xml
+etc/audio/gbos-builder-lenovo-e50-80/dsp.ini                              0644 0:0 vendor_configs_file google/etc/audio/sof-rt5682_alc5682ivs_tas2563/dsp.ini
+etc/init/gbos-builder-audio-lenovo.rc                                     0644 0:0 vendor_configs_file ./vendor/audio-lenovo.rc

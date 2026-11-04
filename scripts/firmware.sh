@@ -11,7 +11,8 @@ mkdir "$work/files"
 python3 "$(dirname "$0")/../tools/hardware_recipes.py" "$list" > "$work/firmware.list"
 while read -r path; do
     [[ -z "$path" || "$path" == \#* ]] && continue
-    [[ ( "$path" == amdgpu/*.bin || "$path" == mediatek/*.bin ) && "$path" != *..* ]] || {
+    [[ ( "$path" == amdgpu/*.bin || "$path" == mediatek/*.bin || "$path" == ar3k/*.dfu ) \
+        && "$path" != *..* ]] || {
         echo "Invalid runtime firmware path: $path" >&2; exit 1;
     }
     printf 'linux-firmware-%s/%s\n' "$release" "$path" >> "$work/members"

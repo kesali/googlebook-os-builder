@@ -15,11 +15,11 @@ class HardwareRecipeTests(unittest.TestCase):
     def test_existing_recipe_surfaces_and_metadata_agree(self):
         hardware_recipes.validate()
         self.assertEqual(hardware_recipes.drivers(), [
-            "cpu-vex", "drm-handoff", "amdgpu", "renoir-acp", "i915",
+            "cpu-vex", "drm-handoff", "amdgpu", "renoir-acp", "hda-audio", "i915",
             "amd-i2c-hid", "mt7922", "elantech-ps2", "ar9565",
             "laptop-modules", "qemu-virtio",
         ])
-        self.assertEqual(len(hardware_recipes.aliases()), 8)
+        self.assertEqual(len(hardware_recipes.aliases()), 9)
         self.assertEqual(hardware_recipes.aliases()["psmouse"], "serio:ty01pr*id*ex*")
         self.assertEqual(hardware_recipes.aliases()["ath9k"],
                          "pci:v0000168Cd00000036sv*sd*bc*sc*i*")
@@ -98,10 +98,19 @@ class HardwareRecipeTests(unittest.TestCase):
 
     def test_patch_manifests_preserve_shared_and_recipe_order(self):
         paths = hardware_recipes.patches(REPO / "android/vendor")
-        self.assertEqual([path.name for path in paths], [
-            "audio-msi.patch", "audio-policy.patch", "build-prop.patch",
-            "camera-msi.patch", "camera-va-driver.patch", "file-contexts.patch",
-            "powerhint.patch", "ueventd.patch",
+        self.assertEqual([str(path.relative_to(REPO)) for path in paths], [
+            "hardware/drivers/hda-audio/vendor/audio-policy.patch",
+            "hardware/msi-modern-15-b7m/vendor/audio-msi.patch",
+            "hardware/msi-modern-15-b7m/vendor/audio-ueventd.patch",
+            "android/vendor/build-prop.patch",
+            "hardware/msi-modern-15-b7m/vendor/camera-msi.patch",
+            "hardware/drivers/amdgpu/vendor/camera-va-driver.patch",
+            "hardware/msi-modern-15-b7m/vendor/file-contexts.patch",
+            "hardware/msi-modern-15-b7m/vendor/powerhint.patch",
+            "hardware/drivers/drm-handoff/vendor/ueventd.patch",
+            "hardware/lenovo-e50-80/vendor/audio-lenovo.patch",
+            "hardware/lenovo-e50-80/vendor/audio-policy.patch",
+            "hardware/lenovo-e50-80/vendor/camera-lenovo.patch",
         ])
 
     def test_recipe_local_assets_are_rebased_without_changing_install_metadata(self):

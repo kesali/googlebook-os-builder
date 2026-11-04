@@ -1,5 +1,6 @@
-# Lenovo AR9565 Wi-Fi; reuse Google's wireless stack unchanged.
+# Lenovo AR9565 Wi-Fi and AR3012 firmware loader; reuse Google's wireless/Bluetooth stacks.
 lib/modules/ath.ko                     0644 0:0   vendor_kernel_modules gki/ath.ko
 lib/modules/ath9k_hw.ko                0644 0:0   vendor_kernel_modules gki/ath9k_hw.ko
 lib/modules/ath9k_common.ko            0644 0:0   vendor_kernel_modules gki/ath9k_common.ko
 lib/modules/ath9k.ko                   0644 0:0   vendor_kernel_modules gki/ath9k.ko
+lib/modules/ath3k.ko                   0644 0:0   vendor_kernel_modules gki/ath3k.ko

@@ -1,0 +1,12 @@
+Ueventd applies the hda-audio recipe's narrow card-ID label when the MSI's analog HDA card
+appears, so the selector can rename it. Drop together with the MSI audio selector.
+
+--- a/etc/ueventd.rc
++++ b/etc/ueventd.rc
+@@ -166,3 +166,6 @@
+ /dev/mtd* 0664 system system
+ /proc/mtd 0444 system ap_firmware
+ /dev/nvram 0664 system system
++
++# Apply the narrow card-ID label when the MSI's analog HDA card appears.
++/sys/devices/pci0000:00/0000:00:08.1/0000:03:00.6/sound/card* id 0644 root root

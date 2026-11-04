@@ -11,5 +11,5 @@ service vendor.gbos_builder.audio /vendor/bin/get_variant_audio /sys ALC256
     disabled
     oneshot
 
-on property:vendor.audio.gbos_builder.ready=1
+on property:vendor.audio.gbos_builder.ready=ALC256
     restart vendor.audio-hal-aidl

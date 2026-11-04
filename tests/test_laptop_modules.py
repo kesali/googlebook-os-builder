@@ -127,6 +127,30 @@ class LaptopModuleTests(unittest.TestCase):
         self.assertEqual(LAPTOP_ALIASES["ath9k"], alias)
         self.assertIn(f"+alias {alias} ath9k\n", module_patch)
 
+    def test_ar3012_bluetooth_gets_ath3k_firmware_without_replacing_google_btusb(self):
+        config = expand(REPO / "kernel/gki.config")
+        paths = expand(REPO / "kernel/laptop-modules.list").splitlines()
+        installs = expand(REPO / "android/vendor_dlkm/install.list")
+        firmware = expand(REPO / "kernel/firmware.list").splitlines()
+        vendor = expand(REPO / "android/vendor/install.list")
+        self.assertIn("CONFIG_BT_ATH3K=m\n", config)
+        self.assertIn("drivers/bluetooth/ath3k.ko", paths)
+        self.assertIn("gki/ath3k.ko", installs)
+        self.assertNotIn("gki/btusb.ko", installs)
+        self.assertFalse(any(Path(path).name == "btusb.ko" for path in paths))
+        for name in ("ar3k/AthrBT_0x31010000.dfu", "ar3k/ramps_0x31010000_40.dfu"):
+            self.assertIn(name, firmware)
+            self.assertIn(f"firmware/{name}", vendor)
+        module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
+        alias = "usb:v0CF3p3004d*dc*dsc*dp*ic*isc*ip*in*"
+        self.assertEqual(LAPTOP_ALIASES["ath3k"], alias)
+        self.assertEqual([line for line in module_patch.splitlines()
+                          if line.startswith("+alias ") and line.endswith(" ath3k")],
+                         [f"+alias {alias} ath3k"])
+        self.assertIn("+/vendor/lib/modules/ath3k.ko: /system/lib/modules/bluetooth.ko "
+                      "/system/lib/modules/rfkill.ko\n", module_patch)
+        self.assertIn("+options ath9k btcoex_enable=1\n", module_patch)
+
     def test_elantech_ps2_module_is_packaged_with_hotplug_and_builtin_helpers(self):
         config = expand(REPO / "kernel/gki.config")
         self.assertIn("CONFIG_MOUSE_PS2=m\n", config)

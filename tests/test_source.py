@@ -95,6 +95,7 @@ class SourcePreparationTests(unittest.TestCase):
                 "hardware/drivers/drm-handoff/mesa-drm-master.patch",
                 "hardware/drivers/amdgpu/mesa-radv-two-queues.patch",
                 "hardware/drivers/amdgpu/mesa-radv-yv12.patch",
+                "hardware/drivers/i915/mesa-hasvk-ahb-format-query.patch",
             ],
             "MINIGBM": [
                 "hardware/drivers/amdgpu/minigbm-amd.patch",

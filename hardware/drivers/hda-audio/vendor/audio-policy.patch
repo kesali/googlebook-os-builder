@@ -1,0 +1,19 @@
+Let the HD-audio selector rename only the laptop's analog card ID, which Google's unchanged HAL
+needs. Each laptop recipe labels its card's id path with gbos_builder_audio_id through
+vendor_file_contexts and ueventd. Keep enforcing; no generic sysfs write access.
+Drop together with the HD-audio selector.
+
+--- a/etc/selinux/vendor_sepolicy.cil
++++ b/etc/selinux/vendor_sepolicy.cil
+@@ -9275,3 +9275,11 @@
+ (typeattributeset base_typeattr_244_202604 (and (domain) (not (dumpstate_202604 init_202604))))
+ ;;* lme
+ 
++; Only the selected analog card's id is writable; never grant generic sysfs writes.
++(type gbos_builder_audio_id)
++(roletype object_r gbos_builder_audio_id)
++(typeattributeset fs_type (gbos_builder_audio_id))
++(typeattributeset sysfs_type (gbos_builder_audio_id))
++(allow get_variant_audio gbos_builder_audio_id (file (getattr open read write)))
++(allow gbos_builder_hardware_diag gbos_builder_audio_id (file (getattr open read)))
++(allow hal_audio_default gbos_builder_audio_id (file (getattr open read)))

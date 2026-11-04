@@ -1,0 +1,2 @@
+# Broadwell Vulkan from Mesa hasvk; the Intel profile selects it for Google's camera HAL.
+lib64/hw/vulkan.intel_hasvk.so                                           0644 0:0    same_process_hal_file       mesa/lib64/libvulkan_intel_hasvk.so
