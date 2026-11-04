@@ -15,6 +15,36 @@ BOOT_THREE = "33333333-3333-3333-3333-333333333333"
 
 
 class BootlogTests(unittest.TestCase):
+    def test_persistent_logging_requires_explicit_boot_opt_in(self):
+        text = (REPO / "android/system_ext/bootlog.rc").read_text()
+        actions = {}
+        services = {}
+        current = None
+        for line in text.splitlines():
+            if line.startswith(("on ", "service ")):
+                current = []
+                (actions if line.startswith("on ") else services)[line] = current
+            elif line.startswith("    ") and current is not None:
+                current.append(line.strip())
+        self.assertEqual(actions["on early-init && property:ro.boot.gbos_builder.logs=1"],
+                         ["setprop ro.logd.kernel true"])
+        self.assertEqual(actions["on post-fs && property:ro.boot.gbos_builder.logs=1"], [
+            "mkdir /metadata/gbos-builder-bootlog 0700 logd log",
+            "restorecon_recursive /metadata/gbos-builder-bootlog",
+            "start gbos_builder_bootlog_prepare",
+        ])
+        for trigger in actions:
+            self.assertTrue("property:ro.boot.gbos_builder.logs=1" in trigger
+                            or "property:sys.gbos_builder.bootlog.ready=1" in trigger, trigger)
+        for service, options in services.items():
+            self.assertIn("disabled", options, service)
+        menu = (REPO / "boot/android-menu.cfg").read_text()
+        self.assertIn('menuentry "Googlebook OS" {\n    boot_android\n}', menu)
+        self.assertIn('menuentry "Googlebook OS (diagnostic logs)" {\n'
+                      '    boot_android androidboot.gbos_builder.logs=1\n}', menu)
+        self.assertNotIn("androidboot.gbos_builder.logs", (REPO / "android/cmdline.txt").read_text())
+        self.assertIn('"--diagnostic-logs"', (REPO / "tools/android_smoke.py").read_text())
+
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)

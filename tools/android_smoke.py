@@ -100,6 +100,7 @@ def main():
         process = subprocess.Popen([
             "bash", "scripts/qemu.sh", str(out / "gki/bzImage"), str(out / "android/initrd.img"),
             str(disk), "android/cmdline.txt", str(logs), sys.argv[2], sys.argv[3],
+            "--diagnostic-logs",
         ], stdout=output, stderr=subprocess.STDOUT)
         try:
             verify(logs, process)

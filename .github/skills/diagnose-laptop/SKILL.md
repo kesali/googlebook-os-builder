@@ -16,7 +16,10 @@ local; report only relevant filtered excerpts.
 
 1. Establish the exact symptom, selected boot entry, last known working build and whether
    the failure is reproducible. Ask for missing evidence rather than assuming a cause.
-2. Prefer already retrieved logs under ignored `out/`. Follow the
+2. Prefer already retrieved logs under ignored `out/`. Persistent capture is opt-in: for fresh
+   evidence, have the owner reboot with **Googlebook OS (diagnostic logs)** and reproduce the
+   problem before retrieval. Normal boots preserve old captures, so verify their identity/time.
+   This is a self-service/AI-assisted workflow, not a promise to retain every crash. Follow the
    [log recovery procedure](../../../docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
    when new evidence is needed: have the owner run `make laptop-logs` and select the USB.
    Read the resulting `out/laptop-logs/latest/current/` and `previous/`; do not ask for manual

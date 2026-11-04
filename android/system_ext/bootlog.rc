@@ -1,9 +1,10 @@
 # Google's user image disables persistent logging. Use its native logcat, with a
 # dedicated enforcing domain; /metadata remains readable from Linux after a hang.
-on early-init
+# Only diagnostic boots prepare/rotate records; ordinary boots preserve saved evidence.
+on early-init && property:ro.boot.gbos_builder.logs=1
     setprop ro.logd.kernel true
 
-on post-fs
+on post-fs && property:ro.boot.gbos_builder.logs=1
     mkdir /metadata/gbos-builder-bootlog 0700 logd log
     restorecon_recursive /metadata/gbos-builder-bootlog
     start gbos_builder_bootlog_prepare

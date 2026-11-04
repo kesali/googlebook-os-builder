@@ -135,7 +135,10 @@ HDMI display performance feels fine, though its frame rate has not been measured
 slider, MSI Bluetooth pairing, headphone output and suspend remain unverified; HDMI audio is
 not implemented. Lenovo Bluetooth, audio and microphone are owner-confirmed.
 Details and evidence: [laptop hardware](../docs/specs/laptop-hardware.md).
-Persistent kernel/Android diagnostics use native logcat and retain current/previous boot on metadata,
+Normal boots do not run the project's persistent log collectors or hardware snapshot.
+To investigate a problem, reboot using **Googlebook OS (diagnostic logs)** and reproduce it.
+Persistent kernel/Android diagnostics use native logcat and retain current/previous diagnostic
+boots on metadata,
 with an explicitly approved scoped enforcing policy. See [boot](../docs/specs/boot.md) for limits/coverage
 and [laptop hardware](../docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
 for Linux retrieval. These are Android logs, separate from the optional diagnostic USB below.
@@ -207,7 +210,9 @@ Select the USB by model/serial. Sudo authorizes read-only `debugfs`; no mounts, 
 repair or USB writes occur. Current and previous boot logs are copied to a private, timestamped
 folder under `out/laptop-logs/`, owned by your normal user. `out/laptop-logs/latest/current/`
 always points to the newest successful retrieval; older copies are retained.
-Android already saves these logs automatically. Retrieval needs host `debugfs` (e2fsprogs),
+Only the diagnostic entry saves new logs; normal boots leave earlier captures untouched.
+Check the saved boot identity/time rather than assuming it describes the latest normal boot.
+Retrieval needs host `debugfs` (e2fsprogs),
 sudo, lsblk and Python 3; it does not build an image. Treat the logs as private.
 
 Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so

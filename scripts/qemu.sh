@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Boot Googlebook OS in QEMU: our kernel, the Android initrd and the Android disk.
 #
-#   qemu.sh <bzImage> <initrd> <disk> <cmdline.txt> <log dir> <CPUs> <memory>
+#   qemu.sh <bzImage> <initrd> <disk> <cmdline.txt> <log dir> <CPUs> <memory> [--diagnostic-logs]
 #
 # VNC is published to localhost by builder.sh. The serial shell and QMP monitor use
 # local Unix sockets in <log dir>, so boot tests can inspect the same VM as a human.
 # Ctrl-C stops the VM; use Android's shutdown menu for an orderly shutdown.
 set -euo pipefail
 kernel=$1 initrd=$2 disk=$3 cmdline=$4 logs=$5 cpus=$6 memory=$7
+if [ "$#" -gt 8 ] || { [ "$#" -eq 8 ] && [ "$8" != --diagnostic-logs ]; }; then
+    echo "Expected seven arguments and optional --diagnostic-logs." >&2
+    exit 1
+fi
 
 if [ ! -w /dev/kvm ]; then
     echo "QEMU needs hardware virtualization (/dev/kvm); Android is too slow without it." >&2
@@ -21,6 +25,9 @@ flock -n 9 || { echo "The Android disk is already in use." >&2; exit 1; }
 # cmdline.txt is one argument per line with # comments; QEMU adds the serial console.
 args=$(sed 's/#.*//' "$cmdline" | tr -s '[:space:]' ' ')
 args+="console=ttyS1,115200 printk.devkmsg=on"
+if [ "${8:-}" = --diagnostic-logs ]; then
+    args+=" androidboot.gbos_builder.logs=1"
+fi
 
 echo "VNC: localhost:${QEMU_VNC_PORT:-5900}. Kernel log: $logs/kernel.log. Ctrl-C stops QEMU."
 if [ -f "$logs/kernel.log" ]; then mv "$logs/kernel.log" "$logs/kernel.previous.log"; fi

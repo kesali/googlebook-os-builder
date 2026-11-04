@@ -274,6 +274,10 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
    and relevant logs whether the result succeeds or fails.
 
 ### Recovering the new boot logs
+First reproduce the issue using **Googlebook OS (diagnostic logs)** in GRUB. Normal boots
+do not save new project logs or rotate existing captures. Saved `current`/`previous` therefore
+refer to diagnostic boots, not necessarily the most recent boots; verify their identity/time.
+
 `make laptop-logs` selects the USB, locates metadata by name
 and reads current/previous logs without mounting or writing the USB. Copies belong to the normal
 user; `out/laptop-logs/latest/current/` points to the newest successful retrieval. All 23 focused
@@ -414,6 +418,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Recovery now starts with reproducing under the diagnostic GRUB
+  entry; normal boots preserve older captures. QEMU verifies capture/preservation and the menu;
+  physical laptop behavior is not retested.
 - 2026-11-04 (this commit) — Owner reports faster Lenovo Chrome launch and page loads.
   [Logs](../../out/laptop-logs/20261104-185222-9fwya0v7/current/) confirm retired touchpad capture and
   sharply lower SHA-256 trapping; CPU utilization unmeasured, MSI crypto regression still pending.

@@ -10,7 +10,7 @@ The component specs track the details; the plan keeps the overall direction in o
 | Spec | Status | Next action |
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial; recipe refactor validated | Owner tests combined image on both laptops |
-| [Boot chain](boot.md) | partial | Renamed direct/UEFI boots verified; physical retest remains |
+| [Boot chain](boot.md) | partial; opt-in diagnostics verified in QEMU | Owner retests diagnostic GRUB entry on laptop |
 | [OS image and disk](os-image.md) | working; recipe image byte-identical | Owner tests combined image; old media still need a fresh flash |
 | [Security services](security.md) | working (software keys) | Confirm setup/account flows accept software keys |
 | [Graphics](graphics.md) | partial; portable crypto Lenovo test owner-accepted, native/QEMU checks pass | MSI crypto regression; dedicated HttpEngine request check unverified |

@@ -1,7 +1,14 @@
 # Boot chain
 
-**Status:** partial — the laptop completed setup; its boot logs and snapshot are retrieved after each test.
-**Last verified:** 2026-11-04 — Rename: 246 tests and enforcing direct/UEFI QEMU pass.
+**Status:** partial — opt-in diagnostics verified in QEMU; physical menu retest pending.
+**Last verified:** 2026-11-04 — 57 focused boot/logging/overlay tests pass. Image rebuild
+changes only system_ext and boot files; repeat preserves published timestamps and writes nothing.
+Direct diagnostic boot saves fresh streams/snapshot; normal boot leaves all saved file bytes
+and inode timestamps unchanged. Actual diagnostic GRUB entry boots under enforcing UEFI/QEMU,
+with NVMe decoy unchanged. Setup and injected-tap Accessibility screenshots inspected; no
+project-domain denials. [Evidence](../../out/optin-logs/). Physical retest/performance unmeasured.
+
+Earlier, 2026-11-04 — Rename: 246 tests and enforcing direct/UEFI QEMU pass.
 Setup and Accessibility after an injected tap are inspected. New collector domains, saved
 boot/snapshot logs, serial identity and optional Berberis argument are checked, with no
 project-domain denials. Old disks preserved; physical retest pending.
@@ -143,8 +150,12 @@ cause; the game-controls loop was not established as the cause.
 - `earlycon=efifb` is only in a separate debug entry, as in Churro: it prints synchronously and
   cost the laptop a minute per boot. The normal entry's screen log starts with simpledrm.
 - Persistent diagnostics use Google's logcat and `ro.logd.kernel=true`, not a custom logger.
+  They are opt-in per boot: the GRUB diagnostic entry passes `androidboot.gbos_builder.logs=1`.
+  Without it, no project collectors, preparation/rotation or hardware snapshot run, and saved
+  records remain untouched. Normal Android in-memory logging stays available.
+  Direct QEMU validation explicitly passes `--diagnostic-logs`; ordinary `make qemu` does not.
   The owner approved a dedicated enforcing domain, a small rotation/readiness helper and
-  Linux retrieval from unencrypted metadata. Only current/previous boot are retained.
+  Linux retrieval from unencrypted metadata. Only current/previous diagnostic boots are retained.
   Each stream rotates at 256 KiB with seven archives, leaving headroom below the agreed
   16 MiB per stream per boot and space for other files on the 64 MiB metadata partition.
   A third copy, `android-boot.log`, rotates at 1 MiB (8 MiB total) and stops at boot completion,
@@ -233,6 +244,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   successful laptop tests. The current default remains unchanged.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Persistent capture is opt-in through the diagnostic GRUB entry.
+  57 tests, enforcing direct/UEFI boots and no-write repeat pass; normal boot preserves saved
+  bytes/inodes. Recovery docs/AI skill updated; physical retest remains.
 - 2026-11-04 (this commit) — Lenovo post-update logs retain normal collectors and no
   `touchpad.log`; temporary input capture retirement confirmed on hardware.
 - 2026-11-04 uncommitted — Removed the temporary touchpad service/script/input policy.
