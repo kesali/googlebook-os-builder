@@ -116,11 +116,16 @@ Android data. Use the normal GRUB entry. The old framebuffer-free experiment
 panicked; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
 shows the earliest kernel messages for a black screen but adds about a minute to the boot.
 
-Choose **Googlebook OS (Berberis)** or **Googlebook OS (Houdini)** in GRUB. GRUB remembers the
-last choice on the USB and uses it as the next boot's default; a fresh or missing saved choice
-defaults to Berberis. The setting is kept in the ESP-root `grubenv`, outside the two directories
-replaced by updates, so updating boot files preserves it. A failed boot does not reset the saved
-choice; select the other entry manually from GRUB.
+At the GRUB menu, use the arrow keys to highlight **Googlebook OS (Berberis)** or
+**Googlebook OS (Houdini)**, then press Enter. The highlighted translator is the saved default:
+GRUB starts it automatically after the menu timeout, and choosing the other translator changes
+the default for future boots too. This is a persistent choice, not a one-boot override. A fresh
+or missing saved choice defaults to Berberis. The setting is kept in the ESP-root `grubenv`,
+outside the two directories replaced by updates, so updating boot files preserves it.
+
+The diagnostic and experimental menu entries do not change the saved translator choice; those
+entries use Berberis for that boot. A failed Berberis or Houdini boot also does not switch choices
+automatically. Return to GRUB and choose the other translator to change the saved default.
 
 Berberis (`libndk_translation.so`) is the default ARM-to-x86 translator. The owner confirms the
 previously failing game, another native app and Hearthstone work on the laptop with Berberis.

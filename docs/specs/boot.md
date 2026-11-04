@@ -174,10 +174,12 @@ cause; the game-controls loop was not established as the cause.
 - Use Google's bundled Berberis (`libndk_translation.so`) as the default native bridge; retain
   Houdini in the image. GRUB offers both choices and persists the selected entry in the ESP-root
   `grubenv`, outside the directories replaced by boot updates. A missing environment block starts
-  with Berberis; failed boots do not reset the saved choice. Early-init sets the read-only bridge
-  property before zygote, with an optional `androidboot.gbos_builder.native_bridge` kernel argument
-  for another bootloader. The reason some apps fail under Houdini remains unknown; use Google's
-  existing translator hooks unchanged. No new security permissions.
+  with Berberis; selecting the other translator changes the next-boot default, not just the current
+  boot. Diagnostic and experimental entries use Berberis without changing that saved choice;
+  failed translator boots do not reset it. Early-init sets the read-only bridge property before
+  zygote, with an optional `androidboot.gbos_builder.native_bridge` kernel argument for another
+  bootloader. The reason some apps fail under Houdini remains unknown; use Google's existing
+  translator hooks unchanged. No new security permissions.
 - A one-shot diagnostic gated by both `sys.boot_completed=1` and `sys.gbos_builder.bootlog.ready=1`
   may read backlight, ALSA and loaded-module metadata
   into the current boot log directory. It must not read sound device nodes or write sysfs, and it
@@ -253,6 +255,8 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Explain how GRUB selects and remembers the translator, including how
+  diagnostic/experimental entries and failed boots affect the saved choice.
 - 2026-11-04 (this commit) — Add persistent Berberis/Houdini selection in ESP-root `grubenv`;
   updates preserve the choice. 67 focused tests and disposable UEFI boots validate both options
   and saved state. Physical selection remains untested.
