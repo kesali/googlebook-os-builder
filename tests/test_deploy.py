@@ -32,19 +32,8 @@ class DeployTests(unittest.TestCase):
         deploy.install(self.bundle, self.usb, initialize=True)
 
     def publish(self):
-        deploy.bundle([self.inputs / name for name in deploy.COMPONENTS], self.bundle, "diagnostic")
-
-    def publish_android(self):
-        bundle = self.root / "android-bundle"
         inputs = [self.inputs / name for name in deploy.COMPONENTS[:3]] + [self.android_menu]
-        deploy.bundle(inputs, bundle, "android", self.cmdline)
-        return bundle
-
-    def android_stage(self):
-        stage = self.root / "android-stage"
-        stage.mkdir()
-        deploy.install(self.publish_android(), stage, initialize=True)
-        return stage
+        deploy.bundle(inputs, self.bundle, "android", self.cmdline)
 
     def snapshot(self, root=None):
         root = root or self.usb
@@ -120,14 +109,11 @@ class DeployTests(unittest.TestCase):
             deploy.install(self.bundle, self.usb)
         self.assertEqual(before, self.snapshot())
 
-    def test_new_markers_use_the_project_identity(self):
-        self.assertEqual(deploy.FORMATS, {
-            "android": b"gbos-builder-android-v1\n",
-            "diagnostic": b"gbos-builder-diagnostic-v1\n",
-        })
+    def test_marker_uses_the_project_identity(self):
+        self.assertEqual(deploy.FORMATS, {"android": b"gbos-builder-android-v1\n"})
 
     def test_android_menu_gets_the_command_line_on_one_line_and_the_android_marker(self):
-        stage = self.android_stage()
+        stage = self.usb
         self.assertEqual((stage / "gbos-builder/format").read_bytes(), b"gbos-builder-android-v1\n")
         self.assertTrue(deploy.valid_grubenv((stage / "grubenv").read_bytes()))
         env = subprocess.run(
@@ -143,21 +129,19 @@ class DeployTests(unittest.TestCase):
         )
 
     def test_android_update_preserves_saved_entry_and_initializes_it_if_missing(self):
-        bundle = self.publish_android()
-        stage = self.android_stage()
-        grubenv = stage / "grubenv"
+        grubenv = self.usb / "grubenv"
         subprocess.run(["grub-editenv", str(grubenv), "set", "saved_entry=android-houdini"], check=True)
         saved = grubenv.read_bytes()
 
         (self.inputs / "kernel").write_bytes(b"updated kernel")
-        self.publish_android()
-        self.assertEqual(deploy.install(bundle, stage)[-1], "gbos-builder/grub.cfg")
+        self.publish()
+        self.assertEqual(deploy.install(self.bundle, self.usb)[-1], "gbos-builder/grub.cfg")
         self.assertEqual(grubenv.read_bytes(), saved)
 
         grubenv.unlink()
-        dry_run = deploy.install(bundle, stage, dry_run=True)
+        dry_run = deploy.install(self.bundle, self.usb, dry_run=True)
         self.assertIn("grubenv", dry_run)
-        self.assertIn("grubenv", deploy.install(bundle, stage))
+        self.assertIn("grubenv", deploy.install(self.bundle, self.usb))
         env = subprocess.run(
             ["grub-editenv", str(grubenv), "list"],
             check=True, capture_output=True, text=True,
@@ -165,36 +149,30 @@ class DeployTests(unittest.TestCase):
         self.assertIn("saved_entry=android-berberis\n", env)
 
     def test_android_update_refuses_invalid_grubenv_without_replacing_it(self):
-        bundle = self.publish_android()
-        stage = self.android_stage()
-        grubenv = stage / "grubenv"
+        grubenv = self.usb / "grubenv"
         grubenv.write_bytes(b"broken saved selection")
         with self.assertRaisesRegex(ValueError, "refusing to overwrite"):
-            deploy.install(bundle, stage)
+            deploy.install(self.bundle, self.usb)
         self.assertEqual(grubenv.read_bytes(), b"broken saved selection")
 
     def test_a_new_command_line_rewrites_only_the_menu(self):
-        stage = self.android_stage()
         self.cmdline.write_text("root=/dev/ram0\n")
-        self.assertEqual(deploy.install(self.publish_android(), stage), ["gbos-builder/grub.cfg"])
+        self.publish()
+        self.assertEqual(deploy.install(self.bundle, self.usb), ["gbos-builder/grub.cfg"])
 
-    def test_a_bundle_installs_only_onto_its_own_kind(self):
-        # The marker of the already flashed diagnostic USB must stay what it was.
-        self.assertEqual((self.usb / "gbos-builder/format").read_bytes(), b"gbos-builder-diagnostic-v1\n")
-        stage = self.android_stage()
-        usb_before, stage_before = self.snapshot(), self.snapshot(stage)
+    def test_retired_diagnostic_usb_is_rejected_without_writes(self):
+        # A stick flashed with the removed diagnostic OS must never receive Android files.
+        (self.usb / "gbos-builder/format").write_bytes(b"gbos-builder-diagnostic-v1\n")
+        before = self.snapshot()
         with self.assertRaisesRegex(ValueError, "Not a gbos-builder android"):
-            deploy.install(self.publish_android(), self.usb)
-        with self.assertRaisesRegex(ValueError, "Not a gbos-builder diagnostic"):
-            deploy.install(self.bundle, stage)
-        self.assertEqual(usb_before, self.snapshot())
-        self.assertEqual(stage_before, self.snapshot(stage))
+            deploy.install(self.bundle, self.usb)
+        self.assertEqual(before, self.snapshot())
 
     def test_menu_and_command_line_come_together_and_nothing_is_written_otherwise(self):
-        diagnostic_inputs = [self.inputs / name for name in deploy.COMPONENTS]
-        android_inputs = [*diagnostic_inputs[:3], self.android_menu]
+        plain_menu_inputs = [self.inputs / name for name in deploy.COMPONENTS]
+        android_inputs = [*plain_menu_inputs[:3], self.android_menu]
         cases = [
-            ("a command line for a menu without @CMDLINE@", diagnostic_inputs, self.cmdline, "no @CMDLINE@"),
+            ("a command line for a menu without @CMDLINE@", plain_menu_inputs, self.cmdline, "no @CMDLINE@"),
             ("a menu with @CMDLINE@ and no command line", android_inputs, None, "no kernel command line"),
         ]
         for name, inputs, cmdline, message in cases:
@@ -212,8 +190,9 @@ class DeployTests(unittest.TestCase):
                     deploy.flatten_cmdline(f"ok=1\n{argument}\n")
 
     def test_unknown_kind_is_rejected_when_bundling_and_installing(self):
-        with self.assertRaisesRegex(ValueError, "Unknown bundle kind"):
-            deploy.bundle([self.inputs / name for name in deploy.COMPONENTS], self.root / "x", "recovery")
+        for kind in ("recovery", "diagnostic"):
+            with self.subTest(kind), self.assertRaisesRegex(ValueError, "Unknown bundle kind"):
+                deploy.bundle([self.inputs / name for name in deploy.COMPONENTS], self.root / "x", kind)
         manifest = json.loads((self.bundle / "manifest.json").read_text())
         manifest["kind"] = "recovery"
         (self.bundle / "manifest.json").write_text(json.dumps(manifest))
@@ -290,22 +269,6 @@ class DeployTests(unittest.TestCase):
         self.assertEqual((self.usb / "gbos-builder/grub.cfg").read_bytes(), old_menu)
         deploy.install(self.bundle, self.usb)
         self.assertNotEqual((self.usb / "gbos-builder/grub.cfg").read_bytes(), old_menu)
-
-    def test_mount_guard_rejects_root_symlinks_and_non_usb(self):
-        with self.assertRaises(ValueError):
-            deploy.verify_usb_mount(Path("/"))
-        link = self.root / "link"
-        link.symlink_to(self.usb)
-        with self.assertRaises(ValueError):
-            deploy.verify_usb_mount(link)
-        mount = {"filesystems": [{
-            "target": str(self.usb), "source": "/dev/null", "fstype": "vfat", "options": "rw",
-        }]}
-        disks = {"blockdevices": [{"type": "part", "children": [{"type": "disk", "tran": "nvme"}]}]}
-        results = [type("Result", (), {"stdout": json.dumps(value)}) for value in (mount, disks)]
-        with patch.object(deploy.subprocess, "run", side_effect=results), patch.object(deploy.stat, "S_ISBLK", return_value=True):
-            with self.assertRaisesRegex(ValueError, "not on a USB"):
-                deploy.verify_usb_mount(self.usb)
 
 
 if __name__ == "__main__":

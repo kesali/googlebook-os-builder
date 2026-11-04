@@ -100,7 +100,7 @@ laptop builds or a runtime driver installer.
 ## Documentation
 
 - [Build and deployment guide](docs/build-guide.md): recipe format, USB details, source map,
-  kernel ABI checks, Android changes, QEMU and the separate parked diagnostic OS.
+  kernel ABI checks, Android changes and QEMU.
 - [Component specs](docs/specs/README.md): verified behavior, decisions and remaining checks.
 - [Project plan](docs/plan.md): daily testing and the builder direction.
 - [Design report](docs/report.md): historical explanation and comparison with the reference ports.

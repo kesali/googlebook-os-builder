@@ -99,7 +99,6 @@ The pieces, with the files that implement them:
 3. Select the USB by model/capacity/serial, review the plan and type `y` or `yes`.
    The tracked updater verifies the layout, writes only changed OS partitions and boot files,
    and checks read-back. It preserves userdata and metadata, including a larger data partition.
-   The manual boot-only `make deploy-android USB=...` remains available.
 4. Optional, once: the owner's local `sudo bash out/usb-flash-android/grow-data.sh --erase-data [GiB]` enlarges the
    data partition into the free space on the stick. Android cannot resize its encrypted `/data`, so
    this erases it and setup runs again; the script asks you to type `ERASE` first.

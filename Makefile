@@ -10,7 +10,6 @@ endif
 GOOGLE := $(OUT)/google
 DL := $(OUT)/downloads
 RUBY_RECOVERY := $(DL)/ruby-$(RUBY_RECOVERY_BUILD)-$(RUBY_RECOVERY_SHA).bin
-BUSYBOX := $(DL)/busybox-$(BUSYBOX_VERSION)-$(BUSYBOX_SHA)
 # Selected recipes append native component patches in their declared order.
 KERNEL_PATCHES :=
 MESA_PATCHES :=
@@ -83,8 +82,8 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
-.PHONY: help builder unpack sources kernel initramfs image usb deploy deploy-android shell test smoke toolchain gki laptop-logs lp-tools \
-	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm minigbm-check qemu qemu-check console update-usb install-usb FORCE
+.PHONY: help builder unpack sources shell test toolchain gki laptop-logs lp-tools \
+	android-initrd android-disk android-image android-sync android-boot android-uefi-check mesa minigbm qemu qemu-check console update-usb install-usb FORCE
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -108,6 +107,8 @@ $(BUILD_READY): docker/Dockerfile
 	docker build -t $(BUILDER_IMAGE) docker
 	@mkdir -p $(@D) && touch $@
 
+# A download's name contains its SHA-256: a new pin is a new file, and a file that exists
+# is never checked or fetched again.
 recovery: $(RUBY_RECOVERY) ## Download and verify Google's pinned Ruby recovery image
 .PHONY: recovery
 $(RUBY_RECOVERY): | $(BUILD_READY)
@@ -117,11 +118,6 @@ unpack: $(GOOGLE)/inventory.txt ## Inspect Google's read-only recovery image
 $(GOOGLE)/inventory.txt: $(RECOVERY_IMAGE) config.mk scripts/unpack.sh \
 		tools/lp.py tools/kernel_info.py | $(BUILD_READY)
 	$(BUILDER) scripts/unpack.sh $(RECOVERY_IMAGE) $(GOOGLE) $(RECOVERY_IMAGE_SHA256)
-
-# A download's name contains its SHA-256: a new pin is a new file, and a file that exists
-# is never checked or fetched again.
-$(BUSYBOX): | $(BUILD_READY)
-	$(BUILDER) bash scripts/fetch.sh "$(BUSYBOX_URL)" "$(BUSYBOX_SHA)" "$@"
 
 # All patch bytes and their order select KERNEL_SRC; timestamps must not recreate that tree.
 $(KERNEL_SRC)/.ready: | $(KERNEL_PATCHES) $(EMU_PATCH) $(BUILD_READY)
@@ -134,15 +130,12 @@ $(LP_CORE)/.ready: | $(BUILD_READY)
 	$(BUILDER) bash scripts/git-fetch.sh "$(LP_CORE_URL)" "$(LP_CORE_REV)" "$(@D)" fs_mgr/liblp
 $(LP_EXTRAS)/.ready: | $(BUILD_READY)
 	$(BUILDER) bash scripts/git-fetch.sh "$(LP_EXTRAS_URL)" "$(LP_EXTRAS_REV)" "$(@D)" partition_tools/lpmake.cc
-$(OUT)/lp-tools/lpmake: FORCE $(LP_CORE)/.ready $(LP_EXTRAS)/.ready scripts/lpmake.sh tools/lpmake/CMakeLists.txt $(BUILD_READY)
-	$(BUILDER) bash scripts/lpmake.sh "$(LP_CORE)" "$(LP_EXTRAS)" "$(OUT)/lp-tools"
-lp-tools: $(OUT)/lp-tools/lpmake ## Build upstream lpmake for disposable super-layout experiments
-
 # FORCE lets the upstream build systems see source edits. Published files keep
 # their timestamps when their contents do not change, so downstream steps skip.
-kernel: $(OUT)/kernel/bzImage ## Incrementally compile the diagnostic kernel
-$(OUT)/kernel/bzImage: FORCE $(KERNEL_SRC)/.ready hardware/msi-modern-15-b7m/diagnostic.config scripts/kernel.sh $(BUILD_READY)
-	$(BUILDER) bash scripts/kernel.sh "$(KERNEL_SRC)" "$(OUT)/kernel" hardware/msi-modern-15-b7m/diagnostic.config
+$(OUT)/lp-tools/lpmake: FORCE $(LP_CORE)/.ready $(LP_EXTRAS)/.ready scripts/lpmake.sh tools/lpmake/CMakeLists.txt $(BUILD_READY)
+	$(BUILDER) bash scripts/lpmake.sh "$(LP_CORE)" "$(LP_EXTRAS)" "$(OUT)/lp-tools"
+lp-tools: $(OUT)/lp-tools/lpmake ## Build upstream lpmake for the Android disk layout
+
 # Debian's GRUB as one removable-media EFI file, with boot/loader.cfg built in.
 $(OUT)/grub/BOOTX64.EFI: boot/loader.cfg $(BUILD_READY)
 	@mkdir -p $(@D)
@@ -150,28 +143,8 @@ $(OUT)/grub/BOOTX64.EFI: boot/loader.cfg $(BUILD_READY)
 		--modules="part_gpt fat normal linux configfile regexp probe serial test setpci" \
 		--output="$@" "boot/grub/grub.cfg=boot/loader.cfg"
 
-$(OUT)/isa-smoke: tools/isa-smoke.c $(BUILD_READY)
-	$(BUILDER) gcc -O2 -Wall -Wextra -Werror -static -o "$@" "$<"
-initramfs: $(OUT)/initramfs.gz ## Pack BusyBox, boot/init and the CPU self-test
-$(OUT)/initramfs.gz: $(BUSYBOX) boot/init $(OUT)/isa-smoke scripts/initramfs.sh
-	$(BUILDER) bash scripts/initramfs.sh "$(BUSYBOX)" boot/init "$(OUT)/isa-smoke" "$@"
-
-$(OUT)/boot/manifest.json: $(OUT)/kernel/bzImage $(OUT)/initramfs.gz $(OUT)/grub/BOOTX64.EFI boot/menu.cfg tools/deploy.py
-	$(BUILDER) python3 tools/deploy.py bundle --kind diagnostic "$(OUT)/kernel/bzImage" "$(OUT)/initramfs.gz" \
-		"$(OUT)/grub/BOOTX64.EFI" boot/menu.cfg "$(OUT)/boot"
-image: $(USB_IMAGE) ## Assemble out/gbos-builder-usb.img (no root or physical disk writes)
-usb: image ## Alias for image; flash it with your preferred USB imaging tool
-$(USB_IMAGE): $(OUT)/boot/manifest.json scripts/image.sh tools/deploy.py
-	$(BUILDER) bash scripts/image.sh "$(OUT)/boot" "$@"
-
-deploy: $(OUT)/boot/manifest.json ## Update changed boot files: make deploy USB=/mounted/USB
-	@test -n "$(USB)" || { echo "Set USB to the mounted GBOS-BOOT partition; no raw devices." >&2; exit 1; }
-	python3 tools/deploy.py usb "$(OUT)/boot" "$(USB)"
-
 test: $(BUILD_READY) ## Run focused update/safety tests (no physical disks)
 	$(BUILDER) python3 tools/run_tests.py
-smoke: image ## UEFI-boot a temporary image in QEMU and test instruction emulation
-	$(BUILDER) python3 tools/boot_test.py "$(USB_IMAGE)" "$(OUT)"
 shell: $(BUILD_READY) ## Open a shell inside the builder
 	$(BUILDER) bash
 
@@ -328,11 +301,6 @@ $(HEADERS)/.ready: $(CORE_HEADERS)/.ready $(LOG_HEADERS)/.ready $(HARDWARE_HEADE
 		$(ANDROID_NATIVE_REV) $(ANDROID_DMABUF_REV) $(ANDROID_BASE_REV) $(ANDROID_INTERFACES_REV) > "$@"
 
 minigbm: $(MINIGBM)/manifest ## Build the Android allocator with AMD Mesa support and ABI checks
-minigbm-check: $(MINIGBM_SRC)/.ready $(LIBDRM_SRC)/.ready ## Test allocator buffer handling without a GPU
-	$(BUILDER) gcc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter \
-		-Itests/gbm -I"$(MINIGBM_SRC)" -I"$(LIBDRM_SRC)/include/drm" \
-		tests/gbm-wrapper.c -ldl -o "$(OUT)/gbm-wrapper-test"
-	$(BUILDER) "$(OUT)/gbm-wrapper-test"
 $(MINIGBM)/manifest: FORCE $(MINIGBM_SRC)/.ready $(HEADERS)/.ready $(NDK)/.ready \
 		$(MESA)/manifest $(GOOGLE)/inventory.txt $(AIDL) scripts/minigbm.sh \
 		hardware/drivers/amdgpu/minigbm-platform-cxx.h tools/minigbm_abi.py
@@ -398,9 +366,6 @@ $(ANDROID)/boot/manifest.json: $(GKI)/bzImage $(ANDROID)/initrd.img $(OUT)/grub/
 		boot/android-menu.cfg android/cmdline.txt tools/deploy.py
 	$(BUILDER) python3 tools/deploy.py bundle --kind android --cmdline android/cmdline.txt "$(GKI)/bzImage" \
 		"$(ANDROID)/initrd.img" "$(OUT)/grub/BOOTX64.EFI" boot/android-menu.cfg "$(ANDROID)/boot"
-deploy-android: $(ANDROID)/boot/manifest.json ## Update Android boot files: make deploy-android USB=/mounted/USB
-	@test -n "$(USB)" || { echo "Set USB to the mounted GBOS-BOOT partition; no raw devices." >&2; exit 1; }
-	python3 tools/deploy.py usb "$(ANDROID)/boot" "$(USB)"
 android-boot: $(ANDROID_DISK) $(ANDROID)/boot/manifest.json ## Put the laptop's boot files into the disk's boot partition
 	$(BUILDER) bash scripts/android-boot.sh "$(ANDROID_DISK)" "$(ANDROID)/boot"
 

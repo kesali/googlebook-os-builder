@@ -24,13 +24,7 @@ LP_CORE_URL := https://android.googlesource.com/platform/system/core
 LP_EXTRAS_REV := 5578b78e335df1e6d19ddb5bdb26639d383cfdfb
 LP_EXTRAS_URL := https://android.googlesource.com/platform/system/extras
 
-# The diagnostic USB's shell: BusyBox's official static binary, unchanged. 1.35.0 is the newest
-# one busybox.net publishes, and it has every tool boot/init uses. busybox.net publishes no
-# checksum; the SHA-256 was calculated from the HTTPS download.
-# The USB's EFI loader is Debian's GRUB (grub-efi-amd64-bin in docker/Dockerfile), also unchanged.
-BUSYBOX_VERSION := 1.35.0
-BUSYBOX_URL := https://busybox.net/downloads/binaries/$(BUSYBOX_VERSION)-x86_64-linux-musl/busybox
-BUSYBOX_SHA := 6e123e7f3202a8c1e9b1f94d8941580a25135382b99e8d3e34fb858bba311348
+# The USB's EFI loader is Debian's GRUB (grub-efi-amd64-bin in docker/Dockerfile), unchanged.
 
 # Google's own build of KERNEL_TAG, the kernel in the recovery image. Its symbol list
 # (CRCs) is what our rebuild must match. The compiler and pahole commits below have no

@@ -18,7 +18,7 @@ The renamed combined image is owner-confirmed on both MSI and Lenovo.
 For Googlebook OS, Linux needs Docker, GNU make, Python 3, `/dev/kvm` and a VNC viewer.
 Allow at least 50 GB for sources, builds and recovery images, plus Android's sparse data partition.
 The first build downloads Google's pinned Ruby recovery (7.8 GB ZIP, 19 GB extracted) into
-`out/downloads/`, separate from editable reference projects. `make recovery` fetches just that
+`out/downloads/`. `make recovery` fetches just that
 source; the extracted image must match the existing SHA-256 pin before it is published.
 
 ```sh
@@ -103,7 +103,7 @@ make android-image JOBS=12       # creates/updates out/gbos-builder/disk.img
 make android-uefi-check JOBS=12  # disposable USB/UEFI boots in QEMU; no physical writes
 ```
 
-The Android image is **49.8 GiB (53,430,190,080 bytes)**, not the small diagnostic image below.
+The Android image is **49.8 GiB (53,430,190,080 bytes)**.
 Use a **64 GB or larger USB**, preferably USB 3. Flash [out/gbos-builder/disk.img](../out/gbos-builder/disk.img)
 with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
 The new image has larger slot-A logical partitions: system 2 GiB, vendor 1 GiB, product 3 GiB,
@@ -152,7 +152,7 @@ Persistent kernel/Android diagnostics use native logcat and retain current/previ
 boots on metadata,
 with an explicitly approved scoped enforcing policy. See [boot](../docs/specs/boot.md) for limits/coverage
 and [laptop hardware](../docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
-for Linux retrieval. These are Android logs, separate from the optional diagnostic USB below.
+for Linux retrieval.
 
 ### Updating the existing Android USB
 
@@ -172,7 +172,7 @@ capacity and serial; review the planned OS and boot-file changes, then type `y` 
 at the `[y/N]` prompt to confirm. Enter or any other answer cancels without writing.
 
 The updater:
-- Accepts only an **existing gbos-builder Android USB**, not a blank disk or the diagnostic OS.
+- Accepts only an **existing gbos-builder Android USB**, not a blank disk or another OS.
 - Refuses internal disks, missing serials, mounted/in-use disks and incompatible GPT/liblp layouts.
 - Derives OS ranges from the built image, copies only changed partitions and verifies read-back.
 - Updates kernel, initrd and GRUB together using the existing menu-last boot installer.
@@ -205,9 +205,6 @@ matches the verified source image byte-for-byte; neither relocates it.
 Safely unplug/replug afterwards, then boot its UEFI entry.
 If interrupted or verification fails, rerun installation before booting; do not trust a partial USB.
 The agent tests this tool on regular files only; physical installation is your operation.
-
-For boot-only manual deployment, `make deploy-android JOBS=12 USB=/path/to/mounted/GBOS-BOOT`
-remains available. **`make deploy` is for the separate diagnostic OS, not Android.**
 
 ### Reading laptop logs
 
@@ -254,13 +251,8 @@ regression test, not proof of working laptop audio, brightness or GPU accelerati
 | [docker/Dockerfile](../docker/Dockerfile) | Debian build/test tools |
 | [scripts/fetch.sh](../scripts/fetch.sh), [scripts/source.sh](../scripts/source.sh) | Verified download and source extraction |
 | [scripts/kernel-source.sh](../scripts/kernel-source.sh) | Checked kernel checkout with the emulator patch and our [kernel/](../kernel/) source patches (`KERNEL_PATCHES` in the Makefile) |
-| [scripts/kernel.sh](../scripts/kernel.sh) | Kbuild plus the diagnostic hardware config |
-| [MSI diagnostic config](../hardware/msi-modern-15-b7m/diagnostic.config) | Explicit additions/removals from x86_64_defconfig |
-| [boot/init](../boot/init) | The complete runtime startup sequence |
-| [boot/menu.cfg](../boot/menu.cfg), [boot/loader.cfg](../boot/loader.cfg) | Readable GRUB configurations |
-| [scripts/initramfs.sh](../scripts/initramfs.sh), [scripts/image.sh](../scripts/image.sh) | Standard cpio/FAT/GPT assembly |
-| [tools/deploy.py](../tools/deploy.py) | Bundle verification (diagnostic or Android kind) and file-level USB updates |
-| [tools/boot_test.py](../tools/boot_test.py), [tests/test_deploy.py](../tests/test_deploy.py) | Boot and incremental-update checks |
+| [boot/loader.cfg](../boot/loader.cfg) | GRUB's built-in loader: finds this USB's menu |
+| [tools/deploy.py](../tools/deploy.py), [tests/test_deploy.py](../tests/test_deploy.py) | Android boot-bundle verification and menu-last boot-file installs |
 | [scripts/git-fetch.sh](../scripts/git-fetch.sh), [scripts/pahole.sh](../scripts/pahole.sh) | Google's pinned kernel compilers, verified against Git |
 | [scripts/gki-kernel.sh](../scripts/gki-kernel.sh), [kernel/gki.config](../kernel/gki.config) | Google's kernel plus explicitly listed configuration changes, with config/ABI checks |
 | [scripts/laptop-modules.sh](../scripts/laptop-modules.sh), [scripts/firmware.sh](../scripts/firmware.sh) | Missing signed AMD modules and unchanged official firmware |
@@ -279,7 +271,7 @@ regression test, not proof of working laptop audio, brightness or GPU accelerati
 | [tools/android_smoke.py](../tools/android_smoke.py), [tools/android_console.py](../tools/android_console.py) | Full-boot checks and framed serial-shell commands |
 | [tools/android_uefi_test.py](../tools/android_uefi_test.py) | Laptop boot-chain checks on disposable USB images, with an NVMe decoy |
 
-`make sources` creates editable trees under `out/src/`. `make kernel` always runs Kbuild so
+`make sources` creates editable trees under `out/src/`. `make gki` always runs Kbuild so
 edits there are detected, not hidden by a top-level "done" stamp. Published outputs retain their
 timestamps if their bytes are unchanged. The source trees and outputs are ignored by Git:
 **save source edits before deleting `out/` or changing pins or patches**. A new kernel patch creates
@@ -287,8 +279,8 @@ another checkout without copying edits from the old one. There is intentionally 
 `make clean` deleting your source experiments.
 
 The compiler and other host tools come from Debian packages; they are not bit-for-bit pinned.
-The **target kernel** is compiled here. BusyBox is busybox.net's official static binary (pinned
-by SHA-256) and the EFI loader is Debian's GRUB package; both are used unchanged.
+The **target kernel** is compiled here with Google's pinned compilers. The EFI loader is
+Debian's GRUB package, used unchanged.
 Changing the compiler or a source pin warrants a fresh build output directory (`OUT=out/new`).
 
 ## Google's image
@@ -305,9 +297,8 @@ images, logical partitions, properties and kernel identity. The default image an
 <https://aluminium-os.com/googlebookos/>.
 
 The inspected Lenovo Googlebook 15 (`ruby`) image contains Android 17 and kernel
-`6.18.21-android17-5-g3938c8d97142-ab16302624`. Our diagnostic build uses that kernel's source
-commit, but a smaller upstream defconfig, GCC and its own release suffix. Google's vendor modules
-need the GKI build below instead.
+`6.18.21-android17-5-g3938c8d97142-ab16302624`. Google's vendor modules need the GKI build
+below, from that kernel's source with Google's compilers.
 
 ## Googlebook OS kernel (GKI)
 
@@ -520,7 +511,7 @@ alone is not a passing result. The captured screen also needs visual inspection.
 
 Verified locally: the actual Googlebook welcome/setup screen at 1280x720, with Mesa softpipe,
 software keys and SELinux enforcing, VNC connection, mouse navigation into the language picker,
-and clean guest shutdown. The `make test` unit tests (including the GBM wrapper checks) pass; unchanged builds preserve output
+and clean guest shutdown. The `make test` unit tests pass; unchanged builds preserve output
 timestamps and write no OS partitions, and a running VM rejects disk updates. A repeat boot completes
 in about 20 seconds, because the softpipe profile skips the boot animation and shader priming; allow
 several minutes for the first CPU-rendered startup on fresh data. Setup completion, Google account sign-in, hardware-backed attestation
@@ -540,92 +531,14 @@ Device-by-device status, evidence and next steps for the laptop are in
 [project plan](../docs/plan.md).
 
 **Known emulator limitation:** the imported patch handles VEX GFNI, not legacy SSE-encoded
-GFNI (the initial boot test confirmed that the latter raises SIGILL). The positive self-test
-checks VEX `vgf2p8mulb` and `vpdpbusd` results, not every instruction/encoding or full Android
-compatibility. Keep that distinction when evaluating new userspace binaries.
-
-## Optional USB diagnostics (parked, not Android)
-
-Needs Linux, Docker, GNU make, Python 3 and about 15 GB free. Compilation runs as your user in
-Debian, with four jobs by default (`JOBS=6` overrides it). The first run downloads source and
-builder packages. There is no root container, host package installation or loop-device setup.
-
-```sh
-make builder
-make usb                 # kernel from source + BusyBox + GRUB -> out/gbos-builder-usb.img
-make smoke               # boot a disposable copy through UEFI in QEMU
-make test                # focused deployment and safety tests
-```
-
-Flash `out/gbos-builder-usb.img` with your preferred USB imaging tool, carefully selecting the USB.
-**Flashing erases that USB.** `make usb` itself only creates a 514 MiB regular image file;
-it never chooses or writes a physical disk. Disable Secure Boot and boot the USB's UEFI entry.
-The shell uses the laptop screen and keyboard. An external USB keyboard is a fallback while
-the laptop's input devices are being brought up.
-
-The root filesystem is temporary RAM. `/boot` is this USB's FAT filesystem, selected by the
-UUID passed from GRUB, not by scanning internal disks for a label. The kernel has internal
-NVMe/SATA/MMC, SPI flash, TPM and EFI capsule writing disabled. No Google firmware updater or
-installer is included. Logs are `/boot/logs/kernel.log`, `kernel.previous.log`, and `hardware.txt`
-(PCI and USB devices with the driver each one got, input devices, I2C devices, partitions, CPU).
-Use `umount /boot && poweroff -f` to shut down cleanly before removing the USB.
-
-| Part | Diagnostic image |
-|---|---|
-| Ryzen 5 7530U | Source-based VEX GFNI/AVX-VNNI emulation + small boot self-test |
-| USB xHCI/storage/HID | Built into kernel |
-| UEFI display | Firmware framebuffer console |
-| ELAN0307 touchpad (AMD I2C, GPIO, I2C HID, multitouch) | Registered on the laptop; motion/gestures untested |
-| MT7922 Wi-Fi / Bluetooth | Not enabled |
-| Audio | HDA probes; audio not validated |
-| Internal NVMe | Deliberately disabled |
-
-Validated locally: nine deployment/safety tests; UEFI QEMU boot through GRUB and the
-source-built kernel; both supported instruction tests trapping into the emulator; saved USB logs;
-clean poweroff; unchanged output timestamps on a no-op build; and no kernel/loader rebuild
-for an initramfs-only change. Physical USB flashing, read-back comparison and filesystem checks
-are verified. The owner confirmed the first laptop diagnostic boot and shutdown; saved logs
-show passing instruction tests, keyboard/touchpad registration and no internal NVMe block
-device. See [USB diagnostics](../docs/specs/usb-diagnostic.md) for the evidence and remaining warnings.
-
-### Updating the diagnostic USB
-
-Back in Linux, mount the USB's **GBOS-BOOT** partition through your file manager. Then:
-
-```sh
-# Edit boot/init, then:
-make deploy USB=/run/media/$USER/GBOS-BOOT
-```
-
-This invokes the upstream incremental builds, but only changed outputs are published:
-
-| Changed input | Rebuilt | Written to USB |
-|---|---|---|
-| `boot/init` | initramfs | new initramfs + boot menu |
-| kernel source or [MSI diagnostic config](../hardware/msi-modern-15-b7m/diagnostic.config) | kernel via Kbuild | new kernel + boot menu |
-| `boot/menu.cfg` | boot menu | boot menu only |
-| nothing | nothing | **no files** |
-
-Deployment refuses raw devices, non-mountpoints, internal disks, read-only/non-FAT filesystems,
-symlinks and USBs without the gbos-builder marker. It verifies bundle hashes, checks the actual destination
-contents, writes and reads back new files, then changes the menu last. Logs, other user files and
-other partitions are not touched. A failed transfer before that switch leaves the old menu.
-The previous menu is available in GRUB.
-
-Old content-addressed kernel/initramfs files are deliberately retained; they are not automatically
-deleted. If space runs out, deployment fails explicitly. Remove obsolete `gbos-builder/kernel-<hash>` and
-`gbos-builder/initramfs-<hash>` files only after checking that **neither** `gbos-builder/grub.cfg` **nor**
-`gbos-builder/grub.previous.cfg` references them. Do not unplug during an update: FAT is not journalled,
-and rename/fsync are not a guarantee against power loss or a USB controller lying about flushes.
-
-`make image` / `make usb` assembles a fresh image when its bundle changes. For rapid iterations
-use `make deploy`, **not** another whole-stick flash.
+GFNI (an early boot test confirmed that the latter raises SIGILL). Android boots on the MSI
+exercise the VEX paths constantly, but that is not proof of every instruction/encoding.
+Keep that distinction when evaluating new userspace binaries.
 
 ## Source attribution
 
 - Kernel: [Android common](https://android.googlesource.com/kernel/common/), tag
   `android17-6.18-2026-06_r52`, GPL-2.0.
-- BusyBox: [1.35.0](https://busybox.net/downloads/binaries/) official static binary, GPL-2.0.
 - GRUB: [2.12](https://www.gnu.org/software/grub/), GPL-3.0-or-later; Debian's
   `grub-efi-amd64-bin` package.
 - Graphics: [Mesa](https://mesa3d.org/), [libdrm](https://dri.freedesktop.org/libdrm/) and

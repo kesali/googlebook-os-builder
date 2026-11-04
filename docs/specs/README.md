@@ -16,7 +16,6 @@ The component specs track the details; the plan keeps the overall direction in o
 | [Graphics](graphics.md) | partial; portable crypto Lenovo test owner-accepted, native/QEMU checks pass | MSI crypto regression; dedicated HttpEngine request check unverified |
 | [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
 | [Laptop hardware](laptop-hardware.md) | partial; Lenovo fixes and MSI regression owner-confirmed | Remaining headphone, brightness and suspend checks |
-| [USB diagnostics](usb-diagnostic.md) | parked; moved inputs byte-verified | Separate diagnostic build/smoke not repeated |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
 `planned` = agreed, not started · `parked` = works, not being developed now.

@@ -75,7 +75,7 @@ def install(image):
             os_extents(source, source_table)
             names = {entry["name"] for entry in source_table["partitions"]}
             if not {"userdata", "metadata", "EFI-SYSTEM"} <= names:
-                raise ValueError("Expected the Android image, not the diagnostic USB image")
+                raise ValueError("Expected the Android image with userdata, metadata and EFI-SYSTEM")
             selected = choose()
             if selected is None:
                 print("Cancelled; nothing written.")

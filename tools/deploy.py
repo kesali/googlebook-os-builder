@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Publish a build bundle or update the boot filesystem of a mounted gbos-builder USB.
+"""Publish the laptop's Android boot bundle or install it into a gbos-builder boot filesystem.
 
-A bundle holds either the diagnostic shell or Android for the laptop, and installs only onto a
-boot filesystem of its own kind. New kernel/initramfs files are content-addressed. The menu
-switches last, after read-back verification. No partition table, other partition, or user file
-is edited.
+A bundle installs only onto a boot filesystem with the matching format marker. New
+kernel/initramfs files are content-addressed. The menu switches last, after read-back
+verification. No partition table, other partition, or user file is edited.
 """
 
 import argparse
@@ -13,12 +12,11 @@ import json
 import os
 from pathlib import Path
 import re
-import stat
 import subprocess
 import tempfile
 
-# The marker file gbos-builder/format names what a boot filesystem holds, so one kind never overwrites the other.
-FORMATS = {"diagnostic": b"gbos-builder-diagnostic-v1\n", "android": b"gbos-builder-android-v1\n"}
+# The marker file gbos-builder/format names what a boot filesystem holds; installs refuse anything else.
+FORMATS = {"android": b"gbos-builder-android-v1\n"}
 COMPONENTS = ("kernel", "initramfs.gz", "BOOTX64.EFI", "menu.cfg")
 GRUBENV_SIZE = 1024
 GRUBENV_HEADER = b"# GRUB Environment Block\n"
@@ -208,40 +206,6 @@ def install(source, destination, initialize=False, dry_run=False):
     return changed
 
 
-def verify_usb_mount(path):
-    if path.is_symlink() or path.absolute() != path.resolve() or path.resolve() == Path("/"):
-        raise ValueError("Use the real USB mountpoint, not a symlink or /")
-    result = subprocess.run(
-        ["findmnt", "--json", "--mountpoint", str(path), "--output", "TARGET,SOURCE,FSTYPE,OPTIONS"],
-        check=True, capture_output=True, text=True,
-    )
-    mounts = json.loads(result.stdout)["filesystems"]
-    if len(mounts) != 1:
-        raise ValueError("Expected exactly one mounted filesystem")
-    mount = mounts[0]
-    if Path(mount["target"]).resolve() != path.resolve():
-        raise ValueError("Destination is not the filesystem mountpoint")
-    if mount["fstype"] != "vfat" or "rw" not in mount["options"].split(","):
-        raise ValueError("USB boot partition must be mounted read-write as vfat")
-    device = Path(mount["source"])
-    if not stat.S_ISBLK(device.stat().st_mode):
-        raise ValueError("Mounted source is not a block device")
-    result = subprocess.run(
-        ["lsblk", "--json", "--inverse", "--output", "TRAN,TYPE", str(device)],
-        check=True, capture_output=True, text=True,
-    )
-
-    def usb_disk(nodes):
-        return any(
-            (node.get("tran") == "usb" and node.get("type") == "disk")
-            or usb_disk(node.get("children", []))
-            for node in nodes
-        )
-
-    if not usb_disk(json.loads(result.stdout)["blockdevices"]):
-        raise ValueError("Destination is not on a USB disk; internal disks are not supported")
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -254,17 +218,12 @@ def main():
     stage = sub.add_parser("stage", help="populate a NEW empty image staging directory")
     stage.add_argument("bundle", type=Path)
     stage.add_argument("destination", type=Path)
-    deploy = sub.add_parser("usb", help="update an already-mounted USB boot partition")
-    deploy.add_argument("bundle", type=Path)
-    deploy.add_argument("destination", type=Path)
     args = parser.parse_args()
     try:
         if args.command == "bundle":
             bundle(args.inputs, args.destination, args.kind, args.cmdline)
         else:
-            if args.command == "usb":
-                verify_usb_mount(args.destination)
-            changed = install(args.bundle, args.destination, initialize=args.command == "stage")
+            changed = install(args.bundle, args.destination, initialize=True)
             print("\n".join(f"updated {name}" for name in changed) if changed else "Already up to date; no files written.")
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"deploy: {error}\n")

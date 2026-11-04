@@ -30,8 +30,7 @@ class MesaPublicationTests(unittest.TestCase):
         installed_names = {Path(line[0]).name for line in installs}
         self.assertNotIn("radeonsi_drv_video.so", installed_names)
         self.assertNotIn("libdrm_amdgpu.so", installed_names)
-        self.assertNotIn("camera-va-driver.patch",
-                         (ROOT / "hardware/drivers/amdgpu/vendor.patches").read_text())
+        self.assertEqual(list(ROOT.glob("hardware/**/camera-va-driver.patch")), [])
 
     def test_stripping_unchanged_libraries_preserves_published_timestamps(self):
         with tempfile.TemporaryDirectory() as temporary:

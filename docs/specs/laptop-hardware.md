@@ -209,9 +209,9 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
   pstore safeguard. The framebuffer-free experiment panicked; use the normal entry.
 - Same disk layout for QEMU and USB: Google's EFI-SYSTEM absorbs only blank `KERN-A`, becomes
   576 MiB FAT32 `GBOS-BOOT` and retains its PARTUUID. Other partitions and data stay intact.
-- Boot files update through the mounted ESP with [deploy.py](../../tools/deploy.py): new files
-  first, menu last, previous build retained. `make deploy-android` selects the Android bundle;
-  `make deploy` is the diagnostic OS. The image's ESP uses mtools without root or mounts.
+- Boot files update with [deploy.py](../../tools/deploy.py)'s installer: new files first, menu
+  last, previous build retained. `make update-usb` uses it through a private mount; the image's
+  ESP uses mtools without root or mounts.
 - Only the owner transfers OS partitions, with the reviewed USB by-id identity, layout checks
   and read-back. Never reflash over existing data or run recovery on the physical USB.
 - Wi-Fi uses the signed mt76/MT7921E chain, Google's mac80211/cfg80211 and pinned official
@@ -364,7 +364,7 @@ metadata/logd starts still needs a screen photo.
 - `update-os.sh` and `grow-data.sh` end by deleting the stick's SCSI device, so Linux stops seeing it
   while it stays plugged in. Re-attach it without unplugging by rescanning its host as root:
   `echo '- - -' > /sys/class/scsi_host/host0/scan` (the host name is listed under
-  `/sys/bus/usb/devices/<port>:1.0/`). Mount GBOS-BOOT for `make deploy-android` before running them.
+  `/sys/bus/usb/devices/<port>:1.0/`).
   The tracked `make update-usb` replaces `update-os.sh` and leaves the USB attached; it requires all
   partitions unmounted and handles its own private boot mounts.
 - A kernel log, boot-complete property or correctly sized PNG does not prove a usable desktop.

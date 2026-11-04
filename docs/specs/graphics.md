@@ -266,7 +266,7 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 - [graphics-amd.rc](../../hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc) — AMD renderer
   profile, including GL HWUI and Vulkan RenderEngine.
 - [scripts/minigbm.sh](../../scripts/minigbm.sh), [tools/minigbm_abi.py](../../tools/minigbm_abi.py) — incremental allocator build and platform ABI gate.
-- [tests/gbm-wrapper.c](../../tests/gbm-wrapper.c), [tests/test_mesa.py](../../tests/test_mesa.py) — FD/error handling and unchanged-output publication.
+- [tests/test_mesa.py](../../tests/test_mesa.py) — Mesa build options and unchanged-output publication.
 - [scripts/ndk.sh](../../scripts/ndk.sh), [scripts/source.sh](../../scripts/source.sh) — NDK and patched source trees.
 - [mesa-drm-master.patch](../../hardware/drivers/drm-handoff/mesa-drm-master.patch) — Mesa source patch.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/build-prop.patch](../../android/vendor/build-prop.patch) — Mesa libraries and settings in vendor.
@@ -320,6 +320,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-05 (this commit) — Removed `make minigbm-check` and its C test: it exercised
+  `minigbm-amd.patch` wrapper changes dropped in `7c83348` and no longer matches upstream.
 - 2026-11-05 (this commit) — Correct `6e8a8a4`: the YV12 crash boot was the MSI (AMD eDP,
   `graphics=amd`); `Lenovo/ruby` is only Google's build fingerprint. Patch audit saved.
 - 2026-11-05 `6e8a8a4` — Removing only the RADV YV12 query patch failed on the MSI:

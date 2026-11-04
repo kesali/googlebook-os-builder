@@ -147,15 +147,9 @@ The subsequent Iris candidate also passes enforcing direct-kernel and USB/UEFI Q
 inspected setup/input screens; see [graphics](graphics.md). This does not establish Intel
 hardware support or permit deploying the enlarged layout through the existing USB updater.
 
-The copy-only [migration tool](../../tools/super_migrate_copy.py) now extracts the installed
-A partitions and uses the verified upstream builder to create the enlarged layout on a new
-regular-file disk copy. It requires successful slot A, inactive B and identical metadata copies,
-holds the source disk lock, verifies read-back and every byte outside super, then publishes
-atomically with private permissions. Existing destinations, devices and `disk.img` outputs are
-refused. A migrated source is a no-write no-op. Nine migration tests plus 34 related tests pass;
-the migrated copy also passes enforcing USB/UEFI QEMU with inspected setup/input screens.
-That earlier experiment did not alter the working disk, enable normal Intel image builds or
-migrate a USB; the fresh expanded pipeline above supersedes it.
+A copy-only migration tool later built the enlarged layout from the installed disk and passed
+enforcing USB/UEFI QEMU. The fresh expanded pipeline above superseded it, and it was removed
+on 2026-11-05 (recoverable from Git history); no working disk or USB was ever migrated.
 
 Verified: `system_a`, `vendor_a`, `system_ext_a`, `vendor_dlkm_a` rebuilt as EROFS with every file's bytes,
 mode, owner, xattrs and SELinux label checked; development `vbmeta_a` from `avbtool`; disk
@@ -260,8 +254,6 @@ QEMU test used a reflinked copy.
 - [android/super-layout.json](../../android/super-layout.json) — shared A-only logical allocations.
 - [tools/android_fresh.py](../../tools/android_fresh.py) — guarded first creation of the expanded disk;
   [tests/test_android_fresh.py](../../tests/test_android_fresh.py).
-- [tools/super_migrate_copy.py](../../tools/super_migrate_copy.py) — verified, copy-only layout
-  migration; [tests/test_super_migrate_copy.py](../../tests/test_super_migrate_copy.py).
 - [android/system/](../../android/system/), [android/system_ext/](../../android/system_ext/), [android/vendor/](../../android/vendor/) — every change to Google's partitions.
 - [android/vendor_dlkm/](../../android/vendor_dlkm/), [tools/laptop_module_check.py](../../tools/laptop_module_check.py) — new signed modules, dependencies and laptop alias checks.
 - [scripts/android-overlay.sh](../../scripts/android-overlay.sh) — applies one change directory; format in its header.
@@ -282,18 +274,6 @@ QEMU test used a reflinked copy.
 `make android-image JOBS=12` creates the fresh expanded disk once, then updates it without
 recreating data. The first USB flash is the owner's operation and erases the selected USB;
 later `make update-usb JOBS=12` preserves data only on a matching layout.
-
-Earlier copy-only experiment (not the production layout):
-For a disposable migration of the installed local image (never a device):
-```sh
-make lp-tools JOBS=12
-scripts/builder.sh python3 tools/super_migrate_copy.py \
-  out/lp-tools/lpmake out/android/disk.img out/migration/migrated.img
-```
-Keep this private copy under ignored `out/`. **Do not flash it onto an existing USB:** it
-contains the local disk's userdata, metadata and boot identity, not the USB's current data.
-This 32 MiB copy-only tool is not the new expanded production layout; no working/USB migration
-is planned after the owner chose a fresh flash.
 
 `make test` (including recovery-image hash refusal in
 [tests/test_unpack_hash.py](../../tests/test_unpack_hash.py), sync, lock and overlay tests in
@@ -334,6 +314,10 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-05 (this commit) — Removed obsolete tools at the owner's request: the copy-only
+  super migration, the parked diagnostic Linux USB (`make usb/deploy/smoke`, BusyBox pin,
+  its kernel config/init/menu) and `make deploy-android`. `make update-usb` is the USB path;
+  `super_candidate.py` stays because `android_fresh.py` builds the expanded disk with it.
 - 2026-11-04 (this commit) — Record that bionic/linker/runtime stay a coherent generic set;
   revisit CPU-conditional selection only with measured benefit and verified early-boot safety.
 - 2026-11-04 (this commit) — Folded the config-only AMD I2C-HID recipe into shared kernel

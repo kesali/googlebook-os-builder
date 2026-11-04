@@ -255,6 +255,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
+- 2026-11-05 (this commit) — `deploy.py` now knows only the Android bundle; its mounted-USB
+  `usb` command went with `make deploy-android`. A stick with the old diagnostic marker is
+  refused without writes. The Android marker bytes are unchanged, so existing USBs still update.
 - 2026-11-04 (this commit) — Explain how GRUB selects and remembers the translator, including how
   diagnostic/experimental entries and failed boots affect the saved choice.
 - 2026-11-04 (this commit) — Add persistent Berberis/Houdini selection in ESP-root `grubenv`;

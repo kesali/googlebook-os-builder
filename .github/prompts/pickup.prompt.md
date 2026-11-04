@@ -1,6 +1,6 @@
 ---
 description: "Resume one component from its spec and repository state; summarize progress and suggest a focused next step."
-argument-hint: "Component: kernel, boot, os-image, security, graphics, qemu, laptop-hardware, usb-diagnostic"
+argument-hint: "Component: kernel, boot, os-image, security, graphics, qemu, laptop-hardware"
 agent: "agent"
 ---
 Resume the component named in the argument. If none was given, use the current phase in
