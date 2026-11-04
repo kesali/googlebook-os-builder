@@ -6,15 +6,18 @@ import subprocess
 import tempfile
 import unittest
 import zipfile
+import sys
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "tools"))
+from hardware_recipes import expand
 OVERLAY = REPO / "scripts/android-overlay.sh"
 VENDOR_LIBS = REPO / "scripts/check-vendor-libs.sh"
 REPLACEMENTS = REPO / "scripts/check-replacements.sh"
 
 
 def entries(path):
-    return [line.split() for line in path.read_text().splitlines()
+    return [line.split() for line in expand(path).splitlines()
             if line.strip() and not line.startswith("#")]
 
 

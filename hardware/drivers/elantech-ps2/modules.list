@@ -1,0 +1,2 @@
+# Lenovo PS/2 Elantech touchpad; libps2 and the I2C core are built in.
+drivers/input/mouse/psmouse.ko

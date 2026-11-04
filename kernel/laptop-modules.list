@@ -7,19 +7,14 @@ drivers/hwmon/hwmon.ko
 # Broadwell display; publish only the Lenovo's 8086:1616 hotplug alias.
 drivers/gpu/drm/i915/i915.ko
 drivers/char/agp/intel-gtt.ko
-# Lenovo PS/2 Elantech touchpad; libps2 and the I2C core are built in.
-drivers/input/mouse/psmouse.ko
+# recipe: elantech-ps2/modules.list
 # MT7922 Wi-Fi; cfg80211 and mac80211 are Google's.
 drivers/net/wireless/mediatek/mt76/mt76.ko
 drivers/net/wireless/mediatek/mt76/mt76-connac-lib.ko
 drivers/net/wireless/mediatek/mt76/mt792x-lib.ko
 drivers/net/wireless/mediatek/mt76/mt7921/mt7921-common.ko
 drivers/net/wireless/mediatek/mt76/mt7921/mt7921e.ko
-# Lenovo AR9565; the same Google cfg80211/mac80211 helpers are reused.
-drivers/net/wireless/ath/ath.ko
-drivers/net/wireless/ath/ath9k/ath9k_hw.ko
-drivers/net/wireless/ath/ath9k/ath9k_common.ko
-drivers/net/wireless/ath/ath9k/ath9k.ko
+# recipe: ar9565/modules.list
 # Internal digital microphone; snd-soc-dmic is already shipped by Google.
 sound/soc/amd/snd-acp-config.ko
 sound/soc/amd/renoir/snd-rn-pci-acp3x.ko

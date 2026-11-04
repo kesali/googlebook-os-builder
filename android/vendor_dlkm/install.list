@@ -7,18 +7,13 @@ lib/modules/hwmon.ko                   0644 0:0   vendor_kernel_modules gki/hwmo
 # Broadwell Lenovo only; reuse Google's display helpers unchanged.
 lib/modules/i915.ko                    0644 0:0   vendor_kernel_modules gki/i915.ko
 lib/modules/intel-gtt.ko               0644 0:0   vendor_kernel_modules gki/intel-gtt.ko
-# Lenovo PS/2 Elantech touchpad; libps2 and I2C core are already built in.
-lib/modules/psmouse.ko                 0644 0:0   vendor_kernel_modules gki/psmouse.ko
+# recipe: elantech-ps2/install.list
 lib/modules/mt76.ko                    0644 0:0   vendor_kernel_modules gki/mt76.ko
 lib/modules/mt76-connac-lib.ko         0644 0:0   vendor_kernel_modules gki/mt76-connac-lib.ko
 lib/modules/mt792x-lib.ko              0644 0:0   vendor_kernel_modules gki/mt792x-lib.ko
 lib/modules/mt7921-common.ko           0644 0:0   vendor_kernel_modules gki/mt7921-common.ko
 lib/modules/mt7921e.ko                 0644 0:0   vendor_kernel_modules gki/mt7921e.ko
-# Lenovo AR9565 Wi-Fi; reuse Google's wireless stack unchanged.
-lib/modules/ath.ko                     0644 0:0   vendor_kernel_modules gki/ath.ko
-lib/modules/ath9k_hw.ko                0644 0:0   vendor_kernel_modules gki/ath9k_hw.ko
-lib/modules/ath9k_common.ko            0644 0:0   vendor_kernel_modules gki/ath9k_common.ko
-lib/modules/ath9k.ko                   0644 0:0   vendor_kernel_modules gki/ath9k.ko
+# recipe: ar9565/install.list
 # AMD ACP digital microphone; keep Google's snd-soc-dmic helper unchanged.
 lib/modules/snd-acp-config.ko          0644 0:0   vendor_kernel_modules gki/snd-acp-config.ko
 lib/modules/snd-rn-pci-acp3x.ko        0644 0:0   vendor_kernel_modules gki/snd-rn-pci-acp3x.ko

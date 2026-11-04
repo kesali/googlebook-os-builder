@@ -5,8 +5,11 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import sys
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "tools"))
+from hardware_recipes import expand
 SCRIPT = REPO / "android/system_ext/touchpad-capture.sh"
 
 
@@ -222,7 +225,7 @@ class ElantechCalibrationTests(unittest.TestCase):
         self.assertGreater(threshold, 1540 / 32)
         self.assertGreater(threshold, 1078 / 32)
         self.assertLess(threshold, 75.0)
-        entries = [line.split() for line in (REPO / "android/vendor/install.list").read_text().splitlines()
+        entries = [line.split() for line in expand(REPO / "android/vendor/install.list").splitlines()
                    if line.strip() and not line.startswith("#")]
         self.assertIn([f"usr/idc/{filename}", "0644", "0:0",
                        "vendor_configs_file", f"./{filename}"], entries)

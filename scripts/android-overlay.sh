@@ -21,10 +21,16 @@ trap 'rm -rf "$scratch"' EXIT
 
 fail() { echo "$changes: $*" >&2; exit 1; }
 
+for listing in remove.list install.list; do
+    if [ -f "$changes/$listing" ]; then
+        python3 "$(dirname "$0")/../tools/hardware_recipes.py" "$changes/$listing" > "$scratch/$listing"
+    fi
+done
+
 # The lines of a list file, without comments and blank lines.
 entries() {
-    test -f "$changes/$1" || return 0
-    grep -v -e '^#' -e '^[[:space:]]*$' "$changes/$1" || true
+    test -f "$scratch/$1" || return 0
+    grep -v -e '^#' -e '^[[:space:]]*$' "$scratch/$1" || true
 }
 
 # Lists may only name paths inside ROOT.

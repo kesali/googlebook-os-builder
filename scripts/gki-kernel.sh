@@ -15,6 +15,10 @@ tools=$(cd "$(dirname "$0")/../tools" && pwd)
 build=$out/build
 release=$(sed -nE 's/^Linux version ([^ ]+) .*/\1/p' "$google/version.txt")
 mkdir -p "$build"
+recipe_config=$(mktemp "$out/recipe-config.XXXXXX")
+trap 'rm -f "$recipe_config"' EXIT
+python3 "$tools/hardware_recipes.py" "$changes" > "$recipe_config"
+changes=$recipe_config
 
 export PATH="$toolchain/clang/bin:$toolchain/rust/bin:$toolchain/bindgen:$toolchain/pahole:$PATH"
 export LIBCLANG_PATH=$toolchain/clang/lib # bindgen reads C headers with Google's clang

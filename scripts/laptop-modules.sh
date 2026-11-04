@@ -9,6 +9,8 @@ list=$(realpath "$3") google=$(realpath "$4") output=$(realpath -m "$5")
 mkdir -p "$output"
 work=$(mktemp -d "$output.partial.XXXXXX")
 trap 'rm -rf "$work"' EXIT
+python3 "$(dirname "$0")/../tools/hardware_recipes.py" "$list" > "$work/modules.list"
+list=$work/modules.list
 hash=$(sed -n 's/^CONFIG_MODULE_SIG_HASH="\([^"]*\)"$/\1/p' "$build/.config")
 test -n "$hash" || { echo "No module-signing algorithm in $build/.config" >&2; exit 1; }
 

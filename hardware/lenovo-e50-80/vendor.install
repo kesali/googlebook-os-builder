@@ -1,0 +1,2 @@
+# PS/2 Elantech-only palm-width adjustment; leave other touchpad calibrations unchanged.
+usr/idc/ETPS_2_Elantech_Touchpad.idc                                      0644 0:0    vendor_configs_file         ./ETPS_2_Elantech_Touchpad.idc

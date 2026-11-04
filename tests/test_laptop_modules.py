@@ -10,6 +10,7 @@ from unittest.mock import patch
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
 from laptop_module_check import check, dependency_closure, LAPTOP_ALIASES
+from hardware_recipes import expand
 
 
 class LaptopModuleTests(unittest.TestCase):
@@ -34,14 +35,14 @@ class LaptopModuleTests(unittest.TestCase):
             dependency_closure(["video.ko"], {"video.ko": ["missing.ko"]}, {"rfkill.ko"})
 
     def test_microphone_modules_are_modular_and_installed_without_replacing_dmic(self):
-        config = (REPO / "kernel/gki.config").read_text()
+        config = expand(REPO / "kernel/gki.config")
         for option in ("SND_SOC_AMD_RENOIR", "SND_SOC_AMD_RENOIR_MACH",
                        "SND_AMD_ACP_CONFIG", "SND_SOC_DMIC"):
             self.assertIn(f"CONFIG_{option}=m\n", config)
-        paths = {line for line in (REPO / "kernel/laptop-modules.list").read_text().splitlines()
+        paths = {line for line in expand(REPO / "kernel/laptop-modules.list").splitlines()
                  if line and not line.startswith("#")}
         installs = [line.split() for line in
-                    (REPO / "android/vendor_dlkm/install.list").read_text().splitlines()
+                    expand(REPO / "android/vendor_dlkm/install.list").splitlines()
                     if line and not line.startswith("#")]
         for path in ("sound/soc/amd/snd-acp-config.ko",
                      "sound/soc/amd/renoir/snd-rn-pci-acp3x.ko",
@@ -90,9 +91,9 @@ class LaptopModuleTests(unittest.TestCase):
                     check(root, installs)
 
     def test_broadwell_modules_are_modular_and_explicitly_packaged(self):
-        config = (REPO / "kernel/gki.config").read_text()
-        paths = (REPO / "kernel/laptop-modules.list").read_text().splitlines()
-        installs = (REPO / "android/vendor_dlkm/install.list").read_text()
+        config = expand(REPO / "kernel/gki.config")
+        paths = expand(REPO / "kernel/laptop-modules.list").splitlines()
+        installs = expand(REPO / "android/vendor_dlkm/install.list")
         for option in ("DRM_I915", "INTEL_GTT"):
             self.assertIn(f"CONFIG_{option}=m\n", config)
         for path in ("drivers/gpu/drm/i915/i915.ko", "drivers/char/agp/intel-gtt.ko"):
@@ -107,9 +108,9 @@ class LaptopModuleTests(unittest.TestCase):
         )
 
     def test_ar9565_uses_upstream_modules_without_replacing_google_wireless_helpers(self):
-        config = (REPO / "kernel/gki.config").read_text()
-        paths = (REPO / "kernel/laptop-modules.list").read_text().splitlines()
-        installs = (REPO / "android/vendor_dlkm/install.list").read_text()
+        config = expand(REPO / "kernel/gki.config")
+        paths = expand(REPO / "kernel/laptop-modules.list").splitlines()
+        installs = expand(REPO / "android/vendor_dlkm/install.list")
         for option in ("ATH_COMMON", "ATH9K", "ATH9K_HW", "ATH9K_COMMON"):
             self.assertIn(f"CONFIG_{option}=m\n", config)
         for path in ("drivers/net/wireless/ath/ath.ko",
@@ -127,13 +128,13 @@ class LaptopModuleTests(unittest.TestCase):
         self.assertIn(f"+alias {alias} ath9k\n", module_patch)
 
     def test_elantech_ps2_module_is_packaged_with_hotplug_and_builtin_helpers(self):
-        config = (REPO / "kernel/gki.config").read_text()
+        config = expand(REPO / "kernel/gki.config")
         self.assertIn("CONFIG_MOUSE_PS2=m\n", config)
         self.assertIn("CONFIG_MOUSE_PS2_ELANTECH=y\n", config)
         self.assertIn("CONFIG_MOUSE_PS2_ELANTECH_SMBUS=y\n", config)
         self.assertIn("drivers/input/mouse/psmouse.ko",
-                      (REPO / "kernel/laptop-modules.list").read_text().splitlines())
-        installs = (REPO / "android/vendor_dlkm/install.list").read_text()
+                      expand(REPO / "kernel/laptop-modules.list").splitlines())
+        installs = expand(REPO / "android/vendor_dlkm/install.list")
         self.assertIn("gki/psmouse.ko", installs)
         self.assertNotIn("gki/i2c-smbus.ko", installs)
         module_patch = (REPO / "android/vendor_dlkm/modules.patch").read_text()

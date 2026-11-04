@@ -50,6 +50,38 @@ make qemu-check JOBS=12   # bounded graphical check; shuts only the VM down afte
 **not accelerated graphics**; CPU instruction emulation is another performance cost. Measure build
 iteration and guest responsiveness separately; the graphics path is a runtime-performance question.
 
+### Hardware recipes (Lenovo pilot)
+
+The default image still includes both laptops. The native-format recipe pilot covers only
+AR9565 Wi-Fi and PS/2 Elantech input; AMD, Broadwell graphics and other support stay in their
+existing declarations. This is not a selectable-image system or a runtime driver installer.
+
+[Lenovo's driver list](hardware/lenovo-e50-80/drivers.list) selects the reusable
+[AR9565](hardware/drivers/ar9565/) and [Elantech](hardware/drivers/elantech-ps2/) recipes.
+Each owns `gki.config`, `modules.list`, `install.list` and `aliases`: kernel options,
+source-built modules, Android installation declarations and verified device aliases.
+The [Lenovo vendor fragment](hardware/lenovo-e50-80/vendor.install) installs the
+[touchpad calibration](android/vendor/ETPS_2_Elantech_Touchpad.idc); Android source files
+remain under the declared `android/` change directories.
+
+The base config and lists contain explicit `# recipe: name/file` includes. Build tools expand
+them into temporary inputs, keeping their ordering and the existing signing, ABI, metadata
+and dependency checks. No Google text file is generated or edited by the recipe tool:
+[modules.patch](android/vendor_dlkm/modules.patch) remains a source-derived patch. The checker
+requires selected recipes to be wired into each base surface and their aliases to match it.
+
+For another driver, first check whether Ruby already ships a suitable module. If not, add
+the four native-format files, select its name in the laptop list and add the three explicit
+includes to the base kernel/module/install lists. Generate any required module-metadata patch
+from Google's pristine original, as for existing drivers. Keep firmware pins in
+[sources.mk](sources.mk) and device-specific Android changes in their existing directories;
+the pilot does not yet abstract those surfaces.
+
+`make hardware-check` checks recipe wiring without a kernel/image build. A recipe declaration
+is not hardware verification: consult the [hardware spec](docs/specs/laptop-hardware.md).
+Validation preserves all expanded declarations and the built image byte-for-byte against
+the touchpad baseline; an unchanged repeat preserves all 37 recorded output hashes/timestamps.
+
 ### Laptop test image
 
 ```sh

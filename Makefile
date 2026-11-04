@@ -67,6 +67,9 @@ BUILDTOOLS_ZIP := $(DL)/build-tools-$(ANDROID_BUILDTOOLS_SHA).zip
 AIDL := $(TOOLCHAIN)/build-tools-$(ANDROID_BUILDTOOLS_SHA)/aidl
 BUILDER := scripts/builder.sh
 BUILD_READY := $(OUT)/stamps/builder
+# Recipe directories are explicit build inputs; no runtime hardware detection or installer.
+RECIPE_SELECTION := tools/hardware_recipes.py hardware/lenovo-e50-80/drivers.list \
+	$(wildcard hardware/drivers/*)
 export BUILDER_IMAGE JOBS QEMU_VNC_PORT
 export SOURCE_DATE_EPOCH := 1790812800
 export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $(image)))
@@ -78,6 +81,10 @@ export EXTRA_MOUNTS := $(foreach image,$(wildcard $(RECOVERY_IMAGE)),$(abspath $
 
 help: ## Show this list
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
+
+.PHONY: hardware-check
+hardware-check: $(BUILD_READY) ## Check Lenovo recipe wiring without building an image
+	$(BUILDER) python3 tools/hardware_recipes.py
 
 # Device selection and mounts belong to the host, never a privileged builder container.
 update-usb: android-image ## Select an existing Android USB and update OS + boot files, preserving data
@@ -193,12 +200,13 @@ $(GKI_VIRT): | $(BUILD_READY)
 
 gki: $(GKI)/bzImage ## Rebuild Google's kernel with the instruction emulator, check kABI
 $(GKI)/bzImage: FORCE $(KERNEL_SRC)/.ready $(TOOLCHAIN)/.ready $(GOOGLE)/inventory.txt $(GKI_SYMVERS) $(GKI_ABI_LIST) \
-		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py
+		kernel/gki.config scripts/gki-kernel.sh tools/kernel_certs.py tools/kconfig_check.py tools/kabi_check.py \
+		$(RECIPE_SELECTION) $(wildcard hardware/drivers/*/gki.config)
 	$(BUILDER) bash scripts/gki-kernel.sh "$(KERNEL_SRC)" "$(GKI)" "$(TOOLCHAIN)" "$(GOOGLE)/kernel" \
 		"$(GKI_SYMVERS)" "$(GKI_ABI_LIST)" kernel/gki.config
 
 $(GKI)/modules/manifest: FORCE $(GKI)/bzImage $(GOOGLE)/inventory.txt scripts/laptop-modules.sh \
-		kernel/laptop-modules.list
+		kernel/laptop-modules.list $(RECIPE_SELECTION) $(wildcard hardware/drivers/*/modules.list)
 	$(BUILDER) bash scripts/laptop-modules.sh "$(GKI)/build" "$(TOOLCHAIN)" \
 		kernel/laptop-modules.list "$(GOOGLE)" "$(GKI)/modules"
 
@@ -314,7 +322,7 @@ ANDROID_INPUTS := emulator=$(ANDROID_EMU) mesa=$(MESA)/install build=$(ANDROID) 
 # $* is the partition name: system, vendor, system_ext or vendor_dlkm.
 $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(ANDROID)/vendor_dlkm_a.img: $(ANDROID)/%_a.img: \
 		$(GOOGLE)/inventory.txt scripts/android-partition.sh scripts/android-overlay.sh \
-		scripts/check-replacements.sh tools/fs_metadata.py tools/android_layout.py $(ANDROID_LAYOUT)
+		scripts/check-replacements.sh tools/fs_metadata.py tools/android_layout.py $(ANDROID_LAYOUT) tools/hardware_recipes.py
 	$(BUILDER) fakeroot bash scripts/android-partition.sh "$(GOOGLE)" $* android/$* "$@" \
 		--layout "$(ANDROID_LAYOUT)" $(ANDROID_INPUTS)
 
@@ -322,15 +330,17 @@ $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(AN
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready
 $(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*)
 $(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
+		hardware/lenovo-e50-80/vendor.install hardware/lenovo-e50-80/drivers.list \
 		$(ANDROID_EMU)/.ready $(MESA)/manifest $(MINIGBM)/manifest $(FIRMWARE)/manifest $(ANDROID)/crossystem
 $(ANDROID)/vendor_dlkm_a.img: android/vendor_dlkm $(wildcard android/vendor_dlkm/*) \
-		$(GKI)/modules/manifest tools/laptop_module_check.py
+		$(GKI)/modules/manifest tools/laptop_module_check.py $(RECIPE_SELECTION) \
+		$(wildcard hardware/drivers/*/install.list hardware/drivers/*/aliases)
 
 $(ANDROID)/vbmeta_a.img: android/bootconfig.txt | $(BUILD_READY)
 	@mkdir -p $(@D)
 	$(BUILDER) avbtool make_vbmeta_image --algorithm NONE --flags 3 --padding_size 4096 --output "$@"
 
-$(ANDROID)/modules.lz4: $(GOOGLE)/inventory.txt $(GKI_VIRT) scripts/android-modules.sh scripts/android-overlay.sh \
+$(ANDROID)/modules.lz4: $(GOOGLE)/inventory.txt $(GKI_VIRT) scripts/android-modules.sh scripts/android-overlay.sh tools/hardware_recipes.py \
 		android/module_ramdisk $(wildcard android/module_ramdisk/*)
 	$(BUILDER) fakeroot bash scripts/android-modules.sh "$(GOOGLE)" android/module_ramdisk "$(GKI_VIRT)" "$@"
 android-initrd: $(ANDROID)/initrd.img ## Google's ramdisks and QEMU drivers, our boot settings

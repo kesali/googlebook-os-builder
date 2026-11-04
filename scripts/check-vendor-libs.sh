@@ -6,6 +6,10 @@
 #   check-vendor-libs.sh INSTALL_LIST ROOT LLNDK
 set -euo pipefail
 list=$1 root=$2 llndk=$3
+expanded=$(mktemp)
+trap 'rm -f "$expanded"' EXIT
+python3 "$(dirname "$0")/../tools/hardware_recipes.py" "$list" > "$expanded"
+list=$expanded
 for path in $(awk '!/^#/ && NF {print $1}' "$list"); do
     # readelf fails on files that are not ELF (scripts, XML, directories): they link nothing.
     libraries=$(readelf -d "$root/$path" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]$/\1/p') || continue

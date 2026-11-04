@@ -15,9 +15,15 @@ google=$(realpath "$1") changes=$2 root=$(realpath "$3")
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 
+for listing in remove.list install.list; do
+    if [ -f "$changes/$listing" ]; then
+        python3 "$(dirname "$0")/../tools/hardware_recipes.py" "$changes/$listing" > "$scratch/$listing"
+    fi
+done
+
 entries() {
-    test -f "$changes/$1" || return 0
-    grep -v -e '^#' -e '^[[:space:]]*$' "$changes/$1" | awk '{print $1}' || true
+    test -f "$scratch/$1" || return 0
+    grep -v -e '^#' -e '^[[:space:]]*$' "$scratch/$1" | awk '{print $1}' || true
 }
 
 is_elf() { cmp -s -n 4 "$1" <(printf '\177ELF'); }

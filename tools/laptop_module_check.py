@@ -4,6 +4,7 @@
 import argparse
 from pathlib import Path
 import subprocess
+from hardware_recipes import aliases as recipe_aliases, expand
 
 
 def dependency_closure(direct, dependencies, system_modules=frozenset()):
@@ -28,13 +29,15 @@ def dependency_closure(direct, dependencies, system_modules=frozenset()):
 LAPTOP_ALIASES = {
     "amdgpu": "pci:v00001002d000015E7sv*sd*bc*sc*i*",
     "mt7921e": "pci:v000014C3d00000616sv*sd*bc*sc*i*",
-    "ath9k": "pci:v0000168Cd00000036sv*sd*bc*sc*i*",
-    "psmouse": "serio:ty01pr*id*ex*",
     "snd-rn-pci-acp3x": "pci:v00001022d000015E2sv*sd*bc04sc80i00*",
     "snd-acp3x-pdm-dma": "platform:acp_rn_pdm_dma",
     "snd-acp3x-rn": "platform:acp_pdm_mach",
     "i915": "pci:v00008086d00001616sv*sd*bc03sc*i*",
 }
+for module, alias in recipe_aliases().items():
+    if module in LAPTOP_ALIASES:
+        raise ValueError(f"Recipe duplicates base alias: {module}")
+    LAPTOP_ALIASES[module] = alias
 
 
 def check(root, install_list):
@@ -46,7 +49,7 @@ def check(root, install_list):
         dependencies[Path(name).name] = [Path(value).name for value in values.split()]
         system_modules.update(Path(value).name for value in values.split()
                               if value.startswith("/system/lib/modules/"))
-    for line in install_list.read_text().splitlines():
+    for line in expand(install_list).splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         path = root / line.split()[0]

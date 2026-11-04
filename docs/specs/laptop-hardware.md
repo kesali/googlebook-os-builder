@@ -400,6 +400,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Native config/list recipes for Lenovo ath9k and Elantech retain
+  the declared Android IDC. 47 focused tests, exact expanded inputs and 37-output binary
+  equality/no-write repeat pass. No new hardware/QEMU boot; existing combined image preserved.
 - 2026-11-04 (this commit) — Owner confirms the Elantech palm-width candidate fixes touchpad
   use. Retain the bounded diagnostic evidence and unchanged pressure/multi-contact filters;
   accidental palm rejection remains unverified. Recipe work is a separate milestone.

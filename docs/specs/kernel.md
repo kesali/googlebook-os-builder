@@ -1,12 +1,21 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
-**Last verified:** 2026-11-03 — PS/2 Elantech plus AR9565 candidate: 41 focused tests,
+**Last verified:** 2026-11-04 — Lenovo recipe pilot: 47 focused recipe/module/overlay/touchpad/Mesa
+tests pass. Expanded declarations match `eb7a787`; image build preserves all 37 recorded
+output hashes/sizes, including full disk, kernel config and symbol CRCs. All 4,501 Google exports,
+signed modules and filesystem metadata/fit checks pass. The 21.4 s repeat preserves timestamps
+too and writes no partitions/boot files. No new QEMU or physical boot; runtime bytes unchanged.
+[Evidence](../../out/hardware-recipes/).
+
+Earlier, 2026-11-03 — PS/2 Elantech plus AR9565 candidate: 41 focused tests,
 kernel/image build, all 4,501 Google exports, signed-module imports/aliases and 518
 vendor_dlkm entries pass. The 20,148,224-byte vendor_dlkm fits 64 MiB. Repeat preserves all
 35 recorded output/disk hashes and timestamps with no partition or boot writes.
 Disposable enforcing QEMU reaches inspected setup and accessibility after input; VM exited.
-[Evidence](../../out/lenovo-touchpad/). Physical Wi-Fi and touchpad testing remain.
+[Evidence](../../out/lenovo-touchpad/). The owner subsequently confirmed Wi-Fi works and,
+after the name-scoped palm calibration in `eb7a787`, touchpad movement works.
+Accidental palm rejection remains unverified; see [laptop hardware](laptop-hardware.md).
 
 Earlier, 2026-11-03 — AR9565 candidate: 40 focused tests, kernel/image build,
 all 4,501 Google exports, signed-module imports/aliases and 517 vendor_dlkm entries pass.
@@ -35,18 +44,27 @@ Build Google's Googlebook kernel from source with the instruction emulator compi
 enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEMU drivers) load.
 
 ## Current state
+Verified native-format recipe pilot: Lenovo AR9565 and Elantech options/module
+paths/install entries/verified aliases now live under [hardware/](../../hardware/).
+Explicit includes preserve ordering in the existing base declarations; Google's module
+metadata stays a source-derived patch. The combined MSI/Lenovo image is byte-identical
+to the touchpad baseline `eb7a787`, including all original safeguards and module ordering.
+`make hardware-check` validates recipe wiring without building the image.
+
 Lenovo PS/2 touchpad candidate: unchanged upstream psmouse with Elantech and normal protocol
 defaults; PS/2 AUX hotplug alias `serio:ty01pr*id*ex*`, built-in libps2/I2C helpers.
 No replacement of MSI's I2C-HID path, preloads or source patches. Compiled module has no
 module dependencies (libps2/I2C are built in); image/ABI/repeat/QEMU checks pass above.
-Physical enumeration/input validation remains pending.
+Physical enumeration was captured in the diagnostic logs; the owner confirms the calibrated
+touchpad works. Its Android IDC and remaining palm-rejection check are in
+[laptop hardware](laptop-hardware.md).
 
 Lenovo AR9565 candidate: unchanged upstream ath9k/ath9k_hw/ath9k_common/ath modules
 compile and pass the existing Google-helper import/CRC and 4,501-export checks.
 Only `168c:0036` is added to hotplug metadata. Google's actual Googlebook mac80211 exports
 the LED APIs (unlike the generic emulator copy); no LED/source patch or helper replacement
 is needed. Signed packaging, final image/repeat/QEMU validation pass as above; physical
-Wi-Fi enumeration/association remains pending. [Build evidence](../../out/lenovo-wifi/).
+Wi-Fi works by subsequent owner report. [Build evidence](../../out/lenovo-wifi/).
 
 Lenovo evidence (2026-11-03): i915 binds Broadwell and exposes `intel_backlight`;
 Iris renders as HD Graphics 5500. The earlier boot failed framebuffer creation with -EINVAL.
@@ -175,10 +193,6 @@ Inspect the screenshots; this does not verify AMD hardware.
   and relinks (about 50 s).
 
 ## Actions
-- [ ] Owner retests AR9565 Wi-Fi — done when fresh logs show ath9k binding and the owner
-  confirms scanning and connection; local validation passes.
-- [ ] Owner retests PS/2 Elantech — done when logs show psmouse binding and Android identifies
-  the touchpad, with pointer movement, clicks and scrolling confirmed.
 - [ ] Check the brightness slider — done when the owner confirms it changes the panel
   (the snapshot already shows the expected `backlight` name and label).
 
@@ -189,6 +203,9 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-04 (this commit) — Native-format AR9565/Elantech recipes retain explicit Google patches.
+  47 tests, exact effective declarations, image/ABI/module/metadata checks and 37-output binary
+  equality/no-write repeat pass. No new QEMU/hardware boot; owner-confirmed baseline preserved.
 - 2026-11-03 (this commit) — Upstream psmouse/Elantech packaged with compiled PS/2 alias
   and built-in helpers; dependency check corrected an unnecessary SMBus-module entry.
   41 tests/build/ABI/image/no-write repeat and enforcing QEMU setup/input pass; hardware pending.

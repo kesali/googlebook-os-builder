@@ -1,0 +1,2 @@
+# Verified AUX protocol; compiled dependencies and aliases are checked before publication.
+psmouse serio:ty01pr*id*ex*

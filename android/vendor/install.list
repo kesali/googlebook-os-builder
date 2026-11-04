@@ -4,8 +4,7 @@
 #
 # path                                                                   mode owner  selinux type                source
 
-# PS/2 Elantech-only palm-width A/B; leave Google's other touchpad calibrations unchanged.
-usr/idc/ETPS_2_Elantech_Touchpad.idc                                      0644 0:0    vendor_configs_file         ./ETPS_2_Elantech_Touchpad.idc
+# recipe: lenovo-e50-80/vendor.install
 
 # MSI ALC256 setup; keep Google's audio HAL and select its expected card ID.
 bin/get_variant_audio                                                   0755 0:2000 get_variant_audio_exec      ./get_variant_audio
