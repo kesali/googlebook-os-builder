@@ -35,6 +35,9 @@ temporary touchpad capture is retired. QEMU checks pass; MSI regression after cr
 
 ## Build and try in QEMU
 
+Building and USB installation are currently tested on Linux only.
+Windows and WSL are untested.
+
 Host requirements: Linux, Docker, GNU make, Python 3, `/dev/kvm` and a VNC viewer.
 Allow at least **50 GB** for downloads/builds, plus the sparse Android data image.
 The first build downloads large pinned inputs and may take hours; repeat builds reuse them.
