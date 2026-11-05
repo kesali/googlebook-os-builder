@@ -329,55 +329,36 @@ class ChangeDataTests(unittest.TestCase):
                 with self.subTest(path=path.parent.name, entry=entry[0]):
                     self.assertEqual(len(entry), 5)
 
-    def test_crypto_preserves_stock_and_installs_portable_fallbacks(self):
+    def test_crypto_always_installs_portable_libraries_and_overlays_apexes(self):
         for partition, prefix, label in (("system", "system/", "system_lib_file"),
                                           ("vendor", "", "vendor_file")):
             changes = REPO / "android" / partition
             installs = entries(changes / "install.list")
             removed = (changes / "remove.list").read_text().splitlines()
             for library in ("crypto", "ssl"):
-                stock_path = f"{prefix}lib64/lib{library}.so"
-                portable_path = f"{prefix}lib64/gbos-builder-portable/lib{library}.so"
-                self.assertNotIn(stock_path, removed)
-                self.assertNotIn(stock_path, [entry[0] for entry in installs])
+                library_path = f"{prefix}lib64/lib{library}.so"
+                self.assertIn(library_path, removed)
                 self.assertIn(
-                    [portable_path, "0644", "0:0", label, f"crypto/lib{library}.so"],
+                    [library_path, "0644", "0:0", label, f"crypto/lib{library}.so"],
                     installs,
                 )
+            self.assertFalse(any("gbos-builder-portable" in entry[0] for entry in installs))
             self.assertNotIn(f"{prefix}apex/com.google.android.conscrypt.apex", removed)
         init = (REPO / "android/system/crypto.rc").read_text()
         mounts = [line.strip() for line in init.splitlines() if line.strip().startswith("mount ")]
         self.assertIn("on post-fs-data\n", init)
-        self.assertLess(init.index("exec_start gbos_builder_crypto_select"),
-                        init.index("on property:sys.gbos_builder.crypto.mode=stock"))
         apex_mounts = [
             f"mount none /system/lib64/lib{library}.so "
             f"/apex/com.android.conscrypt/lib64/lib{library}.so bind"
             for library in ("crypto", "ssl")
         ] + ["mount none /system/lib64/libcrypto_httpengine.so "
              "/apex/com.android.tethering/lib64/libcrypto_httpengine.so bind"]
-        portable_mounts = [
-            "mount none /system/lib64/gbos-builder-portable/libcrypto.so "
-            "/system/lib64/libcrypto.so bind",
-            "mount none /system/lib64/gbos-builder-portable/libssl.so "
-            "/system/lib64/libssl.so bind",
-            "mount none /vendor/lib64/gbos-builder-portable/libcrypto.so "
-            "/vendor/lib64/libcrypto.so bind",
-            "mount none /vendor/lib64/gbos-builder-portable/libssl.so "
-            "/vendor/lib64/libssl.so bind",
-        ]
-        self.assertEqual(mounts, apex_mounts + portable_mounts + apex_mounts)
-        self.assertIn("on property:sys.gbos_builder.crypto.mode=portable", init)
-        self.assertIn(
-            "service gbos_builder_crypto_select /system/bin/sh "
-            "/system_ext/etc/gbos-builder/crypto-select.sh /proc/cpuinfo",
-            init,
-        )
-        self.assertIn(
-            ["etc/gbos-builder/crypto-select.sh", "0755", "0:0", "system_file",
-             "./crypto-select.sh"],
-            entries(REPO / "android/system_ext/install.list"),
-        )
+        self.assertEqual(mounts, apex_mounts)
+        self.assertNotIn("on property:", init)
+        self.assertNotIn("service ", init)
+        self.assertFalse((REPO / "android/system_ext/crypto-select.sh").exists())
+        self.assertNotIn("crypto-select.sh",
+                         (REPO / "android/system_ext/install.list").read_text())
         self.assertIn(
             ["system/lib64/libcrypto_httpengine.so", "0644", "0:0", "system_lib_file",
              "httpengine/libcrypto_httpengine.so"],
@@ -390,10 +371,9 @@ class ChangeDataTests(unittest.TestCase):
                        if line.startswith("+(allow init ") and "mounton" in line]
         self.assertEqual(mount_rules, [
             "+(allow init system_lib_file (file (mounton)))",
-            "+(allow init vendor_file (file (mounton)))",
         ])
-        self.assertIn("(type gbos_builder_crypto_selector)", policy)
-        self.assertIn("(type gbos_builder_crypto_prop)", policy)
+        self.assertNotIn("gbos_builder_crypto_selector", policy)
+        self.assertNotIn("gbos_builder_crypto_prop", policy)
 
     def test_crypto_policy_applies_after_logging_policy_without_fuzz(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -417,20 +397,16 @@ class ChangeDataTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             text = policy.read_text()
             self.assertIn("(allow init system_lib_file (file (mounton)))", text)
-            self.assertIn("(allow init vendor_file (file (mounton)))", text)
-            self.assertIn("(type gbos_builder_crypto_selector)", text)
-            self.assertIn("(type gbos_builder_crypto_prop)", text)
+            self.assertNotIn("(allow init vendor_file (file (mounton)))", text)
+            self.assertNotIn("gbos_builder_crypto_selector", text)
+            self.assertNotIn("gbos_builder_crypto_prop", text)
             self.assertIn("(type gbos_builder_bootlog)", text)
             self.assertNotIn("gbos_builder_touchpad_diag", text)
 
             property_contexts_patch = (
                 REPO / "android/system/bootlog-property-contexts.patch"
             ).read_text()
-            self.assertIn(
-                "+sys.gbos_builder.crypto.mode "
-                "u:object_r:gbos_builder_crypto_prop:s0 exact string",
-                property_contexts_patch,
-            )
+            self.assertNotIn("sys.gbos_builder.crypto.mode", property_contexts_patch)
             self.assertIn(
                 "+sys.gbos_builder.bootlog.ready "
                 "u:object_r:gbos_builder_bootlog_ready_prop:s0 exact bool",

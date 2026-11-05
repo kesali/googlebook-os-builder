@@ -42,6 +42,10 @@ bin/crossystem
 # generic build. See android/system/remove.list.
 lib64/libz.so
 
+# Source-built BoringSSL retains runtime CPU dispatch; replace the pair together.
+lib64/libcrypto.so
+lib64/libssl.so
+
 # recipe: amdgpu/vendor.remove
 
 # Compile the changed platform policy instead of using Google's unchanged binary.

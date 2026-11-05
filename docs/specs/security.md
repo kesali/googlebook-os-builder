@@ -1,7 +1,12 @@
 # Security services
 
-**Status:** working (software keys) — renamed policy enforcing; key services stable.
-**Last verified:** 2026-11-04 — 20 selector/overlay tests, image ABI/metadata/kABI checks, and
+**Status:** working (software keys) — unconditional portable crypto passes focused tests;
+rebuilt-image/runtime validation pending.
+**Last verified:** 2026-11-05 — 26 overlay/crypto-ABI tests pass, including unconditional
+system/vendor replacement, APEX mount declarations and reduced policy patch application.
+Image rebuild and QEMU checks deferred by the owner; no new runtime verification.
+
+Earlier, 2026-11-04 — 20 selector/overlay tests, image ABI/metadata/kABI checks, and
 enforcing QEMU boot. Live mountinfo shows Google's system crypto bound into Conscrypt.
 Comparative performance and physical-laptop selection remain unverified.
 [Evidence](../../out/httpengine-investigation/).
@@ -27,9 +32,11 @@ Not verified: SetupWizard lock-screen setup, Google account sign-in, Play Integr
 Not provided: hardware-backed keys, attestation, rollback resistance (Android falls back to
 non-rollback-resistant keys, as expected). This is a development device, not a secure one.
 
-Verified: the selector requires SHA-NI on every reported logical CPU; otherwise it selects the
-portable pair. QEMU selected Google's libraries, and live mountinfo confirmed the Conscrypt bind.
-Not verified: stock-versus-portable performance or physical-laptop selection.
+The owner chose unconditional portable crypto on every supported CPU. System/vendor libraries
+are replaced at image build time; init only overlays Conscrypt and HttpEngine at post-fs-data.
+The CPU selector, its transient property/domain and vendor mount permission are removed.
+Verified: 26 focused overlay/crypto-ABI tests pass for the simplified declarations and policy.
+Not verified: rebuilt-image metadata, live mounts and runtime behavior of this simplified path.
 
 ## Decisions
 - Emulator binaries are pinned by SHA-256 and copied **unmodified** with their missing library
@@ -45,18 +52,18 @@ Not verified: stock-versus-portable performance or physical-laptop selection.
   (`gscutil.rc`): init waited 10 s for a `/dev/tpm0` that the TPM blacklist keeps absent. The
   only firmware command left is a source-built `crossystem` stand-in that accepts the boot HAL's
   success values and rejects everything else.
-- SELinux remains enforcing; the crypto selector adds init file-mount access for the
-  platform/vendor library types it needs to overlay.
-- Keep Google's system/vendor BoringSSL when every logical CPU advertises SHA-NI; otherwise
-  init binds the ABI-checked runtime-dispatched pair over both libraries before zygote.
+- SELinux remains enforcing; init's crypto overlay needs file-mount access only for the
+  system library type, not vendor libraries or a selector domain.
+- Always install the ABI-checked runtime-dispatched BoringSSL pair into system/vendor.
+  Bind the system pair over Conscrypt before zygote; no boot-time CPU capability selection.
   HttpEngine keeps its separate exact-ABI build over Tethering's crypto file. Both signed APEXes
-  remain unchanged. Wi-Fi and other APEX copies are untouched. The stock path is verified in QEMU;
-  comparative performance on SHA-NI hardware is not measured.
+  remain unchanged. Wi-Fi and other APEX copies are untouched.
 
 ## Files
 - [scripts/emulator.sh](../../scripts/emulator.sh) — extract emulator files without mounts; API check.
 - [android/vendor/install.list](../../android/vendor/install.list), [android/vendor/remove.list](../../android/vendor/remove.list) — services installed and removed.
-- [android/system_ext/crypto-select.sh](../../android/system_ext/crypto-select.sh) — selects stock or portable system/vendor crypto before APEX overlays.
+- [android/system/crypto.rc](../../android/system/crypto.rc) — unconditional Conscrypt and
+  HttpEngine APEX overlays using the installed portable libraries.
 - [android/system_ext/vintf-manifest.patch](../../android/system_ext/vintf-manifest.patch) — Trusty-only HAL declarations removed.
 - [android/vendor/gatekeeper.rc](../../android/vendor/gatekeeper.rc), [android/system_ext/gbos-builder.rc](../../android/system_ext/gbos-builder.rc) — software-security services shared by QEMU and the laptop.
 - [android/crossystem-qemu.c](../../android/crossystem-qemu.c) — firmware-command stand-in.
@@ -77,6 +84,9 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-05 (this commit) — Owner chooses portable crypto for all supported CPUs. Replace
+  system/vendor libraries directly; remove the selector, property/domain and vendor mount rule.
+  26 overlay/crypto-ABI tests pass. Owner defers image rebuild and QEMU checks.
 - 2026-11-04 (this commit) — 20 selector/overlay tests, image ABI/metadata/kABI checks and
   enforcing QEMU boot pass; live mountinfo confirms Google's system crypto is bound into Conscrypt.
   Comparative performance and physical-laptop selection remain unverified.

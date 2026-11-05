@@ -339,6 +339,8 @@ make boringssl
 
 This builds upstream `libcrypto.so` and `libssl.so` into `out/boringssl/`; the standalone target
 does not update the image. `make android-image` installs the pair into system/vendor.
+Every build uses these portable libraries; upstream dispatches internally for the running CPU.
+There is no boot-time stock/portable selector.
 Google's crypto uses SHA-NI instructions that Broadwell must emulate.
 The pinned emulator libraries cannot replace it: they lack required exports.
 

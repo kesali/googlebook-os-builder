@@ -1,26 +1,6 @@
 # Google's main post-fs-data action activates APEXes in the default namespace before this
 # action runs, ahead of zygote-start. Keep the signed Conscrypt APEX itself unchanged.
 on post-fs-data
-    exec_start gbos_builder_crypto_select
-
-on property:sys.gbos_builder.crypto.mode=stock
     mount none /system/lib64/libcrypto.so /apex/com.android.conscrypt/lib64/libcrypto.so bind
     mount none /system/lib64/libssl.so /apex/com.android.conscrypt/lib64/libssl.so bind
     mount none /system/lib64/libcrypto_httpengine.so /apex/com.android.tethering/lib64/libcrypto_httpengine.so bind
-
-on property:sys.gbos_builder.crypto.mode=portable
-    mount none /system/lib64/gbos-builder-portable/libcrypto.so /system/lib64/libcrypto.so bind
-    mount none /system/lib64/gbos-builder-portable/libssl.so /system/lib64/libssl.so bind
-    mount none /vendor/lib64/gbos-builder-portable/libcrypto.so /vendor/lib64/libcrypto.so bind
-    mount none /vendor/lib64/gbos-builder-portable/libssl.so /vendor/lib64/libssl.so bind
-    mount none /system/lib64/libcrypto.so /apex/com.android.conscrypt/lib64/libcrypto.so bind
-    mount none /system/lib64/libssl.so /apex/com.android.conscrypt/lib64/libssl.so bind
-    mount none /system/lib64/libcrypto_httpengine.so /apex/com.android.tethering/lib64/libcrypto_httpengine.so bind
-
-service gbos_builder_crypto_select /system/bin/sh /system_ext/etc/gbos-builder/crypto-select.sh /proc/cpuinfo
-    user logd
-    group log
-    seclabel u:r:gbos_builder_crypto_selector:s0
-    disabled
-    oneshot
-    stdio_to_kmsg

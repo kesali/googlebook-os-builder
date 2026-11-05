@@ -5,7 +5,6 @@
 etc/init/zz-gbos-builder.rc     0644 0:0   system_file  ./gbos-builder.rc
 etc/init/zz-gbos-builder-bootlog.rc 0644 0:0 system_file ./bootlog.rc
 etc/gbos-builder/              0755 0:0   system_file  -
-etc/gbos-builder/crypto-select.sh 0755 0:0 system_file ./crypto-select.sh
 etc/gbos-builder/bootlog-prepare.sh 0644 0:0 system_file ./bootlog-prepare.sh
 etc/gbos-builder/hardware-snapshot.sh 0644 0:0 system_file ./hardware-snapshot.sh
 # recipe: qemu-virtio/system_ext.install

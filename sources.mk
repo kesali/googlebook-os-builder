@@ -111,8 +111,8 @@ NDK_SHA := 753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2
 ANDROID_EMU_URL := https://dl.google.com/android/repository/sys-img/google_apis/x86_64-37.0_r06.zip
 ANDROID_EMU_SHA := 43f1d4eadf9117a505bbd815704ac5d9aaf4c7ce61c9d99f66305245ce00a191
 
-# Google's platform crypto uses SHA-NI without runtime dispatch. Keep it when every CPU
-# advertises SHA-NI; otherwise use this ABI-checked runtime-dispatched build. The pinned emulator
+# Google's platform crypto uses SHA-NI without runtime dispatch. Always use this
+# ABI-checked runtime-dispatched build on supported CPUs. The pinned emulator
 # lacks required exports. Churro identifies this commit by its recovery export window
 # (SSL_get_signature_algorithm_used, no CBS_get_u48).
 BORINGSSL_REV := e2da59b2d9e85f20a87d4b9116bc4a3de3525603

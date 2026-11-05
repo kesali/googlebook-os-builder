@@ -1,13 +1,13 @@
-Boot-log readiness gates collectors; transient CPU crypto mode selects safe libraries.
-Neither property is persistent. Drop each entry with its corresponding feature.
+Only the boot-log preparation helper may signal that its rotation succeeded.
+Collectors must not start after preparation failed. This property is not persistent.
+Drop this entry with the dedicated boot logger.
 
 --- a/system/etc/selinux/plat_property_contexts
 +++ b/system/etc/selinux/plat_property_contexts
-@@ -1,6 +1,8 @@
+@@ -1,6 +1,7 @@
  #line 50 "system/sepolicy/flagging/flagging_macros"
  
  #line 1 "out/soong/.intermediates/system/sepolicy/contexts/plat_property_contexts/android_common/newline"
-+sys.gbos_builder.crypto.mode u:object_r:gbos_builder_crypto_prop:s0 exact string
 +sys.gbos_builder.bootlog.ready u:object_r:gbos_builder_bootlog_ready_prop:s0 exact bool
  
  #line 1 "system/sepolicy/private/property_contexts"
