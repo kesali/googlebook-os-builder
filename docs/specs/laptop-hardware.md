@@ -312,7 +312,10 @@ refer to diagnostic boots, not necessarily the most recent boots; verify their i
 The new direct-FAT32 implementation of `make laptop-logs` selects the USB, locates
 `gbos_logs` by name and reads current/previous logs with mtools, without mounting or writing
 the USB. The 256 MiB `GBOS-LOGS` FAT32 volume can also be browsed on other operating systems
-after Android is shut down. Older images without this partition retain read-only metadata
+after Android is shut down: open that named volume in the file manager and copy `current/` and
+`previous/` locally, without modifying other partitions. This avoids terminal sudo when the
+desktop allows normal removable-media access. Windows/macOS file-manager browsing is not tested.
+Older images without this partition retain read-only metadata
 retrieval through debugfs. Copies belong to the normal
 user; `out/laptop-logs/latest/current/` points to the newest successful retrieval. All 23 focused
 log-retrieval/USB tests pass, including read-only extraction from a disposable ext4 image.
@@ -455,6 +458,8 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Added file-manager retrieval from FAT32 `GBOS-LOGS` for owners
+  without terminal sudo. Windows/macOS browsing remains untested; no device access.
 - 2026-11-05 uncommitted — Common network/touchpad/audio packaging now build-checked:
   66 focused tests, kABI/module/image checks, no-write repeat and enforcing QEMU pass.
   No new physical results; user-provided model-specific audio routing still required.

@@ -281,10 +281,18 @@ After returning to Linux, connect the Android USB and unmount its partitions, th
 make laptop-logs
 ```
 
-Select the USB by model/serial. Sudo authorizes read-only mtools (`mdir`/`mtype`); no mounts, filesystem
-repair or USB writes occur. Current and previous boot logs are copied to a private, timestamped
-folder under `out/laptop-logs/`, owned by your normal user. `out/laptop-logs/latest/current/`
-always points to the newest successful retrieval; older copies are retained.
+Select the USB by model/serial. Sudo authorizes read-only mtools (`mdir`/`mtype`); no mounts,
+filesystem repair or USB writes occur. Current and previous boot logs are copied to a private,
+timestamped folder under `out/laptop-logs/`, owned by your normal user.
+`out/laptop-logs/latest/current/` always points to the newest successful retrieval; older copies
+are retained.
+
+No sudo or terminal? Shut Android down, connect the USB to a desktop computer and open the
+`GBOS-LOGS` FAT32 volume in its file manager. Copy `current/` and `previous/` to a local folder.
+Only open this named volume; cancel any request to format other partitions and do not change
+their contents. The volume uses a standard FAT32 filesystem, but file-manager browsing has not
+been tested on Windows or macOS.
+
 Only the diagnostic entry saves new logs; normal boots leave earlier captures untouched.
 Check the saved boot identity/time rather than assuming it describes the latest normal boot.
 Retrieval needs host mtools, sudo, lsblk and Python 3; it does not build an image.

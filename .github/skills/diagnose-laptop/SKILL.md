@@ -21,14 +21,16 @@ local; report only relevant filtered excerpts.
    problem before retrieval. Normal boots preserve old captures, so verify their identity/time.
    This is a self-service/AI-assisted workflow, not a promise to retain every crash. Follow the
    [log recovery procedure](../../../docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
-   when new evidence is needed: have the owner run `make laptop-logs` and select the USB.
-   Read the resulting `out/laptop-logs/latest/current/` and `previous/`; do not ask for manual
-   manual reader/chown commands unless the convenience tool fails. It needs no image build.
-   For manual recovery, identify the USB by stable identity, verify its current
-   layout and locate `gbos_logs` by partition name, never a remembered partition number.
-   New images use 256 MiB FAT32 `GBOS-LOGS`, written directly only during diagnostic boots;
-   read `current/` and `previous/` with read-only mtools. Regular-file tests pass;
-   the direct-FAT32 image and enforcing mount/boot remain unverified.
+   when new evidence is needed. Preferred on Linux: have the owner run `make laptop-logs` and
+   select the USB. It reads through sudo, makes no mount or USB writes, needs no image build,
+   and stores normal-user-owned files under `out/laptop-logs/latest/`.
+   If sudo is unavailable or the owner prefers the file manager, have them shut Android down,
+   connect the USB to a desktop, open only the `GBOS-LOGS` FAT32 volume and copy `current/` and
+   `previous/` to a local folder. Cancel requests to format other partitions and do not alter
+   them. File-manager browsing is not yet tested on Windows/macOS. Keep the copy local and read
+   only relevant filtered excerpts.
+   New images use 256 MiB FAT32 `GBOS-LOGS`, written directly only during diagnostic boots.
+   Verify the boot identity/time after retrieval.
    Older images without it use metadata: read only `gbos-builder-bootlog/current/` and
    `previous/` with debugfs or an owner-approved `ro,noload` mount.
    Let the owner handle sudo credentials.
