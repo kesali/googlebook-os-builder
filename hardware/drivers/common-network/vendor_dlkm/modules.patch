@@ -1,0 +1,88 @@
+Load upstream igb and Realtek PCIe Wi-Fi through Android's module loader.
+Keep Google's signed Ethernet/Intel Wi-Fi and cfg80211/mac80211 unchanged.
+Dependencies must pass compiled-module checks; PCI aliases follow the pinned driver tables.
+Prepend entries so the existing laptop patch can retain its original end-of-file context.
+Drop entries when Google's recovery supplies these modules and metadata.
+
+--- a/lib/modules/modules.dep
++++ b/lib/modules/modules.dep
+@@ -1,3 +1,26 @@
++/vendor/lib/modules/igb.ko: /vendor/lib/modules/i2c-algo-bit.ko /vendor/lib/modules/hwmon.ko /system/lib/modules/ptp.ko /system/lib/modules/pps_core.ko
++/vendor/lib/modules/rtw88_core.ko: /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_pci.ko: /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8723x.ko: /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8723d.ko: /vendor/lib/modules/rtw88_8723x.ko /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8723de.ko: /vendor/lib/modules/rtw88_8723d.ko /vendor/lib/modules/rtw88_8723x.ko /vendor/lib/modules/rtw88_pci.ko /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8821c.ko: /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8821ce.ko: /vendor/lib/modules/rtw88_8821c.ko /vendor/lib/modules/rtw88_pci.ko /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8822b.ko: /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8822be.ko: /vendor/lib/modules/rtw88_8822b.ko /vendor/lib/modules/rtw88_pci.ko /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8822c.ko: /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw88_8822ce.ko: /vendor/lib/modules/rtw88_8822c.ko /vendor/lib/modules/rtw88_pci.ko /vendor/lib/modules/rtw88_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_core.ko: /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_pci.ko: /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8851b.ko: /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8851be.ko: /vendor/lib/modules/rtw89_8851b.ko /vendor/lib/modules/rtw89_pci.ko /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8852a.ko: /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8852ae.ko: /vendor/lib/modules/rtw89_8852a.ko /vendor/lib/modules/rtw89_pci.ko /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8852b_common.ko: /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8852b.ko: /vendor/lib/modules/rtw89_8852b_common.ko /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8852be.ko: /vendor/lib/modules/rtw89_8852b.ko /vendor/lib/modules/rtw89_8852b_common.ko /vendor/lib/modules/rtw89_pci.ko /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8852c.ko: /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
++/vendor/lib/modules/rtw89_8852ce.ko: /vendor/lib/modules/rtw89_8852c.ko /vendor/lib/modules/rtw89_pci.ko /vendor/lib/modules/rtw89_core.ko /vendor/lib/modules/mac80211.ko /vendor/lib/modules/cfg80211.ko /system/lib/modules/rfkill.ko /system/lib/modules/libarc4.ko
+ /vendor/lib/modules/arc4.ko: /system/lib/modules/libarc4.ko
+ /system/lib/modules/rust_binder.ko:
+ /vendor/lib/modules/intel_telemetry_debugfs.ko: /vendor/lib/modules/intel_pmc_bxt.ko /vendor/lib/modules/mfd-core.ko /vendor/lib/modules/intel_telemetry_core.ko
+--- a/lib/modules/modules.alias
++++ b/lib/modules/modules.alias
+@@ -1,3 +1,50 @@
++alias pci:v00008086d00001F40sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001F41sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001F45sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001539sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001533sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001536sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001537sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001538sv*sd*bc*sc*i* igb
++alias pci:v00008086d0000157Bsv*sd*bc*sc*i* igb
++alias pci:v00008086d0000157Csv*sd*bc*sc*i* igb
++alias pci:v00008086d00001521sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001522sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001523sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001524sv*sd*bc*sc*i* igb
++alias pci:v00008086d0000150Esv*sd*bc*sc*i* igb
++alias pci:v00008086d0000150Fsv*sd*bc*sc*i* igb
++alias pci:v00008086d00001527sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001510sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001511sv*sd*bc*sc*i* igb
++alias pci:v00008086d00001516sv*sd*bc*sc*i* igb
++alias pci:v00008086d00000438sv*sd*bc*sc*i* igb
++alias pci:v00008086d0000043Asv*sd*bc*sc*i* igb
++alias pci:v00008086d0000043Csv*sd*bc*sc*i* igb
++alias pci:v00008086d00000440sv*sd*bc*sc*i* igb
++alias pci:v00008086d000010C9sv*sd*bc*sc*i* igb
++alias pci:v00008086d0000150Asv*sd*bc*sc*i* igb
++alias pci:v00008086d00001518sv*sd*bc*sc*i* igb
++alias pci:v00008086d000010E6sv*sd*bc*sc*i* igb
++alias pci:v00008086d000010E7sv*sd*bc*sc*i* igb
++alias pci:v00008086d0000150Dsv*sd*bc*sc*i* igb
++alias pci:v00008086d00001526sv*sd*bc*sc*i* igb
++alias pci:v00008086d000010E8sv*sd*bc*sc*i* igb
++alias pci:v00008086d000010A7sv*sd*bc*sc*i* igb
++alias pci:v00008086d000010A9sv*sd*bc*sc*i* igb
++alias pci:v00008086d000010D6sv*sd*bc*sc*i* igb
++alias pci:v000010ECd0000D723sv*sd*bc*sc*i* rtw88_8723de
++alias pci:v000010ECd0000B821sv*sd*bc*sc*i* rtw88_8821ce
++alias pci:v000010ECd0000C821sv*sd*bc*sc*i* rtw88_8821ce
++alias pci:v000010ECd0000B822sv*sd*bc*sc*i* rtw88_8822be
++alias pci:v000010ECd0000C822sv*sd*bc*sc*i* rtw88_8822ce
++alias pci:v000010ECd0000C82Fsv*sd*bc*sc*i* rtw88_8822ce
++alias pci:v000010ECd0000B851sv*sd*bc*sc*i* rtw89_8851be
++alias pci:v000010ECd00008852sv*sd*bc*sc*i* rtw89_8852ae
++alias pci:v000010ECd0000A85Asv*sd*bc*sc*i* rtw89_8852ae
++alias pci:v000010ECd0000B852sv*sd*bc*sc*i* rtw89_8852be
++alias pci:v000010ECd0000B85Bsv*sd*bc*sc*i* rtw89_8852be
++alias pci:v000010ECd0000C852sv*sd*bc*sc*i* rtw89_8852ce
+ # Aliases extracted from modules themselves.
+ alias ecb(arc4) arc4
+ alias crypto-ecb(arc4) arc4

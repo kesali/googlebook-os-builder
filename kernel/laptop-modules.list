@@ -5,3 +5,5 @@
 # recipe: mt7922/modules.list
 # recipe: ar9565/modules.list
 # recipe: renoir-acp/modules.list
+# recipe: common-network/modules.list
+# recipe: common-touchpads/modules.list

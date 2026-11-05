@@ -2,3 +2,5 @@
 # recipe: amdgpu/firmware.list
 # recipe: mt7922/firmware.list
 # recipe: ar9565/firmware.list
+# recipe: common-network/firmware.list
+# recipe: common-audio/firmware.list

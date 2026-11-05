@@ -8,5 +8,8 @@ i915
 mt7922
 elantech-ps2
 ar9565
+common-network
+common-touchpads
+common-audio
 laptop-modules
 qemu-virtio

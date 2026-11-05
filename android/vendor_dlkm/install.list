@@ -5,3 +5,5 @@
 # recipe: mt7922/vendor_dlkm.install
 # recipe: ar9565/vendor_dlkm.install
 # recipe: renoir-acp/vendor_dlkm.install
+# recipe: common-network/vendor_dlkm.install
+# recipe: common-touchpads/vendor_dlkm.install

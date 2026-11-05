@@ -4,7 +4,7 @@
 import argparse
 from pathlib import Path
 import subprocess
-from hardware_recipes import aliases as recipe_aliases, expand
+from hardware_recipes import aliases as recipe_aliases, expand, recipes
 
 
 def dependency_closure(direct, dependencies, system_modules=frozenset()):
@@ -25,14 +25,34 @@ def dependency_closure(direct, dependencies, system_modules=frozenset()):
     return result
 
 
-# Verified laptop devices; only these aliases are added for our modules.
+# Narrow device aliases retained for the existing laptop recipes.
 LAPTOP_ALIASES = recipe_aliases()
+
+
+def check_module_aliases(path, installed, require_all=False):
+    module = subprocess.check_output(["modinfo", "-F", "name", str(path)], text=True).strip()
+    compiled = set(subprocess.check_output(
+        ["modinfo", "-F", "alias", str(path)], text=True).splitlines())
+    declared = {line.split()[1] for line in installed
+                if line.startswith("alias ") and line.split()[-1] == module}
+    if declared - compiled or (require_all and compiled != declared):
+        raise ValueError(f"{path.name}: missing hotplug aliases or aliases not in compiled module")
 
 
 def check(root, install_list):
     modules = root / "lib/modules"
     dependencies = {}
     system_modules = set()
+    installed_aliases = (modules / "modules.alias").read_text().splitlines()
+    selected = recipes()
+    native_alias_modules = set()
+    for name in ("common-network", "common-touchpads"):
+        directory = selected.get(name)
+        if directory is not None:
+            native_alias_modules.update(
+                Path(line).name for line in expand(directory / "modules.list").splitlines()
+                if line.strip() and not line.startswith("#")
+            )
     for line in (modules / "modules.dep").read_text().splitlines():
         name, values = line.split(":", 1)
         dependencies[Path(name).name] = [Path(value).name for value in values.split()]
@@ -52,7 +72,7 @@ def check(root, install_list):
         signer = subprocess.check_output(["modinfo", "-F", "signer", str(path)], text=True).strip()
         if not signer:
             raise ValueError(f"{path.name} is unsigned")
-    installed_aliases = (modules / "modules.alias").read_text().splitlines()
+        check_module_aliases(path, installed_aliases, path.name in native_alias_modules)
     for module, alias in LAPTOP_ALIASES.items():
         aliases = subprocess.check_output(
             ["modinfo", "-F", "alias", str(modules / f"{module}.ko")], text=True).splitlines()

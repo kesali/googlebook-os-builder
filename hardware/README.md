@@ -49,9 +49,15 @@ has been retested. Detailed evidence and outstanding physical checks are in the
 | [i915](drivers/i915/) | Hardware-tested: Lenovo E50-80 Broadwell graphics | Other Intel GPUs untested; AV1 playback does not prove hardware decoding |
 | AMD DesignWare I2C-HID ([shared config](../kernel/gki.config)) | Hardware-tested: MSI touchpad | Other I2C-HID laptops untested |
 | [PS/2 Elantech](drivers/elantech-ps2/) | Hardware-tested: Lenovo touchpad movement | Palm rejection unverified; other enabled PS/2 protocols hardware untested |
+| [Common I2C/HID touchpads](drivers/common-touchpads/) | Stock Elan/Cypress/HID-RMI and Intel controller modules included unchanged; hardware untested | Existing MSI I2C-HID result above does not verify these other paths |
+| [Haswell/Broadwell GPIO and Synaptics SMBus](drivers/common-touchpads/) | Build-checked; hardware untested | Signatures, imports/dependencies and aliases pass; physical discovery/input untested |
 | [MT7922 / mt7921e](drivers/mt7922/) | Hardware-tested: MSI Wi-Fi | MSI Bluetooth firmware included/build-checked, pairing unverified; other supported adapters untested |
 | [AR9565 / ath9k and ath3k](drivers/ar9565/) | Hardware-tested: Lenovo Wi-Fi and Bluetooth | Other supported adapters untested |
+| [Common Intel/Realtek Ethernet](drivers/common-network/) | Build-checked; hardware untested | Stock drivers retained, igb and firmware packaged; link/traffic untested |
+| [Common Intel Wi-Fi firmware](drivers/common-network/) | Build-checked; hardware untested | Stock driver retained; older/AX firmware packaged, physical Wi-Fi untested |
+| [Realtek PCIe Wi-Fi, rtw88/rtw89](drivers/common-network/) | Build-checked; hardware untested | Selected adapters: compiled imports/CRCs, signatures and aliases pass against Google's helpers |
 | [HDA audio integration](drivers/hda-audio/) | Hardware-tested: MSI speakers; Lenovo speakers/microphone | MSI headphone/headset microphone unverified; HDMI audio not implemented |
+| [Common HDA audio and CA0132 firmware](drivers/common-audio/) | Build-checked; hardware untested | Stock codecs retained, standard firmware packaged; users supply model-specific mixer/HAL configuration |
 | [Renoir ACP](drivers/renoir-acp/) | Hardware-tested: MSI built-in microphone | Recording quality not measured; other ACP hardware untested |
 | [QEMU virtio](drivers/qemu-virtio/) | Emulator-tested: graphics, input and network DHCP | No physical-hardware claim; full networking/setup remains unverified |
 

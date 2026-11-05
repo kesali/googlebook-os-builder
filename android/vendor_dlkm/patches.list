@@ -1,1 +1,3 @@
 # recipe: laptop-modules/vendor_dlkm.patches
+# recipe: common-network/vendor_dlkm.patches
+# recipe: common-touchpads/vendor_dlkm.patches

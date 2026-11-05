@@ -11,7 +11,12 @@ mkdir "$work/files"
 python3 "$(dirname "$0")/../tools/hardware_recipes.py" "$list" > "$work/firmware.list"
 while read -r path; do
     [[ -z "$path" || "$path" == \#* ]] && continue
-    [[ ( "$path" == amdgpu/*.bin || "$path" == mediatek/*.bin || "$path" == ar3k/*.dfu ) \
+    [[ ( "$path" == amdgpu/*.bin || "$path" == mediatek/*.bin || "$path" == ar3k/*.dfu \
+        || "$path" == intel/iwlwifi/iwlwifi-*.ucode || "$path" == intel/iwlwifi/iwlwifi-*.pnvm \
+        || "$path" == rtw88/*.bin || "$path" == rtw89/*.bin || "$path" == rtl_nic/*.fw \
+        || "$path" == LICENSES/LICENCE.iwlwifi_firmware \
+        || "$path" == LICENSES/LICENCE.rtlwifi_firmware.txt \
+        || "$path" == ctefx.bin || "$path" == LICENSES/LICENCE.ca0132 ) \
         && "$path" != *..* ]] || {
         echo "Invalid runtime firmware path: $path" >&2; exit 1;
     }

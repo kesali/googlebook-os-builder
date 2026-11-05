@@ -1,5 +1,7 @@
 Dedicated enforcing logging domains for persistent logcat and a read-only hardware snapshot.
 Keep permissions scoped to these collectors; neither needs access to raw input events.
+The FAT context mount needs init relabelfrom/relabelto on the dedicated filesystem label.
+Drop with the persistent diagnostic logger.
 
 --- a/system/etc/selinux/plat_sepolicy.cil
 +++ b/system/etc/selinux/plat_sepolicy.cil
@@ -24,7 +26,7 @@ Keep permissions scoped to these collectors; neither needs access to raw input e
 +(allow init gbos_builder_logs_device (blk_file (getattr open read write ioctl)))
 +(allow init gbos_builder_bootlog_file (dir (mounton)))
 +(allow init vfat (filesystem (mount unmount getattr relabelfrom)))
-+(allow init gbos_builder_bootlog_file (filesystem (mount unmount getattr relabelto)))
++(allow init gbos_builder_bootlog_file (filesystem (mount unmount getattr relabelfrom relabelto)))
 +(allow gbos_builder_bootlog_file gbos_builder_bootlog_file (filesystem (associate)))
 +(allow gbos_builder_bootlog proc_mounts (file (read getattr open)))
 +(allow gbos_builder_bootlog gbos_builder_bootlog_file (filesystem (getattr)))

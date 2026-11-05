@@ -1,0 +1,12 @@
+/vendor/lib/modules/arc4.ko: /system/lib/modules/libarc4.ko
+/system/lib/modules/rust_binder.ko:
+/vendor/lib/modules/intel_telemetry_debugfs.ko: /vendor/lib/modules/intel_pmc_bxt.ko /vendor/lib/modules/mfd-core.ko /vendor/lib/modules/intel_telemetry_core.ko
+/vendor/lib/modules/softdog.ko:
+/vendor/lib/modules/mei_pxp.ko:
+/vendor/lib/modules/i2c-smbus.ko:
+/vendor/lib/modules/pmt_class.ko:
+/vendor/lib/modules/imx258.ko: /vendor/lib/modules/v4l2-cci.ko
+/vendor/lib/modules/intel-vsec.ko:
+/vendor/lib/modules/igc.ko: /system/lib/modules/ptp.ko /system/lib/modules/pps_core.ko
+/vendor/lib/modules/snd-soc-sst-cht-bsw-rt5645.ko: /vendor/lib/modules/snd-soc-rt5645.ko /vendor/lib/modules/snd-soc-rl6231.ko
+/vendor/lib/modules/snd-sof-pci-intel-tng.ko: /vendor/lib/modules/snd-sof-intel-atom.ko /vendor/lib/modules/snd-sof-xtensa-dsp.ko /vendor/lib/modules/snd-sof-pci.ko /vendor/lib/modules/snd-sof.ko /vendor/lib/modules/snd-sof-utils.ko

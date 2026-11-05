@@ -15,6 +15,15 @@ BOOT_THREE = "33333333-3333-3333-3333-333333333333"
 
 
 class BootlogTests(unittest.TestCase):
+    def test_context_mount_relabel_permissions_are_scoped_to_init(self):
+        policy = (REPO / "android/system/bootlog-policy.patch").read_text()
+        self.assertIn(
+            "+(allow init gbos_builder_bootlog_file "
+            "(filesystem (mount unmount getattr relabelfrom relabelto)))", policy)
+        for line in policy.splitlines():
+            if line.startswith("+(allow ") and "(filesystem " in line and "relabel" in line:
+                self.assertTrue(line.startswith("+(allow init "), line)
+
     def test_persistent_logging_requires_explicit_boot_opt_in(self):
         text = (REPO / "android/system_ext/bootlog.rc").read_text()
         actions = {}

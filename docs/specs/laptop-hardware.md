@@ -33,6 +33,31 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), following the working Chu
 with readable source changes and incremental USB updates.
 
 ## Current state
+Verified candidate packaging: common network/touchpad modules and standard CA0132 firmware
+pass the combined build, 66 focused tests, kABI/imports/signatures, dependencies/aliases and
+image checks. QEMU setup/focus is inspected under enforcing SELinux; physical driver binding,
+networking and audio on new hardware remain untested.
+[Evidence](../../out/common-hardware-validation/).
+
+The [common audio](../../hardware/drivers/common-audio/) recipe documents reused HDA/SOF
+drivers and adds standard CA0132 firmware/license. Unknown laptops require user-provided
+model-specific mixer/HAL configuration; existing routes stay unchanged. Packaging tests pass.
+
+The [common touchpads](../../hardware/drivers/common-touchpads/) recipe adds missing
+Haswell/Broadwell GPIO and Synaptics SMBus transport, not new laptop routing or audio.
+Stock Elan/Cypress/HID-RMI and Intel controller support is reused; Lenovo's Elantech settings
+stay unchanged. Compatible Synaptics devices may use native SMBus through existing discovery.
+Compiled compatibility and packaging pass; actual touchpad input needs hardware verification.
+[Earlier focused evidence](../../out/common-touchpads-inventory/tests.txt).
+
+The selected [common-network recipe](../../hardware/drivers/common-network/)
+adds missing Intel/Realtek runtime firmware and upstream igb/Realtek PCIe Wi-Fi candidates.
+These are shared additions, not new laptop recipes or hardware support claims.
+The [driver table](../../hardware/README.md#included-drivers-and-verification) marks them
+validation pending: 57 focused tests pass and all 60 firmware/license archive members exist.
+Kernel/module ABI and image packaging now pass; new hardware trials remain.
+[Evidence](../../out/common-network-inventory/tests.txt).
+
 Verified: MSI audio/camera/power policy and Lenovo IDC assets moved into device recipes;
 driver configs, modules, aliases and firmware moved into reusable driver recipes.
 The current selection still targets both laptops. Exact declarations/assets/patches and
@@ -253,6 +278,10 @@ are in [os-image](os-image.md). The host was not restarted and no disk but the B
 - [camera-lenovo.patch](../../hardware/lenovo-e50-80/vendor/camera-lenovo.patch) — EasyCamera
   `0bda:579c` listed as the front camera, without borrowed calibration.
 - [ar9565](../../hardware/drivers/ar9565/) — Lenovo AR9565 Wi-Fi and AR3012 Bluetooth (`ath3k` firmware upload).
+- [common-network](../../hardware/drivers/common-network/) — shared Intel/Realtek networking
+  candidates, exact coverage and pending validation.
+- [common-touchpads](../../hardware/drivers/common-touchpads/) — reused generic touchpad
+  support plus missing GPIO/SMBus modules; no audio changes or new hardware success claims.
 - [modules.patch](../../hardware/drivers/laptop-modules/vendor_dlkm/modules.patch) — codec preload/HDA unblock.
 - [powerhint.patch](../../android/vendor/powerhint.patch) — power HAL without 8-CPU masks.
 - [hardware-snapshot.sh](../../android/system_ext/hardware-snapshot.sh) — read-only physical evidence.
@@ -426,6 +455,18 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Common network/touchpad/audio packaging now build-checked:
+  66 focused tests, kABI/module/image checks, no-write repeat and enforcing QEMU pass.
+  No new physical results; user-provided model-specific audio routing still required.
+- 2026-11-05 uncommitted — Added common-audio firmware candidate and user configuration
+  guidance. Existing HDA/SOF modules and MSI/Lenovo routes retained; no tests/builds run.
+  Driver inclusion is not functional audio verification.
+- 2026-11-05 uncommitted — Added common touchpad/controller candidate, reusing existing
+  drivers and adding Lynxpoint GPIO/RMI SMBus only. 62 combined tests and strict metadata
+  checks pass; no build/hardware checks. Audio unchanged; Synaptics SMBus needs physical tests.
+- 2026-11-05 uncommitted — Added shared common-network declarations and matching official
+  firmware, reusing stock Ethernet/Intel Wi-Fi. 57 focused tests and cached firmware membership
+  checks pass; no build or physical-network checks. Included, not hardware-tested.
 - 2026-11-05 uncommitted — Added an included-driver verification table to the hardware guide:
   named owner-tested devices, emulator results and untested family coverage are distinct.
   No new drivers enabled or runtime claims; future candidates must list actual build checks.

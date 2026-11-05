@@ -1,0 +1,2 @@
+lib/modules/pinctrl-lynxpoint.ko 0644 0:0 vendor_kernel_modules gki/pinctrl-lynxpoint.ko
+lib/modules/rmi_smbus.ko 0644 0:0 vendor_kernel_modules gki/rmi_smbus.ko

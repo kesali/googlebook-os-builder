@@ -1,6 +1,11 @@
 # Kernel (GKI)
 
 **Status:** partial — laptop display/input/Wi-Fi/sound work; owner reports HDMI performance is now fine.
+**Latest candidate:** 2026-11-05 — Common network/touchpad modules and audio firmware build:
+66 focused tests, all 4,501 Google exports/CRCs, signatures/imports, complete aliases and image
+metadata/fit pass. 24.3 s repeat preserves 67 published sizes/timestamps with no partition/boot
+writes. Enforcing normal/diagnostic QEMU setup and keyboard-focus response inspected.
+Physical driver checks remain. [Evidence](../../out/common-hardware-validation/).
 **Last verified:** 2026-11-05 — Without sysfb/simpledrm or the handoff patch: 81 focused tests,
 kernel/image rebuild (10m46s), all 4,501 Google exports/CRCs and signed-module checks pass.
 22 s repeat preserves nine published-file sizes/timestamps, with no partition/boot writes.
@@ -71,6 +76,30 @@ Build Google's Googlebook kernel from source with the instruction emulator compi
 enough that Google's unmodified modules (ramdisks, system_dlkm, vendor_dlkm, QEMU drivers) load.
 
 ## Current state
+Not verified: [common audio](../../hardware/drivers/common-audio/) retains Google's HDA/SOF
+modules and adds the missing standard CA0132 DSP firmware from the pinned archive.
+No new module build, firmware download, routing or DSP-selection override.
+Firmware extraction tests and image packaging pass; physical audio and broader SOF coverage
+remain unverified.
+
+The [common-touchpads](../../hardware/drivers/common-touchpads/) candidate adds only missing
+`pinctrl-lynxpoint` and `rmi_smbus` modules, keeping Google's Intel pinctrl/RMI cores and
+existing Elan/Cypress/HID drivers. Source/stock inventory established the packaging gap;
+62 combined touchpad/network/module/overlay tests pass. All three metadata patches also apply
+to actual pristine Google files with zero fuzz, preserving original entries in order.
+[Evidence](../../out/common-touchpads-inventory/tests.txt).
+Compilation, ABI/imports and image packaging pass. Physical input remains unverified.
+Full native aliases are required for both modules; existing narrow laptop aliases remain.
+
+The [common-network](../../hardware/drivers/common-network/) candidate adds upstream igb and
+selected Realtek rtw88/rtw89 PCIe Wi-Fi modules, signed/packaged through the existing pipeline.
+Google's e1000e/igc/r8169 and Intel Wi-Fi/wireless helpers remain unchanged. 57 focused tests
+pass, including strict sequential metadata patches; all 60 selected firmware/license members
+exist as nonempty regular files in the cached pinned archive.
+[Evidence](../../out/common-network-inventory/tests.txt).
+Compilation, ABI/import checks against Google's helpers and image packaging pass. Physical
+networking remains unverified. No kernel patches or new downloads.
+
 Verified: full recipe refactoring moves firmware handoff, CPU emulation, all laptop
 config/modules/aliases/firmware and component source patches into selected native fragments.
 The [driver list](../../hardware/drivers.list) and [device list](../../hardware/devices.list)
@@ -252,6 +281,18 @@ Inspect the screenshots; this does not verify AMD hardware.
   unsigned modules cannot take over those modules' exports. Ours has always been empty.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Combined common-driver build passes 66 focused tests, all 4,501
+  exports/CRCs and signed-module metadata/import checks. Enforcing normal/diagnostic QEMU
+  setup/focus and 67-file no-write repeat pass; physical drivers untested.
+- 2026-11-05 uncommitted — Common audio reuses shipped HDA/SOF drivers and adds standard
+  CA0132 firmware/license. No new routing or module replacements. Tests not run;
+  packaging/hardware and broader SOF firmware coverage remain unverified.
+- 2026-11-05 uncommitted — Added common touchpad candidate: Lynxpoint GPIO and Synaptics
+  RMI SMBus, reusing stock helpers and retaining PS/2 defaults. 62 combined tests and pristine
+  zero-fuzz metadata checks pass; compilation, ABI, image and physical input remain unverified.
+- 2026-11-05 uncommitted — Added shared common-network candidate: igb and selected Realtek
+  PCIe Wi-Fi, retaining Google's signed Ethernet/Intel Wi-Fi helpers. 57 tests and cached
+  firmware membership checks pass; compilation, ABI, image and hardware checks remain.
 - 2026-11-05 (this commit) — Owner confirms no-firmware-framebuffer boots on both laptops.
   Disable sysfb/simpledrm and normal DRM screen logging; remove the PCI handoff patch.
   81 tests, rebuild/kABI/module checks and inspected direct/UEFI QEMU pass; hardware retest remains.

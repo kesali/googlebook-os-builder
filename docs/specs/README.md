@@ -9,13 +9,13 @@ The component specs track the details; the plan keeps the overall direction in o
 
 | Spec | Status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial; firmware handoff removed, rebuild/kABI/QEMU pass | Owner retests rebuilt image on both laptops |
-| [Boot chain](boot.md) | partial; FAT32 logging focused tests pass | Owner approves image build and enforcing mount/boot checks |
-| [OS image and disk](os-image.md) | partial; 107 compact-layout/logging tests pass | Owner approves image/boot/no-write repeat checks |
+| [Kernel (GKI)](kernel.md) | partial; common-driver build/kABI/module checks pass | Owner tests physical drivers |
+| [Boot chain](boot.md) | partial; FAT32 enforcing QEMU logging passes | Compact USB-UEFI and physical diagnostic entry checks |
+| [OS image and disk](os-image.md) | partial; compact image/direct QEMU/no-write repeat pass | Owner fresh installation and physical tests |
 | [Security services](security.md) | working (software keys); unconditional portable crypto focused tests pass | Rebuild/check simplified crypto image, then setup/account flows |
 | [Graphics](graphics.md) | partial; MSI video and firmware-free laptop tests owner-confirmed | Owner retests native-only rebuilt image; camera fallback unverified |
 | [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
-| [Laptop hardware](laptop-hardware.md) | partial; Lenovo fixes and MSI regression owner-confirmed | Remaining headphone, brightness and suspend checks |
+| [Laptop hardware](laptop-hardware.md) | partial; common network/touchpad/audio build-checked, hardware untested | Owner physical tests; model-specific audio configuration |
 
 **Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
 `planned` = agreed, not started · `parked` = works, not being developed now.

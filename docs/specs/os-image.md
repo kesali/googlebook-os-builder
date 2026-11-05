@@ -1,11 +1,18 @@
 # OS image and disk
 
-**Status:** partial — compact GPT/direct FAT32 logging focused tests pass; image/boot pending.
+**Status:** partial — compact GPT/direct FAT32 image and direct QEMU pass; physical install pending.
 USB updater validation (2026-11-02): `make test` passes 129 tests, including regular-file combined
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-05 — 107 focused tests pass through the builder:
+**Last verified:** 2026-11-05 — Combined image builds in 4m1s; all kABI/module/filesystem/fit
+checks pass. FAT mount policy fix rebuilds system only in 40 s. A 24.3 s repeat preserves all
+67 tracked published sizes/timestamps and writes no partitions/boot files. Direct normal and
+diagnostic QEMU setup/focus inspected under enforcing SELinux; normal boots preserve the
+entire saved 256 MiB FAT partition. Older disks and physical media untouched.
+[Evidence](../../out/common-hardware-validation/).
+
+Earlier, 2026-11-05 — 107 focused tests pass through the builder:
 disk/fresh/install/update, bootlog, laptop-log retrieval and overlay tests.
 Real regular-file fixtures verify 256 MiB FAT32 creation, boot-record guards/retention,
 read-only FAT32 extraction with unchanged source hash/timestamp and updater preservation.
@@ -125,7 +132,7 @@ The downloader verifies the extracted ZIP member before publishing it; raw downl
 their existing checks. The altered reference file remains untouched. Read-only comparison
 localizes its changes to the metadata partition; the cause of those changes is unknown.
 
-Not verified: the owner-approved compact replacement uses
+Verified build/direct QEMU: the owner-approved compact replacement uses
 `out/gbos-builder/compact/disk.img`, leaving both older working disks untouched.
 [android_disk.py](../../tools/android_disk.py) now creates 14 aligned GPT entries: EFI-SYSTEM,
 super, boot_a, init_boot_a, vendor_boot_a, vbmeta_a, vbmeta_b, misc, metadata,
@@ -135,14 +142,16 @@ Retained UUIDs/types and small payloads survive; boot storage, metadata and user
 The owner approved a 256 MiB FAT32 `GBOS-LOGS` partition for direct diagnostic logging,
 not periodic export. It has a stable UUID derived from the source disk UUID and a Microsoft
 basic-data partition type. Normal boots leave it unmounted; ordinary updates preserve it.
-Creation and read-only retrieval pass focused tests; the mount policy and runtime remain unverified.
+Creation/retrieval tests and enforcing QEMU mount/runtime pass after the scoped init
+filesystem relabel fix; normal boots leave every FAT byte unchanged.
 The [build guide](../build-guide.md#compact-partition-layout) lists the physical partition
 order, sizes and purposes, logical allocations, and fresh-install/update behavior.
 
 [super-layout.json](../../android/super-layout.json) now allocates system 3 GiB, vendor 1.5 GiB,
 product 4 GiB, system_ext 1.5 GiB and each module partition 256 MiB: 10.5 GiB within 12 GiB super.
 A read-only inspection found the original A group limit is 12,880,707,584 bytes, enough without
-changing the upstream group bound. Build/fit and boot remain unverified.
+changing the upstream group bound. Build/fit and direct QEMU boot pass; fresh physical
+installation and compact-image USB-UEFI checks remain unverified.
 Fresh USB installation verifies the full copy, resets metadata and the first MiB of userdata,
 relocates backup GPT and expands userdata before Android's first format. It deliberately discards
 copied QEMU accounts/encryption state, not securely erasing every old data sector.
@@ -360,6 +369,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-05 uncommitted — Compact image builds with common drivers; all metadata/fit and
+  67-file no-write repeat pass. Enforcing direct QEMU verifies FAT logging and normal-boot
+  preservation; setup/focus inspected. No physical writes; compact USB-UEFI not tested.
 - 2026-11-05 uncommitted — Owner approved direct FAT32 logging instead of export. Added
   256 MiB `gbos_logs` before userdata, gated mount/policy and read-only mtools retrieval.
   107 focused tests pass; image/enforcing runtime validation pending. Old disks untouched.

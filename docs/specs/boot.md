@@ -2,7 +2,14 @@
 
 **Status:** partial — firmware-free test entry owner-confirmed on both laptops;
 simplified kernel/menu verified in QEMU, rebuilt-image hardware retest pending.
-**Last verified:** 2026-11-05 — 107 focused disk/logging/retrieval/update/overlay tests pass.
+**Last verified:** 2026-11-05 — Combined image and direct diagnostic/normal QEMU pass enforcing
+SELinux; setup and keyboard-focus response inspected. Fixed observed FAT context-mount denial
+with init-only `relabelfrom` on the dedicated filesystem type; 40 logging/overlay tests pass.
+Diagnostic FAT mount, three ongoing collectors and nonempty streams/snapshot verified.
+Normal boots leave the entire 256 MiB FAT partition byte-identical. All VMs exited.
+[Evidence](../../out/common-hardware-validation/).
+
+Earlier, 2026-11-05 — 107 focused disk/logging/retrieval/update/overlay tests pass.
 Writable-FAT mount guards refuse missing/wrong/read-only mounts without readiness or writes;
 rotation/readiness and real-file FAT32 read-only retrieval pass. No image build or enforcing
 mount/boot check for direct FAT32 logging. [Test log](../../out/fat32-logging-tests.log).
@@ -103,13 +110,15 @@ Assemble what a Googlebook's firmware would hand the kernel — command line, in
 from Google's boot images plus a short, readable list of our changes.
 
 ## Current state
-Not verified: owner-approved direct FAT32 diagnostics now mount the new 256 MiB `GBOS-LOGS`
+Verified in direct QEMU: direct FAT32 diagnostics mount the new 256 MiB `GBOS-LOGS`
 partition at `/metadata/gbos-builder-bootlog` only for diagnostic boots. Existing native logcat,
 rotation/readiness and snapshot remain; preparation verifies a writable FAT mount before any
 record changes. Mount failure reports an error without collectors or metadata fallback.
 Normal boots leave the partition unmounted; no periodic export or guest auto-format.
 Dedicated init-only block access and mount-context policy do not introduce permissive domains.
-Focused tests pass; image/enforcing mount and boot checks have not run.
+Image/enforcing mount and normal/diagnostic boot checks pass. The original mount lacked
+init's `relabelfrom` permission on the context label; the scoped policy fix is regression-tested.
+Physical diagnostic GRUB selection on the new compact image remains unverified.
 The older runtime evidence below describes the metadata-backed logger.
 
 Verified: gbos-builder clean-break rename aligns GRUB arguments, Android imports,
@@ -277,6 +286,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Fixed observed init FAT filesystem relabelfrom denial; 40 tests
+  and enforcing direct QEMU pass. Fresh streams/snapshot saved; normal boots preserve entire
+  FAT bytes. Setup/focus inspected; physical diagnostic entry not retested.
 - 2026-11-05 uncommitted — Direct FAT32 diagnostic logging replaces metadata storage;
   gated mount and preparation guard prevent an accidental metadata fallback. Normal boots
   do not mount logs; 107 focused tests pass. Enforcing mount/runtime remain untested.

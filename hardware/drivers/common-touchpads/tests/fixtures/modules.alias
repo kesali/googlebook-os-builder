@@ -1,0 +1,12 @@
+# Aliases extracted from modules themselves.
+alias ecb(arc4) arc4
+alias crypto-ecb(arc4) arc4
+alias of:N*T*Celan,ekth3000 elan_i2c
+alias of:N*T*Celan,ekth3000C* elan_i2c
+alias i2c:elan_i2c elan_i2c
+alias of:N*T*Csnps,designware-i2c i2c_designware_platform
+alias of:N*T*Csnps,designware-i2cC* i2c_designware_platform
+alias of:N*T*Cmscc,ocelot-i2c i2c_designware_platform
+alias pci:v00008086d000015FDsv*sd*bc*sc*i* igc
+alias platform:cht-bsw-rt5645 snd_soc_sst_cht_bsw_rt5645
+alias pci:v00008086d0000119Asv*sd*bc*sc*i* snd_sof_pci_intel_tng
