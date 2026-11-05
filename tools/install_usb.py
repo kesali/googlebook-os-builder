@@ -57,7 +57,8 @@ def flash(source, target, size, expected, before_write, flush):
     if written.hexdigest() != expected:
         raise ValueError("Source image changed during flashing; do not boot this USB")
     before_write()
-    print("Full image written; verifying USB read-back...", flush=True)
+    print(f"Full image written. Verifying all {size / (1 << 30):.1f} GiB by reading back "
+          "the USB; this may take longer than writing. Please wait...", flush=True)
     if disk_hash(target, [(0, size)], size) != expected:
         raise OSError("USB read-back differs; do not boot it")
 
