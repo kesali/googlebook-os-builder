@@ -108,10 +108,10 @@ hardware-check: $(BUILD_READY) ## @more Check hardware recipe wiring without an 
 
 # Device selection and mounts belong to the host, never a privileged builder container.
 update-usb: android-image ## @usb Update a selected Android USB; keeps its data
-	sudo -- python3 tools/update_usb.py "$(ANDROID_DISK)" "$(ANDROID)/boot"
+	python3 tools/update_usb.py "$(ANDROID_DISK)" "$(ANDROID)/boot"
 
 install-usb: android-image ## @usb ERASE a selected USB and write the full image
-	sudo -- python3 tools/install_usb.py "$(ANDROID_DISK)"
+	python3 tools/install_usb.py "$(ANDROID_DISK)"
 
 laptop-logs: ## @usb Read saved boot logs from a USB into out/laptop-logs/
 	python3 tools/laptop_logs.py "$(OUT)/laptop-logs"

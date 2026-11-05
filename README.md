@@ -78,6 +78,8 @@ make update-usb
 ```
 
 Before either command, stop any VM using the image and unmount the USB's partitions.
+All three USB commands (`install-usb`, `update-usb`, `laptop-logs`) ask you to select the
+USB before requesting your sudo password, unless authentication is already cached.
 The updater checks the layout, writes only changed OS/boot content and verifies read-back;
 it does not repartition or format. Older Dali or incompatible-layout media need an explicit
 fresh flash, not an update. If interrupted, rerun the operation before booting.

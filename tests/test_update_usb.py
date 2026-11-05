@@ -19,6 +19,74 @@ from deploy import COMPONENTS, bundle, install
 from lp import Extent, LP_TARGET_TYPE_LINEAR, LpMetadataGeometry, Partition
 
 
+class USBPromptTests(unittest.TestCase):
+    def setUp(self):
+        self.selected = {"name": "/dev/fake-usb", "type": "disk", "tran": "usb",
+                         "maj:min": "8:16", "serial": "TEST123", "size": 1024,
+                         "model": "Test USB", "ro": False}
+
+    def test_selects_disk_before_sudo_and_hands_identity_to_the_same_command(self):
+        events = []
+        arguments = ["/repo/tools/install_usb.py", "/repo/out/disk.img"]
+        with patch.object(update_usb.os, "geteuid", return_value=1000), \
+                patch.object(update_usb, "choose",
+                             side_effect=lambda: events.append("select") or self.selected), \
+                patch.object(update_usb.shutil, "which", return_value="/usr/bin/sudo"), \
+                patch.object(update_usb.subprocess, "run",
+                             side_effect=lambda *args, **kwargs: events.append("sudo")) as run:
+            self.assertIsNone(update_usb.select_usb(arguments, None))
+        self.assertEqual(events, ["select", "sudo"])
+        command = run.call_args.args[0]
+        self.assertEqual(command[:3], ["sudo", "--", sys.executable])
+        self.assertEqual(command[3:-2], arguments)
+        self.assertEqual(command[-2], "--selected-usb")
+        self.assertEqual(json.loads(command[-1]), self.selected)
+        self.assertTrue(run.call_args.kwargs["check"])
+
+    def test_cancellation_never_requests_sudo(self):
+        with patch.object(update_usb, "choose", return_value=None), \
+                patch.object(update_usb.subprocess, "run") as run:
+            self.assertIsNone(update_usb.select_usb([], None))
+        run.assert_not_called()
+
+    def test_privileged_handoff_rechecks_identity_without_selecting_again(self):
+        current = dict(self.selected, children=[])
+        with patch.object(update_usb.os, "geteuid", return_value=0), \
+                patch.object(update_usb, "disks", return_value=[current]), \
+                patch.object(update_usb, "choose") as choose, \
+                patch.object(update_usb, "check_unused") as unused:
+            self.assertEqual(update_usb.select_usb([], json.dumps(self.selected)), current)
+        choose.assert_not_called()
+        unused.assert_called_once_with(current)
+
+    def test_changed_device_or_non_usb_is_rejected_after_authentication(self):
+        for field, value in (("serial", "OTHER"), ("maj:min", "8:32"), ("size", 2048),
+                             ("model", "Other"), ("tran", "nvme"), ("name", "/dev/other")):
+            with self.subTest(field=field), \
+                    patch.object(update_usb.os, "geteuid", return_value=0), \
+                    patch.object(update_usb, "disks", return_value=[dict(self.selected, **{field: value})]), \
+                    patch.object(update_usb, "check_unused") as unused:
+                with self.assertRaisesRegex(ValueError, "changed during authentication"):
+                    update_usb.select_usb([], json.dumps(self.selected))
+                unused.assert_not_called()
+
+    def test_busy_device_and_failed_authentication_are_not_ignored(self):
+        with patch.object(update_usb.os, "geteuid", return_value=0), \
+                patch.object(update_usb, "disks", return_value=[self.selected]), \
+                patch.object(update_usb, "check_unused", side_effect=ValueError("in use")):
+            with self.assertRaisesRegex(ValueError, "in use"):
+                update_usb.select_usb([], json.dumps(self.selected))
+        with patch.object(update_usb.os, "geteuid", return_value=1000), \
+                patch.object(update_usb, "choose", return_value=self.selected), \
+                patch.object(update_usb.shutil, "which", return_value="/usr/bin/sudo"), \
+                patch.object(update_usb.subprocess, "run",
+                             side_effect=subprocess.CalledProcessError(1, ["sudo"])):
+            with self.assertRaises(subprocess.CalledProcessError):
+                update_usb.select_usb(["/repo/tools/update_usb.py"], None)
+            with self.assertRaisesRegex(ValueError, "requires sudo"):
+                update_usb.select_usb([], json.dumps(self.selected))
+
+
 class USBUpdateTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()

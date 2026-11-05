@@ -23,6 +23,7 @@ from android_layout import validate_gpt_table
 from update_usb import (
     BLKFLSBUF, BLKSSZGET, check_identity, check_unused, choose, os_extents, table,
     check_layout, verify_gpt,
+    select_usb,
 )
 
 
@@ -144,7 +145,7 @@ def initialize_data(source_table, source_size, target, target_size, before_write
           "Android will format it on first boot.", flush=True)
 
 
-def install(image):
+def install(image, selected=None):
     if os.geteuid() != 0:
         raise ValueError("Run through make install-usb (requires sudo)")
     for name in ("lsblk", "sfdisk"):
@@ -162,7 +163,8 @@ def install(image):
             verify_gpt(image)
             os_extents(source, source_table)
             data_layout(source_table, info.st_size, info.st_size)
-            selected = choose()
+            if selected is None:
+                selected = choose()
             if selected is None:
                 print("Cancelled; nothing written.")
                 return
@@ -210,9 +212,12 @@ def install(image):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path)
+    parser.add_argument("--selected-usb", help=argparse.SUPPRESS)
     args = parser.parse_args()
     try:
-        install(args.image)
+        selected = select_usb([str(Path(__file__).resolve()), str(args.image)], args.selected_usb)
+        if selected is not None:
+            install(args.image, selected)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"install-usb: {error}\n")
     except (EOFError, KeyboardInterrupt):

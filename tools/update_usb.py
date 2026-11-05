@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Interactively update an existing gbos-builder Android USB, never format it or change its data/layout.
 
-Run on the Linux host as root, after building the image. Only USB disks are offered; the image's
+Run on the Linux host after building the image; select a USB before requesting sudo. The image's
 GPT and liblp layout must match, except that target userdata may be larger. Boot files use the
 same menu-last installer as deploy.py. No disk is selected or written without confirmation.
 """
@@ -15,6 +15,7 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 
 from android_layout import validate_gpt_table, validate_super_extents
@@ -224,7 +225,34 @@ def choose():
     return candidates[int(choice) - 1]
 
 
-def update(image, bundle):
+def select_usb(arguments, selected_json):
+    if selected_json is not None:
+        if os.geteuid() != 0:
+            raise ValueError("A handed-off USB selection requires sudo")
+        selected = json.loads(selected_json)
+        if not isinstance(selected, dict):
+            raise ValueError("Invalid handed-off USB selection")
+        current = next((node for node in usb_disks(disks())
+                        if node["name"] == selected.get("name")), None)
+        if current is None or any(current[key] != selected.get(key)
+                                  for key in ("maj:min", "serial", "size", "model")):
+            raise ValueError("Selected USB changed during authentication; select it again")
+        check_unused(current)
+        return current
+    selected = choose()
+    if selected is None:
+        print("Cancelled; nothing written.")
+        return None
+    if os.geteuid() == 0:
+        return selected
+    if shutil.which("sudo") is None:
+        raise ValueError("Missing host command: sudo")
+    subprocess.run(["sudo", "--", sys.executable, *arguments,
+                    "--selected-usb", json.dumps(selected)], check=True)
+    return None
+
+
+def update(image, bundle, selected=None):
     if os.geteuid() != 0:
         raise ValueError("Run through make update-usb (requires sudo)")
     for name in ("lsblk", "sfdisk", "mount", "umount"):
@@ -237,7 +265,8 @@ def update(image, bundle):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             raise ValueError("Stop QEMU or other image updates first") from error
-        selected = choose()
+        if selected is None:
+            selected = choose()
         if selected is None:
             print("Cancelled; nothing written.")
             return
@@ -318,9 +347,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path)
     parser.add_argument("bundle", type=Path)
+    parser.add_argument("--selected-usb", help=argparse.SUPPRESS)
     args = parser.parse_args()
     try:
-        update(args.image, args.bundle)
+        selected = select_usb(
+            [str(Path(__file__).resolve()), str(args.image), str(args.bundle)], args.selected_usb)
+        if selected is not None:
+            update(args.image, args.bundle, selected)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"update-usb: {error}\n")
     except (EOFError, KeyboardInterrupt):

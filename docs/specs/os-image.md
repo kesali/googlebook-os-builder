@@ -109,6 +109,11 @@ Turn Google's read-only recovery image into a private QEMU disk with a short lis
 changes, and update only the changed OS partitions without touching Android's data.
 
 ## Current state
+USB prompts: install/update now select the disk before requesting sudo, matching
+log retrieval. Privileged re-entry rechecks device identity and usage; existing write
+confirmations and descriptor checks remain. The three USB test files pass all 59 tests through
+the builder; evidence: [tests.txt](../../out/usb-prompt-order/tests.txt).
+
 Verified: native hardware recipes now supply device assets, driver libraries/firmware,
 whole-file removals and explicitly ordered Android patches through the existing overlay.
 Shared security/logging/native-bridge/storage changes stay common. Source-derived combined
@@ -369,6 +374,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-05 (this commit) — Unified USB prompts as disk selection then sudo; privileged
+  re-entry rechecks identity/usage without a second selection. Write confirmations retained.
+  All 59 focused USB tests pass; no physical USB access or interactive sudo test.
 - 2026-11-05 uncommitted — Compact image builds with common drivers; all metadata/fit and
   67-file no-write repeat pass. Enforcing direct QEMU verifies FAT logging and normal-boot
   preservation; setup/focus inspected. No physical writes; compact USB-UEFI not tested.
