@@ -2,22 +2,27 @@
 """Flash a built Android image to an explicitly selected USB, erasing its data.
 
 Host-only, owner-run operation. Never offer internal disks or select a default.
-Copy the full image verbatim, verify read-back, and do not grow any partitions.
+Verify the full image copy, then initialize fresh Android data and expand trailing userdata.
+Never resize a live filesystem or change an existing USB through the update command.
 """
 
 import argparse
 import fcntl
 import hashlib
+import json
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
 import subprocess
 
 from android_sync import CHUNK, disk_hash
+from android_disk import PARTITIONS
+from android_layout import validate_gpt_table
 from update_usb import (
     BLKFLSBUF, BLKSSZGET, check_identity, check_unused, choose, os_extents, table,
-    verify_gpt, verify_target_gpt,
+    check_layout, verify_gpt,
 )
 
 
@@ -56,6 +61,89 @@ def flash(source, target, size, expected, before_write, flush):
         raise OSError("USB read-back differs; do not boot it")
 
 
+def data_layout(source_table, source_size, target_size):
+    parts = source_table["partitions"]
+    if tuple(part["name"] for part in parts) != PARTITIONS:
+        raise ValueError("Fresh installation requires the compact image; rebuild before flashing")
+    for number, part in enumerate(parts, 1):
+        suffix = re.search(r"(\d+)$", part.get("node", ""))
+        if suffix is None or int(suffix[1]) != number:
+            raise ValueError("Compact image partition numbers must be contiguous")
+    if target_size < source_size or target_size % 512:
+        raise ValueError("USB capacity must fit the image and use whole sectors")
+    data = parts[-1]
+    metadata = next(part for part in parts if part["name"] == "metadata")
+    backup_sectors = source_size // 512 - source_table["lastlba"] - 1
+    if not 33 <= backup_sectors <= 2048:
+        raise ValueError("Unexpected GPT backup reservation")
+    ordered = sorted(parts, key=lambda part: part["start"])
+    for index, part in enumerate(ordered):
+        if part["start"] < source_table["firstlba"] or part["size"] <= 0 or (
+                part["start"] + part["size"] > source_table["lastlba"] + 1):
+            raise ValueError(f"Partition outside image: {part['name']}")
+        if index and ordered[index - 1]["start"] + ordered[index - 1]["size"] > part["start"]:
+            raise ValueError("Overlapping source partitions")
+    if ordered[-1]["name"] != "userdata" or data["size"] * 512 < 1 << 20:
+        raise ValueError("Userdata must be last and at least 1 MiB")
+    if metadata["size"] * 512 < 1 << 20:
+        raise ValueError("Metadata must be at least 1 MiB")
+    sectors = target_size // 512 - backup_sectors - data["start"]
+    if sectors < data["size"]:
+        raise ValueError("USB has no room for the original userdata allocation")
+    return data, metadata, sectors
+
+
+def initialize_data(source_table, source_size, target, target_size, before_write, flush):
+    """Fresh-install only: discard copied encryption state, then grow unformatted userdata."""
+    data, metadata, sectors = data_layout(source_table, source_size, target_size)
+    for name, offset, length in (
+            ("metadata", metadata["start"] * 512, metadata["size"] * 512),
+            ("userdata signature", data["start"] * 512, 1 << 20)):
+        before_write()
+        target.seek(offset)
+        remaining = length
+        while remaining:
+            block = bytes(min(CHUNK, remaining))
+            if target.write(block) != len(block):
+                raise OSError(f"Short write resetting {name}")
+            remaining -= len(block)
+        target.flush()
+        os.fsync(target.fileno())
+        flush()
+        target.seek(offset)
+        remaining = length
+        while remaining:
+            count = min(CHUNK, remaining)
+            if target.read(count) != bytes(count):
+                raise OSError(f"Read-back differs resetting {name}")
+            remaining -= count
+    # Address the already locked descriptor, not a path that could name a different device.
+    device = f"/proc/self/fd/{target.fileno()}"
+    before_write()
+    subprocess.run(["sfdisk", "--quiet", "--no-reread", "--relocate", "gpt-bak-std", device],
+                   pass_fds=(target.fileno(),), check=True)
+    before_write()
+    subprocess.run(["sfdisk", "--quiet", "--no-reread", "-N", str(len(PARTITIONS)), device],
+                   input=f"{data['start']},{sectors}\n", text=True,
+                   pass_fds=(target.fileno(),), check=True)
+    os.fsync(target.fileno())
+    flush()
+    before_write()
+    result = subprocess.run(["sfdisk", "--json", device], pass_fds=(target.fileno(),),
+                            check=True, capture_output=True, text=True)
+    actual = validate_gpt_table(json.loads(result.stdout)["partitiontable"])
+    check_layout(source_table, actual)
+    grown = next(part for part in actual["partitions"] if part["name"] == "userdata")
+    if grown["size"] != sectors or actual["lastlba"] != data["start"] + sectors - 1:
+        raise OSError("Expanded userdata/GPT read-back differs")
+    verified = subprocess.run(["sfdisk", "--verify", device], pass_fds=(target.fileno(),),
+                              capture_output=True, text=True, check=False)
+    if verified.returncode or verified.stderr.strip():
+        raise ValueError(f"Expanded GPT verification failed:\n{verified.stderr or verified.stdout}")
+    print(f"Fresh userdata uses {sectors * 512 / (1 << 30):.1f} GiB; "
+          "Android will format it on first boot.", flush=True)
+
+
 def install(image):
     if os.geteuid() != 0:
         raise ValueError("Run through make install-usb (requires sudo)")
@@ -73,9 +161,7 @@ def install(image):
             source_table = table(image)
             verify_gpt(image)
             os_extents(source, source_table)
-            names = {entry["name"] for entry in source_table["partitions"]}
-            if not {"userdata", "metadata", "EFI-SYSTEM"} <= names:
-                raise ValueError("Expected the Android image with userdata, metadata and EFI-SYSTEM")
+            data_layout(source_table, info.st_size, info.st_size)
             selected = choose()
             if selected is None:
                 print("Cancelled; nothing written.")
@@ -104,7 +190,7 @@ def install(image):
                       f"{selected['size'] / (1 << 30):.1f} GiB")
                 print(f"Source: {image} ({info.st_size} bytes)")
                 print("ALL existing USB accounts, apps, files and partitions will be lost.")
-                print("Partitions are not grown; space beyond the image remains unused.")
+                print("Copied Android data/encryption state is reset; userdata fills remaining USB space.")
                 answer = input(f"Type ERASE {selected['serial']} to flash, or Enter to cancel: ")
                 if answer != f"ERASE {selected['serial']}":
                     print("Cancelled; nothing written.")
@@ -116,8 +202,8 @@ def install(image):
                     raise ValueError("Source changed while awaiting confirmation; rebuild first")
                 flash(source, target, info.st_size, expected, unused,
                       lambda: fcntl.ioctl(target, BLKFLSBUF))
-                unused()
-                verify_target_gpt(source, target, source_table, path, selected["size"])
+                initialize_data(source_table, info.st_size, target, selected["size"], unused,
+                                lambda: fcntl.ioctl(target, BLKFLSBUF))
                 print("Fresh USB image verified. Safely unplug/replug before booting.")
 
 

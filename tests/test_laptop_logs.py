@@ -1,13 +1,15 @@
 """Check log retrieval with fake debugfs and device metadata, never physical disks."""
 
 import json
+import hashlib
+import io
 from pathlib import Path
 import stat
 import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import laptop_logs
@@ -25,7 +27,8 @@ class LaptopLogTests(unittest.TestCase):
                              "previous": (stat.S_IFDIR | 0o700, 0)}
         self.entries = {name: (stat.S_IFREG | 0o600, len(data))
                         for name, data in self.files.items()}
-        self.device_patch = patch.object(laptop_logs, "metadata_device", return_value=self.device)
+        self.device_patch = patch.object(laptop_logs, "log_device",
+                                         return_value=(self.device, "ext4"))
         self.device_patch.start()
         self.addCleanup(self.device_patch.stop)
 
@@ -148,7 +151,74 @@ class LaptopLogTests(unittest.TestCase):
                     patch.object(laptop_logs, "run", return_value=json.dumps({
                         "blockdevices": [{"name": "/dev/fake", "children": children}]})):
                 with self.assertRaisesRegex(ValueError, "exactly one"):
-                    laptop_logs.metadata_device(selected)
+                    laptop_logs.log_device(selected)
+
+    def test_reads_real_fat32_image_without_sudo_mounts_or_source_writes(self):
+        image = self.output.parent / "logs.img"
+        with image.open("wb") as stream:
+            stream.truncate(256 << 20)
+        subprocess.run(["mkfs.vfat", "-F", "32", "-s", "1", "-n", "GBOS-LOGS", str(image)],
+                       check=True, capture_output=True)
+        subprocess.run(["mmd", "-i", str(image), "::/current", "::/previous"],
+                       check=True, capture_output=True)
+        for name, data in self.files.items():
+            seed = self.output.parent / name
+            seed.write_bytes(data)
+            for boot in ("current", "previous"):
+                subprocess.run(["mcopy", "-i", str(image), str(seed), f"::/{boot}/{name}"],
+                               check=True, capture_output=True)
+        before = image.stat()
+        with image.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").digest()
+        run = subprocess.run
+        popen = subprocess.Popen
+
+        def direct_run(arguments, **kwargs):
+            self.assertEqual(arguments[:2], ["sudo", "--"])
+            return run(arguments[2:], **kwargs)
+
+        def direct_popen(arguments, **kwargs):
+            if arguments[:2] == ["sudo", "--"]:
+                arguments = arguments[2:]
+            self.assertIn(arguments[0], ("mdir", "mtype"))
+            return popen(arguments, **kwargs)
+
+        with patch.object(laptop_logs, "log_device", return_value=(image, "vfat")), \
+                patch.object(laptop_logs.subprocess, "run", side_effect=direct_run), \
+                patch.object(laptop_logs.subprocess, "Popen", side_effect=direct_popen):
+            destination = laptop_logs.retrieve({}, self.output)
+        self.assertEqual((destination / "current/hardware.txt").read_bytes(), b"card=acp\n")
+        self.assertEqual((destination / "previous/boot-id").read_bytes(), self.identity)
+        self.assertEqual(image.stat().st_mtime_ns, before.st_mtime_ns)
+        with image.open("rb") as stream:
+            self.assertEqual(hashlib.file_digest(stream, "sha256").digest(), digest)
+
+    def test_fat_directory_rejects_bad_entries_and_reports_reader_errors(self):
+        for result in (
+                subprocess.CompletedProcess([], 0, "::/current/boot-id\n::/current/boot-id\n", ""),
+                subprocess.CompletedProcess([], 0, "::/elsewhere/secret\n", ""),
+                subprocess.CompletedProcess([], 0, "", "FAT damaged"),
+                subprocess.CompletedProcess([], 1, "", "Cannot read")):
+            with self.subTest(result=result), \
+                    patch.object(laptop_logs.subprocess, "run", return_value=result), \
+                    self.assertRaises(ValueError):
+                laptop_logs.fat_directory(self.device, "/current")
+
+    def test_fat_read_is_bounded_and_reports_failures(self):
+        for data, error, status in (
+                (bytes((10 << 20) + 1), b"", 0),
+                (b"", b"FAT damaged", 0), (b"", b"", 1)):
+            with self.subTest(length=len(data), status=status):
+                process = MagicMock()
+                process.__enter__.return_value = process
+                process.stdout = io.BytesIO(data)
+                process.communicate.return_value = (b"", error)
+                process.returncode = status
+                with patch.object(laptop_logs.subprocess, "Popen", return_value=process), \
+                        self.assertRaises(ValueError):
+                    laptop_logs.fat_read(self.device, "/current/kernel.log")
+                if len(data) > 10 << 20:
+                    process.terminate.assert_called_once()
 
 
 if __name__ == "__main__":

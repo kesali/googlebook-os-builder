@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 
 from android_layout import load_allocations, validate_gpt_table
+from android_disk import create as create_disk
 from android_sync import copy_component, disk_hash, sync
 from super_candidate import build, image_digest, regular_file
 
@@ -26,7 +27,7 @@ def check_output(output):
         raise ValueError(f"Refusing to replace {output}")
     if not output.resolve().is_relative_to(OUT):
         raise ValueError("Fresh disks must stay under the repository's out/")
-    if output.resolve() == OUT / "android/disk.img":
+    if output.resolve() in (OUT / "android/disk.img", OUT / "gbos-builder/disk.img"):
         raise ValueError("Preserve the old working Android disk")
 
 
@@ -51,8 +52,7 @@ def create(lpmake, recovery, google, artifacts, layout_path, userdata_gib, outpu
         super_image = work / "super.img"
         build(lpmake, recovery, images, images / "vendor_dlkm_a.img", super_image, allocations)
         disk = work / "disk.img"
-        subprocess.run(["bash", "scripts/android-disk.sh", str(recovery),
-                        str(userdata_gib), str(disk)], check=True)
+        create_disk(recovery, userdata_gib, disk)
         table = validate_gpt_table(json.loads(subprocess.check_output(
             ["sfdisk", "--json", str(disk)], text=True))["partitiontable"])
         super_entries = [p for p in table["partitions"] if p["name"] == "super"]

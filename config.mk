@@ -15,8 +15,8 @@ BUILDER_IMAGE ?= gbos-builder
 # Parallel compile jobs: every CPU by default. Lower it (JOBS=4) if memory runs short.
 JOBS ?= $(shell nproc)
 
-# `make qemu`: Android's data partition size (GiB, sparse: uses only what Android writes),
-# and the virtual machine's CPUs and memory.
+# `make qemu`: initial data size (GiB, sparse); fresh USB installation expands it to the device.
+# The virtual machine's CPUs and memory follow.
 ANDROID_DATA_GIB ?= 32
 QEMU_CPUS ?= 4
 QEMU_MEMORY ?= 6G

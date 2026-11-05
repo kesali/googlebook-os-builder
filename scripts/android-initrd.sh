@@ -13,7 +13,7 @@ work=$(mktemp -d "$output.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
 # Android looks for its partitions on the disk holding this partition. Our disk keeps
-# Google's partition IDs (scripts/android-disk.sh); the kernel reports them in lower case.
+# Google's partition IDs (tools/android_disk.py); the kernel reports them in lower case.
 uuid=$(python3 - "$google/gpt.json" <<'EOF'
 import json, sys
 table = json.load(open(sys.argv[1]))["partitiontable"]

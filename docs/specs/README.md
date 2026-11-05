@@ -10,8 +10,8 @@ The component specs track the details; the plan keeps the overall direction in o
 | Spec | Status | Next action |
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial; firmware handoff removed, rebuild/kABI/QEMU pass | Owner retests rebuilt image on both laptops |
-| [Boot chain](boot.md) | partial; simplified menu and firmware-free QEMU pass | Owner retests rebuilt image on both laptops |
-| [OS image and disk](os-image.md) | working; recipe image byte-identical | Owner tests combined image; old media still need a fresh flash |
+| [Boot chain](boot.md) | partial; FAT32 logging focused tests pass | Owner approves image build and enforcing mount/boot checks |
+| [OS image and disk](os-image.md) | partial; 107 compact-layout/logging tests pass | Owner approves image/boot/no-write repeat checks |
 | [Security services](security.md) | working (software keys); unconditional portable crypto focused tests pass | Rebuild/check simplified crypto image, then setup/account flows |
 | [Graphics](graphics.md) | partial; MSI video and firmware-free laptop tests owner-confirmed | Owner retests native-only rebuilt image; camera fallback unverified |
 | [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |

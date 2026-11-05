@@ -53,7 +53,8 @@ Keep downloaded inputs and editable source trees under ignored `out/`.
 
 ## Run on a laptop
 
-Use a **64 GB or larger USB**, preferably USB 3. The default image is about **49.8 GiB**.
+Use a **64 GB or larger USB**, preferably USB 3. The compact image reserves 12 GiB for the OS
+and defaults to 32 GiB of sparse data for QEMU.
 Disable Secure Boot and select the USB's UEFI entry. The internal NVMe is hidden from Android.
 
 For a fresh USB (**erases all existing USB data**):
@@ -63,7 +64,9 @@ make install-usb
 ```
 
 The host tool asks you to select a USB by model, capacity and serial, confirm the erase,
-and verifies the copied image. Physical deployment is the owner's operation, not an agent action.
+and verifies the copied image. It resets copied Android data/encryption state and expands
+userdata to the remaining USB space before Android's first format.
+Physical deployment is the owner's operation, not an agent action.
 
 For an existing compatible gbos-builder USB (**preserves apps, accounts and data**):
 
@@ -77,7 +80,7 @@ it does not repartition or format. Older Dali or incompatible-layout media need 
 fresh flash, not an update. If interrupted, rerun the operation before booting.
 
 For build-only, use `make android-image`; it updates the regular file
-[out/gbos-builder/disk.img](out/gbos-builder/disk.img), not a physical disk.
+[out/gbos-builder/compact/disk.img](out/gbos-builder/compact/disk.img), not a physical disk.
 Never delete that image to repair a failed build: it holds persistent Android data.
 See the [deployment guide](docs/build-guide.md#laptop-test-image) for layouts and safeguards.
 

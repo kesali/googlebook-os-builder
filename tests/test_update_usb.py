@@ -36,6 +36,8 @@ class USBUpdateTests(unittest.TestCase):
                 {"name": "vbmeta_a", "start": 80, "size": 1, "node": "vbmeta", "uuid": "vbmeta-id"},
                 {"name": "EFI-SYSTEM", "start": 82, "size": 2,
                  "node": "esp", "uuid": "boot-id"},
+                {"name": "gbos_logs", "start": 84, "size": 4,
+                 "node": "logs", "uuid": "logs-id"},
             ],
         }
         self.logical = [
@@ -110,6 +112,16 @@ class USBUpdateTests(unittest.TestCase):
         for changed in cases:
             with self.subTest(layout=changed), self.assertRaises(ValueError):
                 update_usb.check_layout(self.layout, changed)
+
+    def test_log_partition_must_match_exactly_and_is_never_an_update_extent(self):
+        for key, value in (("start", 85), ("size", 3), ("uuid", "different")):
+            target = copy.deepcopy(self.layout)
+            target["partitions"][-1][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                update_usb.check_layout(self.layout, target)
+        for ranges in self.ranges.values():
+            for offset, length in ranges:
+                self.assertTrue(offset + length <= 84 * 512 or offset >= 88 * 512)
 
     def test_unsupported_out_of_bounds_and_overlapping_extents_are_rejected(self):
         for extent in (Extent(1, 1, 28, 0), Extent(1, 0, 28, 1),

@@ -251,12 +251,12 @@ def main():
     parser.add_argument("out", type=Path)
     parser.add_argument("cpus")
     parser.add_argument("memory")
-    parser.add_argument("--image", type=Path, help="Disk image to test instead of OUT/gbos-builder/disk.img")
+    parser.add_argument("--image", type=Path, help="Disk image to test instead of OUT/gbos-builder/compact/disk.img")
     args = parser.parse_args()
     try:
-        run(args.image or args.out / "gbos-builder/disk.img", args.out,
+        run(args.image or args.out / "gbos-builder/compact/disk.img", args.out,
             args.cpus, args.memory, False, "android-berberis", "android-berberis")
-        run(args.image or args.out / "gbos-builder/disk.img", args.out,
+        run(args.image or args.out / "gbos-builder/compact/disk.img", args.out,
             args.cpus, args.memory, True, "android-berberis", "android-houdini", "android-houdini")
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"android-uefi-check: {error}\n")

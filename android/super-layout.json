@@ -1,8 +1,8 @@
 {
-    "system_a": 2147483648,
-    "vendor_a": 1073741824,
-    "product_a": 3221225472,
-    "system_ext_a": 1073741824,
-    "system_dlkm_a": 67108864,
-    "vendor_dlkm_a": 67108864
+    "system_a": 3221225472,
+    "vendor_a": 1610612736,
+    "product_a": 4294967296,
+    "system_ext_a": 1610612736,
+    "system_dlkm_a": 268435456,
+    "vendor_dlkm_a": 268435456
 }

@@ -3,7 +3,7 @@ Keep permissions scoped to these collectors; neither needs access to raw input e
 
 --- a/system/etc/selinux/plat_sepolicy.cil
 +++ b/system/etc/selinux/plat_sepolicy.cil
-@@ -87210,3 +87210,78 @@
+@@ -87210,3 +87210,88 @@
  (typeattributeset gpu_sphal_domain (hal_graphics_allocator))
  (typeattributeset gpu_sphal_domain (hal_graphics_composer))
  (typeattributeset gpu_sphal_domain (hal_neuralnetworks))
@@ -18,6 +18,16 @@ Keep permissions scoped to these collectors; neither needs access to raw input e
 +(typeattributeset file_type (gbos_builder_bootlog_file))
 +(typeattributeset data_file_type (gbos_builder_bootlog_file))
 +(typeattributeset core_data_file_type (gbos_builder_bootlog_file))
++(type gbos_builder_logs_device)
++(roletype object_r gbos_builder_logs_device)
++(typeattributeset dev_type (gbos_builder_logs_device))
++(allow init gbos_builder_logs_device (blk_file (getattr open read write ioctl)))
++(allow init gbos_builder_bootlog_file (dir (mounton)))
++(allow init vfat (filesystem (mount unmount getattr relabelfrom)))
++(allow init gbos_builder_bootlog_file (filesystem (mount unmount getattr relabelto)))
++(allow gbos_builder_bootlog_file gbos_builder_bootlog_file (filesystem (associate)))
++(allow gbos_builder_bootlog proc_mounts (file (read getattr open)))
++(allow gbos_builder_bootlog gbos_builder_bootlog_file (filesystem (getattr)))
 +(type gbos_builder_bootlog_ready_prop)
 +(roletype object_r gbos_builder_bootlog_ready_prop)
 +(typeattributeset property_type (gbos_builder_bootlog_ready_prop))

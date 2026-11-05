@@ -1,11 +1,26 @@
 # OS image and disk
 
-**Status:** working — gbos-builder fresh image, verified rebuilds and guarded updates.
+**Status:** partial — compact GPT/direct FAT32 logging focused tests pass; image/boot pending.
 USB updater validation (2026-11-02): `make test` passes 129 tests, including regular-file combined
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-04 — Full hardware recipes: 263 tests pass; 11 expanded declaration
+**Last verified:** 2026-11-05 — 107 focused tests pass through the builder:
+disk/fresh/install/update, bootlog, laptop-log retrieval and overlay tests.
+Real regular-file fixtures verify 256 MiB FAT32 creation, boot-record guards/retention,
+read-only FAT32 extraction with unchanged source hash/timestamp and updater preservation.
+No image build, enforcing mount/boot check or physical write.
+[Test log](../../out/fat32-logging-tests.log).
+The owner approved committing this focused-tested milestone and deferring image, emulator and
+physical-hardware validation until after further changes.
+
+Earlier, 2026-11-05 — 67 focused tests pass through the builder:
+`test_android_disk`, `test_android_fresh`, `test_install_usb`, `test_update_usb`, `test_overlay`.
+Regular-file fixtures verify compact GPT/FAT32 creation, backup GPT relocation, userdata growth,
+metadata/signature reset, other-payload preservation and refusal paths. No image build, QEMU,
+physical write or commit. [Test log](../../out/compact-layout-tests.log).
+
+Earlier, 2026-11-04 — Full hardware recipes: 263 tests pass; 11 expanded declaration
 surfaces and ordered patch bytes match `d901da2`. Image rebuild passes ABI/modules, metadata
 and fit checks; all 38 tracked output hashes/sizes match before the build. The 23.8 s repeat
 preserves timestamps/inodes too, with no partition/boot writes. Direct and USB-UEFI disposable
@@ -110,13 +125,38 @@ The downloader verifies the extracted ZIP member before publishing it; raw downl
 their existing checks. The altered reference file remains untouched. Read-only comparison
 localizes its changes to the metadata partition; the cause of those changes is unknown.
 
-The owner approved a fresh image rather than migration, with additional growth space.
+Not verified: the owner-approved compact replacement uses
+`out/gbos-builder/compact/disk.img`, leaving both older working disks untouched.
+[android_disk.py](../../tools/android_disk.py) now creates 14 aligned GPT entries: EFI-SYSTEM,
+super, boot_a, init_boot_a, vendor_boot_a, vbmeta_a, vbmeta_b, misc, metadata,
+desktop_security_persist, desktop_security_storage, frp_persist, gbos_logs and trailing userdata.
+Retained UUIDs/types and small payloads survive; boot storage, metadata and userdata start fresh.
+`vbmeta_b` is a 4 MiB boot-HAL compatibility entry, not a second OS slot.
+The owner approved a 256 MiB FAT32 `GBOS-LOGS` partition for direct diagnostic logging,
+not periodic export. It has a stable UUID derived from the source disk UUID and a Microsoft
+basic-data partition type. Normal boots leave it unmounted; ordinary updates preserve it.
+Creation and read-only retrieval pass focused tests; the mount policy and runtime remain unverified.
+The [build guide](../build-guide.md#compact-partition-layout) lists the physical partition
+order, sizes and purposes, logical allocations, and fresh-install/update behavior.
+
+[super-layout.json](../../android/super-layout.json) now allocates system 3 GiB, vendor 1.5 GiB,
+product 4 GiB, system_ext 1.5 GiB and each module partition 256 MiB: 10.5 GiB within 12 GiB super.
+A read-only inspection found the original A group limit is 12,880,707,584 bytes, enough without
+changing the upstream group bound. Build/fit and boot remain unverified.
+Fresh USB installation verifies the full copy, resets metadata and the first MiB of userdata,
+relocates backup GPT and expands userdata before Android's first format. It deliberately discards
+copied QEMU accounts/encryption state, not securely erasing every old data sector.
+Normal updates still require matching GPT/liblp except larger userdata; old-layout media need
+an explicit destructive installation. The earlier 13-entry baseline passed 67 focused tests;
+the additional FAT32 changes now pass the 107-test focused run. No compact image or boot yet.
+
+Earlier expanded layout: the owner approved a fresh image rather than migration, with growth space.
 [super-layout.json](../../android/super-layout.json) declares system 2 GiB, vendor 1 GiB,
 product 3 GiB, system_ext 1 GiB and both module partitions 64 MiB. Logical B partitions and their
 unused group are removed; small physical B entries and the 12 GiB outer super allocation remain.
 [android_fresh.py](../../tools/android_fresh.py) builds the super through upstream lpmake,
 creates a new disk from recovery, checks super read-back, installs vbmeta/boot files, then
-publishes privately and atomically. The working path is now `out/gbos-builder/disk.img`;
+publishes privately and atomically. Its working path was `out/gbos-builder/disk.img`;
 the old `out/android/disk.img` is never replaced. New userdata starts empty, not copied from the
 old disk. Later builds update only OS/boot files and enforce the declared logical allocations.
 To deploy, the owner must flash the fresh image once: this erases the USB's existing data.
@@ -211,15 +251,19 @@ QEMU test used a reflinked copy.
   Exception: vendor_dlkm uses Zstd level 9, now 19,652,608 B within its 64 MiB allocation.
   Zstd retains every Google module without unnecessary image growth.
 - AVB is disabled through a new vbmeta (`--algorithm NONE --flags 3`); SELinux stays enforcing.
-- The disk is a reflink copy of the recovery image with userdata moved to the end and grown;
-  slot A marked bootable/successful. It holds Android's data, so it is **never recreated automatically**.
-- Fresh expanded layout instead of migration (owner-approved): keep growth space in A-only
-  logical partitions; retain physical B boot-control entries. Existing disks need a new image
+- The disk is a compact GPT assembled from recovery, keeping retained UUIDs/types and payloads;
+  slot A is marked bootable/successful. It holds Android's data, so it is **never recreated automatically**.
+- Fresh compact layout instead of migration (owner-approved): keep `_a` names and growth space
+  inside 12 GiB super; remove physical B/C entries except the tiny `vbmeta_b` HAL compatibility
+  entry. Keep small security/persistent partitions until their removal is proven safe.
+  Existing disks need a new image
   path/full owner-run flash, never an in-place layout overwrite or relaxed updater checks.
-- EFI-SYSTEM absorbs the blank `KERN-A` beside it and is formatted FAT32 for the laptop's boot
-  files; it keeps its PARTUUID, which the initrd uses to find the disk. The script refuses unless
-  both partitions are adjacent and all zeros, so a newer Google image is never formatted over.
-  QEMU's direct-kernel boot ignores it.
+- Direct opt-in diagnostics on 256 MiB FAT32 `GBOS-LOGS`, before userdata. Mount only for
+  diagnostic boots; keep bounded current/previous captures, no metadata fallback or auto-format.
+  Logs are unencrypted. Failed mounts must not start persistent collectors or block Android.
+- The new 576 MiB EFI-SYSTEM is formatted FAT32 for the laptop's boot files; it keeps its
+  PARTUUID, which the initrd uses to find the disk. No recovery partition is overwritten:
+  the generator builds a separate regular file. QEMU's direct-kernel boot ignores its contents.
 - The boot files go into that partition with mtools, never a mount or loop device
   ([scripts/android-boot.sh](../../scripts/android-boot.sh)), and only when the partition is
   the FAT32 labelled `GBOS-BOOT`. `EFI/` and `gbos-builder/` are replaced as a whole and read back; if
@@ -235,11 +279,10 @@ QEMU test used a reflinked copy.
 - `/data` cannot grow without being erased: its ext4 has no `resize_inode` and ends on a
   group-descriptor boundary (no online `resize2fs`), and an offline resize needs the metadata
   encryption key, which we never extract. Enlarging the partition alone changes nothing. The
-  owner-run, ignored `out/usb-flash-android/grow-data.sh` enlarges `userdata` and, if it holds data,
-  blanks its first MiB so fs_mgr formats `/data` at the new size. Apart from a full flash it is the
-  only helper that writes userdata, and it needs `--erase-data` plus a typed `ERASE` whenever data
-  would be lost. It never shrinks; the tracked USB updater accepts a larger userdata while requiring
-  the rest of the layout to match.
+  supported fresh installer therefore resets metadata/encryption state and the userdata
+  signature after copy verification, then expands userdata and verifies GPT before first boot.
+  This is destructive fresh installation, never a live resize or an ordinary update.
+  The updater accepts larger userdata while requiring the rest of the layout to match.
 - Dependencies are per partition: Mesa, minigbm, firmware, emulator and crossystem rebuild vendor
   only; system_ext changes rebuild system_ext; the signed module manifest rebuilds vendor_dlkm.
 - Google's `/system/build.prop` turns on mmd's zram writeback, so `mmd_setup` makes an 8 GiB file in
@@ -260,7 +303,7 @@ QEMU test used a reflinked copy.
 - [scripts/check-vendor-libs.sh](../../scripts/check-vendor-libs.sh) — library check for vendor programs we install.
 - [scripts/check-replacements.sh](../../scripts/check-replacements.sh) — drop-in check for replaced Google files.
 - [scripts/android-partition.sh](../../scripts/android-partition.sh), [tools/fs_metadata.py](../../tools/fs_metadata.py) — rebuild and full comparison.
-- [scripts/android-disk.sh](../../scripts/android-disk.sh) — create the private disk once: data partition, FAT32 boot partition.
+- [tools/android_disk.py](../../tools/android_disk.py) — create the compact private GPT once.
 - [tests/test_android_disk.py](../../tests/test_android_disk.py) — its layout and refusals on a synthetic Google-shaped disk.
 - [scripts/android-boot.sh](../../scripts/android-boot.sh), [tests/test_android_boot.py](../../tests/test_android_boot.py) — boot files into the FAT32 partition; its refusals, no-op and repair on a synthetic disk.
 - [tools/android_sync.py](../../tools/android_sync.py), [tools/android_layout.py](../../tools/android_layout.py)
@@ -307,6 +350,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   account (untested).
 
 ## Actions
+- [ ] After owner approval for image validation, check compact image GPT/liblp,
+  graphical/input boot and no-write repeat; done when evidence is recorded without altering
+  either older image or writing physical media.
 - [ ] Owner flashes the expanded image and tests Lenovo/MSI — done when fresh setup, actual GPU
   binding/renderer and MSI regression evidence are confirmed. No physical disk writes by the agent.
 - [ ] First physical use of `make update-usb` — done when the owner selects the existing
@@ -314,6 +360,15 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-05 uncommitted — Owner approved direct FAT32 logging instead of export. Added
+  256 MiB `gbos_logs` before userdata, gated mount/policy and read-only mtools retrieval.
+  107 focused tests pass; image/enforcing runtime validation pending. Old disks untouched.
+- 2026-11-05 uncommitted — Documented the compact physical/logical partition tables and
+  growth/update contract in the build guide. Separate FAT32 log storage remains deferred;
+  owner selected 256 MiB FAT32 for future export. No additional partition implemented.
+- 2026-11-05 uncommitted — Compact 13-entry GPT, larger A allocations and fresh-install data
+  reset/expansion implemented in a separate image path. FAT32 log export deferred.
+  67 owner-approved focused tests pass; build/boot deferred. No old images or physical writes.
 - 2026-11-05 (this commit) — Removed obsolete tools at the owner's request: the copy-only
   super migration, the parked diagnostic Linux USB (`make usb/deploy/smoke`, BusyBox pin,
   its kernel config/init/menu) and `make deploy-android`. `make update-usb` is the USB path;

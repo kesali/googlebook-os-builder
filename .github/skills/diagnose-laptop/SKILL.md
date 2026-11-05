@@ -23,11 +23,15 @@ local; report only relevant filtered excerpts.
    [log recovery procedure](../../../docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
    when new evidence is needed: have the owner run `make laptop-logs` and select the USB.
    Read the resulting `out/laptop-logs/latest/current/` and `previous/`; do not ask for manual
-   debugfs/chown commands unless the convenience tool fails. It needs no image build.
+   manual reader/chown commands unless the convenience tool fails. It needs no image build.
    For manual recovery, identify the USB by stable identity, verify its current
-   layout and locate metadata by partition name, never a remembered partition number.
-   Use read-only debugfs or an owner-approved `ro,noload` mount; retrieve only the relevant
-   `gbos-builder-bootlog/current/` and `previous/` files. Let the owner handle sudo credentials.
+   layout and locate `gbos_logs` by partition name, never a remembered partition number.
+   New images use 256 MiB FAT32 `GBOS-LOGS`, written directly only during diagnostic boots;
+   read `current/` and `previous/` with read-only mtools. Regular-file tests pass;
+   the direct-FAT32 image and enforcing mount/boot remain unverified.
+   Older images without it use metadata: read only `gbos-builder-bootlog/current/` and
+   `previous/` with debugfs or an owner-approved `ro,noload` mount.
+   Let the owner handle sudo credentials.
 3. Never replay a journal or repair the USB directly. If unclean shutdown prevents reading,
    explain the problem and ask before recovery on a private copy. Follow the spec's tmpfs
    and swap precautions; never retain copied security state as ordinary evidence.

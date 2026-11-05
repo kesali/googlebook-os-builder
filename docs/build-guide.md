@@ -9,7 +9,7 @@ gbos-builder is a clean-break rename from gbos-dali. New boot media use `GBOS-BO
 `/gbos-builder/` and `gbos-builder-*-v1` markers; Android custom properties and SELinux types
 use `gbos_builder`. Existing Dali media are not update targets: the owner must explicitly
 flash a new image (erasing that USB) rather than use the updater. No automatic migration is
-provided. The new private image is `out/gbos-builder/disk.img`; existing images and saved logs
+provided. The compact private image is `out/gbos-builder/compact/disk.img`; existing images and saved logs
 are left untouched. Reuse an existing builder with `docker tag gbos-dali-builder gbos-builder`.
 The renamed combined image is owner-confirmed on both MSI and Lenovo.
 
@@ -99,22 +99,87 @@ per-recipe runner.
 ### Laptop test image
 
 ```sh
-make android-image       # creates/updates out/gbos-builder/disk.img
+make android-image       # creates/updates out/gbos-builder/compact/disk.img
 make android-uefi-check  # disposable USB/UEFI boots in QEMU; no physical writes
 ```
 
-The Android image is **49.8 GiB (53,430,190,080 bytes)**.
-Use a **64 GB or larger USB**, preferably USB 3. Flash [out/gbos-builder/disk.img](../out/gbos-builder/disk.img)
-with your preferred imaging tool, carefully selecting the USB: **flashing erases that USB**.
-The new image has larger slot-A logical partitions: system 2 GiB, vendor 1 GiB, product 3 GiB,
-system_ext 1 GiB and both module partitions 64 MiB. Logical B partitions are removed; physical
-B GPT entries remain for boot-control compatibility. See [super-layout.json](../android/super-layout.json).
-The old local [disk image](../out/android/disk.img) and `out/android-expanded/disk.img` are left untouched.
+Use a **64 GB or larger USB**, preferably USB 3. Install
+[out/gbos-builder/compact/disk.img](../out/gbos-builder/compact/disk.img)
+with `make install-usb`: **fresh installation erases that USB**.
+The 12 GiB super partition contains system 3 GiB, vendor 1.5 GiB, product 4 GiB,
+system_ext 1.5 GiB and both module partitions 256 MiB: 10.5 GiB allocated, about 1.5 GiB spare.
+See [super-layout.json](../android/super-layout.json). The 14-entry compact GPT removes unused
+ChromeOS/B/C boot entries; only `vbmeta_b` remains for Google's boot-control HAL.
+Metadata and small security/persistent partitions remain separate.
+The 576 MiB EFI-SYSTEM holds boot files; trailing userdata defaults to 32 GiB for QEMU
+and fills the USB during fresh installation. Raw imaging tools do not perform that expansion
+or reset copied Android encryption/data state; use the supported installer.
+Older local disk images are left untouched, including `out/gbos-builder/disk.img`.
 **An older-layout USB needs a full reflash once**, erasing its accounts and data; the updater
 deliberately refuses mismatched layouts. Afterwards, **update instead of reflashing** to preserve
-Android data. Use the normal GRUB entry. The old framebuffer-free experiment
-panicked; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
+Android data. Normal boots omit the firmware framebuffer, following owner-confirmed tests on
+both laptops; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
 shows the earliest kernel messages for a black screen but adds about a minute to the boot.
+
+#### Compact partition layout
+
+This is a GPT disk image, not an ISO. The layout below is implemented and covered by focused
+regular-file tests; the compact image build and boot checks are still pending.
+Physical partitions appear in this order, with 1 MiB-aligned starts:
+
+| GPT partition | Size | Purpose |
+|---|---|---|
+| `EFI-SYSTEM` | 576 MiB | FAT32 `GBOS-BOOT`: GRUB, kernel, initrd and saved translator choice |
+| `super` | 12 GiB | Container for the six logical Android OS partitions below |
+| `boot_a` | 64 MiB | Retained Android boot/AVB partition |
+| `init_boot_a` | 8 MiB | Retained Android init-boot/AVB partition |
+| `vendor_boot_a` | 32 MiB | Retained Android vendor-boot/AVB partition |
+| `vbmeta_a` | 4 MiB | Active slot-A AVB metadata and GPT boot-control attributes |
+| `vbmeta_b` | 4 MiB | Compatibility entry for Google's boot-control HAL, not a second OS |
+| `misc` | 4 MiB | Android boot/recovery control messages |
+| `metadata` | 64 MiB | Android encryption metadata |
+| `desktop_security_persist` | 16 MiB | Retained Google security/persistent storage |
+| `desktop_security_storage` | 32 MiB | Retained Google security storage |
+| `frp_persist` | 2 MiB | Retained factory-reset-protection storage |
+| `gbos_logs` | 256 MiB | FAT32 `GBOS-LOGS`: direct, opt-in diagnostic captures |
+| `userdata` | Initially 32 GiB | Android apps, accounts and files; expanded during fresh USB installation |
+
+Small security partitions are retained conservatively; their removal has not been proven safe.
+Sizes other than EFI, super and userdata follow the pinned Google recovery.
+Retained partition UUIDs/types are preserved, including the ESP UUID used to locate the disk.
+
+Inside `super`, [super-layout.json](../android/super-layout.json) declares:
+
+| Logical partition | Allocation |
+|---|---|
+| `system_a` | 3 GiB |
+| `vendor_a` | 1.5 GiB |
+| `product_a` | 4 GiB |
+| `system_ext_a` | 1.5 GiB |
+| `system_dlkm_a` | 256 MiB |
+| `vendor_dlkm_a` | 256 MiB |
+| **Total** | **10.5 GiB**, leaving about **1.5 GiB** for future allocation changes |
+
+Logical allocations include room for filesystem growth. Spare super space is not automatically
+added to a full logical partition: changing an allocation changes the layout and requires a
+fresh installation under the current updater contract.
+
+`ANDROID_DATA_GIB` controls the initial sparse userdata size for QEMU. After copying and
+verifying a fresh USB installation, the installer resets copied Android encryption/data state,
+moves the backup GPT to the device's end and extends userdata into the remaining usable space.
+Android formats it on first boot. Ordinary updates preserve userdata and metadata, allow a
+larger target userdata partition, and never repartition; older layouts require a fresh install.
+
+**Direct FAT32 diagnostics pass focused tests; image/boot validation is pending.** The diagnostic GRUB
+entry mounts `GBOS-LOGS` at `/metadata/gbos-builder-bootlog` and writes there directly;
+the path is a mountpoint, not storage on metadata. There is no export/copy loop.
+Only current/previous diagnostic boots are retained with the existing stream limits.
+Normal boots leave the log partition unmounted, and updates preserve it unchanged.
+Mount failure is reported and prevents persistent collectors from starting; Android continues.
+The guest never auto-formats or repairs this partition and never falls back to metadata.
+Synchronous FAT writes favor recoverable diagnostics over diagnostic-boot performance;
+a power loss can still damage FAT or lose evidence. Logs are unencrypted and readable by
+anyone with the USB: keep them private.
 
 At the GRUB menu, use the arrow keys to highlight **Googlebook OS (Berberis)** or
 **Googlebook OS (Houdini)**, then press Enter. The highlighted translator is the saved default:
@@ -123,7 +188,7 @@ the default for future boots too. This is a persistent choice, not a one-boot ov
 or missing saved choice defaults to Berberis. The setting is kept in the ESP-root `grubenv`,
 outside the two directories replaced by updates, so updating boot files preserves it.
 
-The diagnostic and experimental menu entries do not change the saved translator choice; those
+The diagnostic and debug menu entries do not change the saved translator choice; those
 entries use Berberis for that boot. A failed Berberis or Houdini boot also does not switch choices
 automatically. Return to GRUB and choose the other translator to change the saved default.
 
@@ -149,7 +214,7 @@ Details and evidence: [laptop hardware](../docs/specs/laptop-hardware.md).
 Normal boots do not run the project's persistent log collectors or hardware snapshot.
 To investigate a problem, reboot using **Googlebook OS (diagnostic logs)** and reproduce it.
 Persistent kernel/Android diagnostics use native logcat and retain current/previous diagnostic
-boots on metadata,
+boots on the dedicated FAT32 log partition,
 with an explicitly approved scoped enforcing policy. See [boot](../docs/specs/boot.md) for limits/coverage
 and [laptop hardware](../docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
 for Linux retrieval.
@@ -198,10 +263,12 @@ Select a USB by model, capacity and serial. Review the erase warning and type ex
 `ERASE <serial>` as displayed. Enter or any other answer cancels without writing.
 Internal disks, missing serials, mounted/in-use, read-only and undersized devices are refused.
 The whole image is copied and SHA-256 read-back verified; **all existing USB data is lost**.
-Extra USB space is not allocated and partitions are not grown. Like a raw image flash, the
-backup GPT remains at the image boundary; partition tools may report that it is not at the
-end of a larger USB. The installer and updater accept this only when all GPT metadata
-matches the verified source image byte-for-byte; neither relocates it.
+After read-back, the installer clears metadata and the userdata filesystem signature,
+relocates the backup GPT to the USB's end and expands only the trailing userdata partition.
+Android formats fresh encrypted data at the expanded size on first boot. This also discards
+any accounts/data copied from a QEMU-used image; it is not a secure erase of all old sectors.
+The final GPT is checked against the source, allowing only larger userdata, and verified.
+Ordinary `make update-usb` never performs this initialization, growth or GPT relocation.
 Safely unplug/replug afterwards, then boot its UEFI entry.
 If interrupted or verification fails, rerun installation before booting; do not trust a partial USB.
 The agent tests this tool on regular files only; physical installation is your operation.
@@ -214,14 +281,16 @@ After returning to Linux, connect the Android USB and unmount its partitions, th
 make laptop-logs
 ```
 
-Select the USB by model/serial. Sudo authorizes read-only `debugfs`; no mounts, filesystem
+Select the USB by model/serial. Sudo authorizes read-only mtools (`mdir`/`mtype`); no mounts, filesystem
 repair or USB writes occur. Current and previous boot logs are copied to a private, timestamped
 folder under `out/laptop-logs/`, owned by your normal user. `out/laptop-logs/latest/current/`
 always points to the newest successful retrieval; older copies are retained.
 Only the diagnostic entry saves new logs; normal boots leave earlier captures untouched.
 Check the saved boot identity/time rather than assuming it describes the latest normal boot.
-Retrieval needs host `debugfs` (e2fsprogs),
-sudo, lsblk and Python 3; it does not build an image. Treat the logs as private.
+Retrieval needs host mtools, sudo, lsblk and Python 3; it does not build an image.
+Older images without `gbos_logs` still use read-only `debugfs` (e2fsprogs) on metadata.
+The direct-FAT32 path passes regular-file tests; physical capture/retrieval is unverified.
+Treat the logs as private.
 
 Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so
 the owner's local [grow-data.sh](../out/usb-flash-android/grow-data.sh) enlarges the `userdata`
@@ -257,7 +326,7 @@ regression test, not proof of working laptop audio, brightness or GPU accelerati
 | [scripts/gki-kernel.sh](../scripts/gki-kernel.sh), [kernel/gki.config](../kernel/gki.config) | Google's kernel plus explicitly listed configuration changes, with config/ABI checks |
 | [scripts/laptop-modules.sh](../scripts/laptop-modules.sh), [scripts/firmware.sh](../scripts/firmware.sh) | Missing signed AMD modules and unchanged official firmware |
 | [android/cmdline.txt](../android/cmdline.txt), [android/bootconfig.txt](../android/bootconfig.txt) | Settings Android boots with: Google's + our listed changes |
-| [scripts/android-initrd.sh](../scripts/android-initrd.sh), [scripts/android-disk.sh](../scripts/android-disk.sh) | Android's module-extended initrd and private disk: persistent data, FAT32 boot partition |
+| [scripts/android-initrd.sh](../scripts/android-initrd.sh), [tools/android_disk.py](../tools/android_disk.py) | Android's module-extended initrd and compact private GPT disk |
 | [boot/android-menu.cfg](../boot/android-menu.cfg), [scripts/android-boot.sh](../scripts/android-boot.sh) | The laptop's GRUB menu for Android, and writing its boot files into the disk's FAT32 partition |
 | [scripts/qemu.sh](../scripts/qemu.sh) | The QEMU virtual machine Android runs in |
 | [scripts/mesa.sh](../scripts/mesa.sh) | Android Mesa, libdrm and Expat from source with the NDK |
@@ -405,7 +474,7 @@ less out/qemu/kernel.log # kernel and Android init log of the last run
 
 Google's image is the read-only starting point. Only `system`, `system_ext`, `vendor` and `vendor_dlkm` are
 rebuilt, with the changes listed below. QEMU uses this laptop's CPU (`-cpu host`, KVM);
-its only disk is `out/gbos-builder/disk.img`. The serial shell and QMP monitor are local Unix sockets
+its only disk is `out/gbos-builder/compact/disk.img`. The serial shell and QMP monitor are local Unix sockets
 under `out/qemu/`. Use Android's shutdown menu for an orderly shutdown; Ctrl-C stops QEMU.
 Virtual ACPI S3/S4 sleep is disabled for reliable development sessions. Input uses a standard
 virtio keyboard and relative mouse; the tablet's absolute pointer protocol is not used.
@@ -416,14 +485,12 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   virtio-gpu, input and network modules, then the boot settings: Google's
   plus [android/bootconfig.txt](../android/bootconfig.txt), packed by
   [tools/bootconfig.py](../tools/bootconfig.py).
-- **Disk** (`make android-disk`): `out/gbos-builder/disk.img`, a new copy of Google's recovery image,
-  with expanded A-only super built by [tools/android_fresh.py](../tools/android_fresh.py) using
-  upstream lpmake. [scripts/android-disk.sh](../scripts/android-disk.sh) moves
-  the 4 GiB data partition to the end and grows it to `ANDROID_DATA_GIB` (sparse), marks
-  slot A bootable, and merges Google's empty 64 MiB EFI-SYSTEM with the empty 512 MiB `KERN-A`
-  beside it into one 576 MiB FAT32 partition labelled `GBOS-BOOT` for the laptop's boot files
-  (the script refuses unless both are all zeros). The disk holds Android's data, so it is never recreated
-  automatically.
+- **Disk** (`make android-disk`): `out/gbos-builder/compact/disk.img`, a fresh compact GPT
+  built by [tools/android_disk.py](../tools/android_disk.py), with A-only super assembled by
+  [tools/android_fresh.py](../tools/android_fresh.py) using upstream lpmake.
+  Retained partition UUIDs and contents are preserved, except new boot storage, blank metadata
+  and sparse userdata of `ANDROID_DATA_GIB`. Slot A is marked bootable/successful.
+  The disk holds Android's data after boot, so it is never recreated automatically.
 - **Boot files** (`make android-boot`): GRUB, the GKI kernel, the initrd and the menu
   [boot/android-menu.cfg](../boot/android-menu.cfg) are written into that FAT32 partition with
   mtools, without root or a mount. QEMU's direct-kernel boot does not read them; the laptop's

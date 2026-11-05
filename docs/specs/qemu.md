@@ -36,6 +36,8 @@ localhost:5900; virtio keyboard and relative mouse; virtual Ethernet gets `10.0.
 serial shell and QMP via Unix sockets; clean guest shutdown. Boot completes in about 20 s
 ([timings](../../out/qemu-boot-speed/summary.txt)).
 Not verified: finishing SetupWizard, Internet access beyond DHCP, Google sign-in, apps.
+Not verified: standalone helpers now default to `out/gbos-builder/compact/disk.img`;
+the new compact layout has not been built or boot-tested. Older VM images remain untouched.
 Known noise: Bluetooth services crash-loop because no Bluetooth device exists.
 
 ## Decisions
@@ -91,6 +93,8 @@ Parked while the laptop is the focus (owner, 2026-10-31); these are still the ag
 - Keep the guest awake (for example Android's stay-awake setting) so it does not enter s2idle.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Standalone smoke/UEFI defaults follow the compact image path;
+  no VM geometry changes. Compact-image validation awaits owner approval.
 - 2026-11-05 (this commit) — Firmware-free kernel passes direct and USB-UEFI boot checks.
   UEFI runner now waits for kernel init before sending shell commands, avoiding GRUB input.
   Setup/input screenshots inspected; NVMe decoys hidden/unchanged and all VMs exited.

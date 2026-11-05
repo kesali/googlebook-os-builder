@@ -6,6 +6,19 @@ umask 077
 trap 'status=$?; if [ "$status" -ne 0 ]; then echo "gbos_builder_bootlog_prepare failed (status $status)" >&2; fi' EXIT
 
 logs=$1
+# init continues after a failed mount. Never write into the underlying metadata directory.
+mounted=0
+while read -r device mountpoint filesystem options rest; do
+    if [ "$mountpoint" = "$logs" ] && [ "$filesystem" = vfat ]; then
+        case ",$options," in
+            *,rw,*) mounted=1 ;;
+        esac
+    fi
+done < "$3"
+if [ "$mounted" -ne 1 ]; then
+    echo "GBOS-LOGS is not mounted read-write; persistent diagnostics disabled" >&2
+    exit 1
+fi
 read -r boot_id < "$2"
 test "${#boot_id}" -eq 36
 case "$boot_id" in

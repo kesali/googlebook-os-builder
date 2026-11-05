@@ -2,7 +2,12 @@
 
 **Status:** partial — firmware-free test entry owner-confirmed on both laptops;
 simplified kernel/menu verified in QEMU, rebuilt-image hardware retest pending.
-**Last verified:** 2026-11-05 — 81 focused tests, kernel/image build and direct/USB-UEFI QEMU
+**Last verified:** 2026-11-05 — 107 focused disk/logging/retrieval/update/overlay tests pass.
+Writable-FAT mount guards refuse missing/wrong/read-only mounts without readiness or writes;
+rotation/readiness and real-file FAT32 read-only retrieval pass. No image build or enforcing
+mount/boot check for direct FAT32 logging. [Test log](../../out/fat32-logging-tests.log).
+
+Earlier, 2026-11-05 — 81 focused tests, kernel/image build and direct/USB-UEFI QEMU
 pass. Setup and injected-tap Accessibility screenshots inspected; SELinux enforcing,
 diagnostic collectors active, NVMe decoys hidden/unchanged. A 22 s repeat writes no partitions
 or boot files and preserves nine published-file sizes/timestamps. All test VMs exited.
@@ -98,6 +103,15 @@ Assemble what a Googlebook's firmware would hand the kernel — command line, in
 from Google's boot images plus a short, readable list of our changes.
 
 ## Current state
+Not verified: owner-approved direct FAT32 diagnostics now mount the new 256 MiB `GBOS-LOGS`
+partition at `/metadata/gbos-builder-bootlog` only for diagnostic boots. Existing native logcat,
+rotation/readiness and snapshot remain; preparation verifies a writable FAT mount before any
+record changes. Mount failure reports an error without collectors or metadata fallback.
+Normal boots leave the partition unmounted; no periodic export or guest auto-format.
+Dedicated init-only block access and mount-context policy do not introduce permissive domains.
+Focused tests pass; image/enforcing mount and boot checks have not run.
+The older runtime evidence below describes the metadata-backed logger.
+
 Verified: gbos-builder clean-break rename aligns GRUB arguments, Android imports,
 services, readiness property and diagnostic paths. `gbos_builder` is used for properties and
 SELinux identifiers; filesystem paths use `gbos-builder`. Old saved evidence is retained under
@@ -169,9 +183,10 @@ cause; the game-controls loop was not established as the cause.
   records remain untouched. Normal Android in-memory logging stays available.
   Direct QEMU validation explicitly passes `--diagnostic-logs`; ordinary `make qemu` does not.
   The owner approved a dedicated enforcing domain, a small rotation/readiness helper and
-  Linux retrieval from unencrypted metadata. Only current/previous diagnostic boots are retained.
+  direct logging to unencrypted 256 MiB FAT32 `GBOS-LOGS`. Only current/previous diagnostic
+  boots are retained. The metadata path is now only the FAT mountpoint, with no fallback.
   Each stream rotates at 256 KiB with seven archives, leaving headroom below the agreed
-  16 MiB per stream per boot and space for other files on the 64 MiB metadata partition.
+  16 MiB per stream per boot, leaving ample headroom on the diagnostic partition.
   A third copy, `android-boot.log`, rotates at 1 MiB (8 MiB total) and stops at boot completion,
   because startup alone overflows the 2 MiB `android.log`.
   A crash-buffer-only copy, `crash.log`, rotates at 256 KiB (2 MiB total) and remains running
@@ -262,6 +277,9 @@ restart behavior itself was not exercised. Inspect the screenshot, actual files 
   done when its snapshot and logs are reviewed for that build.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Direct FAT32 diagnostic logging replaces metadata storage;
+  gated mount and preparation guard prevent an accidental metadata fallback. Normal boots
+  do not mount logs; 107 focused tests pass. Enforcing mount/runtime remain untested.
 - 2026-11-05 (this commit) — Owner confirms firmware-free boots on MSI and Lenovo, plus MSI video.
   Remove the temporary GRUB entry, firmware handoff machinery and normal DRM screen logging.
   81 tests, kernel/image rebuild, no-write repeat and inspected direct/UEFI QEMU pass.

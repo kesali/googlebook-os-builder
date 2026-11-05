@@ -30,7 +30,11 @@ class BootlogTests(unittest.TestCase):
                          ["setprop ro.logd.kernel true"])
         self.assertEqual(actions["on post-fs && property:ro.boot.gbos_builder.logs=1"], [
             "mkdir /metadata/gbos-builder-bootlog 0700 logd log",
-            "restorecon_recursive /metadata/gbos-builder-bootlog",
+            "restorecon /metadata/gbos-builder-bootlog",
+            "wait /dev/block/by-name/gbos_logs 5",
+            "mount vfat /dev/block/by-name/gbos_logs /metadata/gbos-builder-bootlog "
+            "nosuid nodev noexec noatime sync "
+            "context=u:object_r:gbos_builder_bootlog_file:s0,uid=1036,gid=1007,fmask=0177,dmask=0077",
             "start gbos_builder_bootlog_prepare",
         ])
         for trigger in actions:
@@ -52,6 +56,8 @@ class BootlogTests(unittest.TestCase):
         self.work = Path(directory.name)
         self.logs = self.work / "logs"
         self.logs.mkdir()
+        self.mounts = self.work / "mounts"
+        self.mounts.write_text(f"/dev/fake {self.logs} vfat rw,nosuid,nodev,noexec 0 0\n")
         self.boot_id = self.work / "boot-id"
         self.ready = self.work / "ready"
         self.bin = self.work / "bin"
@@ -77,7 +83,7 @@ class BootlogTests(unittest.TestCase):
         self.ready.unlink(missing_ok=True)
         env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}",
                    READY_FILE=str(self.ready), **extra_env)
-        return subprocess.run(["sh", str(PREPARE), str(self.logs), str(self.boot_id)],
+        return subprocess.run(["sh", str(PREPARE), str(self.logs), str(self.boot_id), str(self.mounts)],
                               env=env, capture_output=True, text=True)
 
     def assert_ready(self, result):
@@ -93,6 +99,18 @@ class BootlogTests(unittest.TestCase):
         self.assertIn("native_bridge=libndk_translation.so\n", (current / "boot.txt").read_text())
         self.assertEqual(current.stat().st_mode & 0o777, 0o700)
         self.assertFalse((self.logs / "previous").exists())
+
+    def test_missing_readonly_or_wrong_mount_never_prepares_or_signals_ready(self):
+        for entry in ("", f"/dev/fake {self.logs} ext4 rw 0 0\n",
+                      f"/dev/fake {self.logs} vfat ro 0 0\n",
+                      "/dev/fake /elsewhere vfat rw 0 0\n"):
+            with self.subTest(entry=entry):
+                self.mounts.write_text(entry)
+                result = self.prepare()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("persistent diagnostics disabled", result.stderr)
+                self.assertFalse(self.ready.exists())
+                self.assertEqual(list(self.logs.iterdir()), [])
 
     def test_selected_native_bridge_is_recorded(self):
         self.assert_ready(self.prepare(NATIVE_BRIDGE="libhoudini.so"))
@@ -265,7 +283,7 @@ class BootlogTests(unittest.TestCase):
         self.assertIn("rmdir", permissions[0])
         self.assertNotIn("(permissive", policy)
         self.assertNotIn("(capability", policy)
-        self.assertNotIn("blk_file", policy)
+        self.assertNotRegex(policy, r"allow gbos_builder_(?:bootlog|hardware_diag) .*blk_file")
         self.assertIn("gbos_builder_hardware_diag proc_asound", policy)
         self.assertIn("gbos_builder_hardware_diag proc_modules", policy)
         self.assertIn("gbos_builder_hardware_diag audio_device", policy)

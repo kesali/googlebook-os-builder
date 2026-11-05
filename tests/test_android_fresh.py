@@ -22,9 +22,9 @@ REPO = Path(__file__).resolve().parents[1]
 class FreshImageTests(unittest.TestCase):
     def test_declared_allocations_match_approved_sizes(self):
         self.assertEqual(load_allocations(REPO / "android/super-layout.json"), {
-            "system_a": 2 << 30, "vendor_a": 1 << 30, "product_a": 3 << 30,
-            "system_ext_a": 1 << 30, "system_dlkm_a": 64 << 20,
-            "vendor_dlkm_a": 64 << 20,
+            "system_a": 3 << 30, "vendor_a": 1536 << 20, "product_a": 4 << 30,
+            "system_ext_a": 1536 << 20, "system_dlkm_a": 256 << 20,
+            "vendor_dlkm_a": 256 << 20,
         })
 
     def test_layout_rejects_missing_extra_and_invalid_sizes(self):
@@ -44,12 +44,13 @@ class FreshImageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             old = root / "android/disk.img"
+            previous = root / "gbos-builder/disk.img"
             existing = root / "existing"
             existing.write_bytes(b"keep")
             link = root / "link"
             link.symlink_to(root / "missing")
             with patch("android_fresh.OUT", root):
-                for path in (existing, link, root.parent / "outside.img", old):
+                for path in (existing, link, root.parent / "outside.img", old, previous):
                     with self.subTest(path=path), self.assertRaises(ValueError):
                         check_output(path)
             self.assertEqual(existing.read_bytes(), b"keep")
@@ -78,8 +79,6 @@ class FreshImageTests(unittest.TestCase):
         def run(args, **kwargs):
             if args[0] == "cp":
                 shutil.copyfile(args[-2], args[-1])
-            elif args[1] == "scripts/android-disk.sh":
-                Path(args[-1]).write_bytes(b"P" * 512 + bytes(1024) + b"U" * 512)
             elif args[1:2] == ["scripts/android-boot.sh"] and fail_boot:
                 raise subprocess.CalledProcessError(1, args)
 
@@ -88,6 +87,8 @@ class FreshImageTests(unittest.TestCase):
         with ExitStack() as patches:
             patches.enter_context(patch("android_fresh.OUT", root))
             patches.enter_context(patch("android_fresh.build", side_effect=generate))
+            patches.enter_context(patch("android_fresh.create_disk", side_effect=lambda *args:
+                                        args[-1].write_bytes(b"P" * 512 + bytes(1024) + b"U" * 512)))
             patches.enter_context(patch("android_fresh.subprocess.run", side_effect=run))
             patches.enter_context(patch("android_fresh.subprocess.check_output",
                                         return_value=json.dumps({"partitiontable": table})))
@@ -163,15 +164,15 @@ class FreshImageTests(unittest.TestCase):
 
     def test_make_routes_build_vm_and_updater_to_new_disk(self):
         makefile = (REPO / "Makefile").read_text()
-        self.assertIn("ANDROID_DISK := $(OUT)/gbos-builder/disk.img", makefile)
+        self.assertIn("ANDROID_DISK := $(OUT)/gbos-builder/compact/disk.img", makefile)
         self.assertIn('--layout "$(ANDROID_LAYOUT)"', makefile)
         self.assertNotIn('"$(ANDROID)/disk.img"', makefile)
         smoke = (REPO / "tools/android_smoke.py").read_text()
         self.assertIn('disk = Path(sys.argv[4])', smoke.split("def main():")[1])
-        self.assertIn('out / "gbos-builder/disk.img"', smoke.split("def main():")[1])
+        self.assertIn('out / "gbos-builder/compact/disk.img"', smoke.split("def main():")[1])
         self.assertNotIn("sys.argv", smoke.split("def verify(")[1].split("def main():")[0])
         uefi = (REPO / "tools/android_uefi_test.py").read_text().split("def main():")[1]
-        self.assertIn('args.out / "gbos-builder/disk.img"', uefi)
+        self.assertIn('args.out / "gbos-builder/compact/disk.img"', uefi)
 
 
 if __name__ == "__main__":

@@ -280,19 +280,25 @@ First reproduce the issue using **Googlebook OS (diagnostic logs)** in GRUB. Nor
 do not save new project logs or rotate existing captures. Saved `current`/`previous` therefore
 refer to diagnostic boots, not necessarily the most recent boots; verify their identity/time.
 
-`make laptop-logs` selects the USB, locates metadata by name
-and reads current/previous logs without mounting or writing the USB. Copies belong to the normal
+The new direct-FAT32 implementation of `make laptop-logs` selects the USB, locates
+`gbos_logs` by name and reads current/previous logs with mtools, without mounting or writing
+the USB. The 256 MiB `GBOS-LOGS` FAT32 volume can also be browsed on other operating systems
+after Android is shut down. Older images without this partition retain read-only metadata
+retrieval through debugfs. Copies belong to the normal
 user; `out/laptop-logs/latest/current/` points to the newest successful retrieval. All 23 focused
 log-retrieval/USB tests pass, including read-only extraction from a disposable ext4 image.
 The owner ran it successfully on the USB; the retrieved [boot logs](../../out/laptop-logs/20261102-203905-md1owaep/current/)
 are readable without chown. Manual recovery below remains available.
+The new FAT32 path passes regular-file retrieval tests within the 107-test focused run,
+including unchanged source bytes/timestamp. Physical FAT32 capture/retrieval remains unverified.
 An interrupted snapshot can leave `hardware.txt.tmp` in either boot. Retrieval reports and
 skips this known incomplete file after type/size checks; it never treats it as a finished
 snapshot or accepts arbitrary extra files. All 10 `test_laptop_logs` tests pass in the builder,
 including temporary-file safety and real ext4 read-only retrieval.
 
-After returning to Linux, use the checked USB by-id path, not an ambiguous `/dev/sdX`. Metadata
-is currently partition 17; verify the layout. Mount it `ro,noload` or read it with debugfs and
+For manual recovery on an older metadata-backed image, use the checked USB by-id path,
+not an ambiguous `/dev/sdX`. Locate metadata by partition name, never a remembered number.
+Mount it `ro,noload` or read it with debugfs and
 copy only `/gbos-builder-bootlog/current/` and `previous/` into a pre-created ignored evidence directory.
 The files are owned by logd, so retrieval may require the owner's locally authorized sudo.
 
@@ -420,6 +426,8 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Document direct FAT32 diagnostic retrieval and legacy metadata
+  recovery. New mtools path passes regular-file tests; no physical retrieval or deployment.
 - 2026-11-05 (this commit) — Powerhint's CPU-mask removal moved to shared `android/vendor/`:
   the combined image already applied it on every laptop. Its hunks are unchanged and touch
   no other patched file, so the vendor image is expected to be identical.

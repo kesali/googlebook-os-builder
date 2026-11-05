@@ -1,12 +1,14 @@
 # Google's user image disables persistent logging. Use its native logcat, with a
-# dedicated enforcing domain; /metadata remains readable from Linux after a hang.
+# dedicated enforcing domain; GBOS-LOGS is readable from other operating systems.
 # Only diagnostic boots prepare/rotate records; ordinary boots preserve saved evidence.
 on early-init && property:ro.boot.gbos_builder.logs=1
     setprop ro.logd.kernel true
 
 on post-fs && property:ro.boot.gbos_builder.logs=1
     mkdir /metadata/gbos-builder-bootlog 0700 logd log
-    restorecon_recursive /metadata/gbos-builder-bootlog
+    restorecon /metadata/gbos-builder-bootlog
+    wait /dev/block/by-name/gbos_logs 5
+    mount vfat /dev/block/by-name/gbos_logs /metadata/gbos-builder-bootlog nosuid nodev noexec noatime sync context=u:object_r:gbos_builder_bootlog_file:s0,uid=1036,gid=1007,fmask=0177,dmask=0077
     start gbos_builder_bootlog_prepare
 
 # Failed preparation never signals readiness; init reports collector failures to kmsg.
@@ -16,7 +18,7 @@ on property:sys.gbos_builder.bootlog.ready=1
     start gbos_builder_android_boot_log
     start gbos_builder_crash_log
 
-service gbos_builder_bootlog_prepare /system/bin/sh /system_ext/etc/gbos-builder/bootlog-prepare.sh /metadata/gbos-builder-bootlog /proc/sys/kernel/random/boot_id
+service gbos_builder_bootlog_prepare /system/bin/sh /system_ext/etc/gbos-builder/bootlog-prepare.sh /metadata/gbos-builder-bootlog /proc/sys/kernel/random/boot_id /proc/mounts
     user logd
     group log
     seclabel u:r:gbos_builder_bootlog:s0

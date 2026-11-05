@@ -20,7 +20,7 @@ esp_start=$(sfdisk --dump "$disk" | sed -n 's|.*start= *\([0-9]*\), size=.*name=
 test -n "$esp_start" || { echo "$disk has no EFI-SYSTEM partition." >&2; exit 1; }
 esp=$disk@@$((esp_start * 512))
 
-# android-disk.sh made this file system; never write into one that is not its work.
+# android_disk.py made this file system; never write into one that is not its work.
 label=$(mlabel -s -i "$esp" :: 2>/dev/null || true)
 grep -qxE ' *Volume label is GBOS-BOOT *' <<<"$label" ||
     { echo "EFI-SYSTEM in $disk is not the GBOS-BOOT file system; refusing to write it." >&2; exit 1; }
