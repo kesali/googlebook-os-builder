@@ -258,9 +258,9 @@ Unmount every partition of the USB, stop any VM using the source image, then run
 make install-usb
 ```
 
-This builds the Android image, then runs the host [fresh flasher](../tools/install_usb.py) with sudo.
-Select a USB by model, capacity and serial. Review the erase warning and type exactly
-`ERASE <serial>` as displayed. Enter or any other answer cancels without writing.
+This builds the Android image, then runs the host [fresh flasher](../tools/install_usb.py).
+Select a USB by model, capacity and serial before sudo authentication. Review the erase warning
+and confirm with `y` or `yes` at `[y/N]`. Enter or any other answer cancels without writing.
 Internal disks, missing serials, mounted/in-use, read-only and undersized devices are refused.
 The whole image is copied and SHA-256 read-back verified; **all existing USB data is lost**.
 After read-back, the installer clears metadata and the userdata filesystem signature,

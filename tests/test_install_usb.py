@@ -101,7 +101,7 @@ class InstallUSBTests(unittest.TestCase):
                     prompt.assert_not_called()
             else:
                 install_usb.install(self.image)
-                if answer == "ERASE TEST123" and selected:
+                if answer.strip().lower() in ("y", "yes") and selected:
                     self.assertEqual(self.target.read_bytes(), b"I" * 4096 + b"T" * 4096)
                     self.assertEqual(verify.call_count, 1)
                     initialize.assert_called_once()
@@ -113,24 +113,27 @@ class InstallUSBTests(unittest.TestCase):
                     if not selected:
                         prompt.assert_not_called()
 
-    def test_exact_serial_confirmation_is_required(self):
-        for answer in ("", "yes", "ERASE", "ERASE OTHER", "erase TEST123"):
+    def test_default_no_confirmation_requires_y_or_yes(self):
+        for answer in ("", "n", "no", "ERASE TEST123", "sure", "y extra"):
             with self.subTest(answer=answer):
                 self.run_install(answer)
-        self.run_install("ERASE TEST123")
+        for answer in ("y", "yes", "Y", "YES", " Yes "):
+            with self.subTest(answer=answer):
+                self.target.write_bytes(b"T" * 8192)
+                self.run_install(answer)
 
     def test_cancelled_selection_writes_nothing(self):
         self.run_install("", selected=False)
 
     def test_changed_device_and_non512_sectors_refuse_before_prompt(self):
-        self.run_install("ERASE TEST123", identity_error=True)
-        self.run_install("ERASE TEST123", sector_size=4096)
+        self.run_install("yes", identity_error=True)
+        self.run_install("yes", sector_size=4096)
 
     def test_mounted_target_refuses_before_confirmation(self):
-        self.run_install("ERASE TEST123", busy=True)
+        self.run_install("yes", busy=True)
 
     def test_changed_source_after_confirmation_refuses_before_writing(self):
-        self.run_install("ERASE TEST123", changed_source=True)
+        self.run_install("yes", changed_source=True)
 
     def test_busy_source_and_symlink_refuse_before_selection(self):
         with patch("install_usb.os.geteuid", return_value=0), \

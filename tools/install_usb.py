@@ -193,8 +193,10 @@ def install(image, selected=None):
                 print(f"Source: {image} ({info.st_size} bytes)")
                 print("ALL existing USB accounts, apps, files and partitions will be lost.")
                 print("Copied Android data/encryption state is reset; userdata fills remaining USB space.")
-                answer = input(f"Type ERASE {selected['serial']} to flash, or Enter to cancel: ")
-                if answer != f"ERASE {selected['serial']}":
+                answer = input(
+                    f"Erase and install to {path} ({selected['model']}, {selected['serial']})? [y/N] "
+                ).strip().lower()
+                if answer not in ("y", "yes"):
                     print("Cancelled; nothing written.")
                     return
                 unused()

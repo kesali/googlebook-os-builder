@@ -176,7 +176,7 @@ old disk. Later builds update only OS/boot files and enforce the declared logica
 To deploy, the owner must flash the fresh image once: this erases the USB's existing data.
 The unchanged USB updater rejects an old layout and works only after a matching full flash.
 `make install-usb` provides the owner-run full flash: reuse USB-only selection and
-identity/in-use checks, require exact `ERASE <serial>`, copy the entire image and verify SHA-256
+identity/in-use checks, require default-no `y`/`yes` confirmation, copy the entire image and verify SHA-256
 read-back. It does not grow partitions; larger USBs keep the backup GPT at the image boundary,
 as with a raw flash. Owner's larger USB boots, but the subsequent updater rejected this
 placement with `MyLBA mismatch`. The shared installer/updater check now compares all GPT
@@ -374,6 +374,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-05 (this commit) — Fresh installation uses default-no `[y/N]`, matching updates,
+  instead of serial retyping. Erase warnings and serial identity checks retained.
+  All 45 installer/updater tests pass; no physical USB access.
 - 2026-11-05 (this commit) — Unified USB prompts as disk selection then sudo; privileged
   re-entry rechecks identity/usage without a second selection. Write confirmations retained.
   All 59 focused USB tests pass; no physical USB access or interactive sudo test.
