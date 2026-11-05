@@ -426,6 +426,9 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-05 uncommitted — Added an included-driver verification table to the hardware guide:
+  named owner-tested devices, emulator results and untested family coverage are distinct.
+  No new drivers enabled or runtime claims; future candidates must list actual build checks.
 - 2026-11-05 uncommitted — Document direct FAT32 diagnostic retrieval and legacy metadata
   recovery. New mtools path passes regular-file tests; no physical retrieval or deployment.
 - 2026-11-05 (this commit) — Powerhint's CPU-mask removal moved to shared `android/vendor/`:
