@@ -85,7 +85,8 @@ it does not repartition or format. Older Dali or incompatible-layout media need 
 fresh flash, not an update. If interrupted, rerun the operation before booting.
 
 For build-only, use `make android-image`; it updates the regular file
-[out/gbos-builder/compact/disk.img](out/gbos-builder/compact/disk.img), not a physical disk.
+[out/gbos-builder/ruby-16693588/compact/disk.img](out/gbos-builder/ruby-16693588/compact/disk.img),
+not a physical disk.
 Never delete that image to repair a failed build: it holds persistent Android data.
 See the [deployment guide](docs/build-guide.md#laptop-test-image) for layouts and safeguards.
 

@@ -9,8 +9,12 @@ gbos-builder is a clean-break rename from gbos-dali. New boot media use `GBOS-BO
 `/gbos-builder/` and `gbos-builder-*-v1` markers; Android custom properties and SELinux types
 use `gbos_builder`. Existing Dali media are not update targets: the owner must explicitly
 flash a new image (erasing that USB) rather than use the updater. No automatic migration is
-provided. The compact private image is `out/gbos-builder/compact/disk.img`; existing images and saved logs
-are left untouched. Reuse an existing builder with `docker tag gbos-dali-builder gbos-builder`.
+provided. The compact private image is versioned by the pinned Ruby recovery build, currently
+`out/gbos-builder/ruby-16693588/compact/disk.img`; older images and saved logs remain in place.
+The recovery image's EFI-SYSTEM UUID is embedded in the initrd. When a recovery update changes
+that UUID, the new image needs a fresh USB install; the updater refuses mismatched GPTs.
+Reinstalling erases the selected USB's data. Reuse an existing builder with
+`docker tag gbos-dali-builder gbos-builder`.
 The renamed combined image is owner-confirmed on both MSI and Lenovo.
 
 ## Build and boot
@@ -99,12 +103,12 @@ per-recipe runner.
 ### Laptop test image
 
 ```sh
-make android-image       # creates/updates out/gbos-builder/compact/disk.img
+make android-image       # creates/updates out/gbos-builder/ruby-16693588/compact/disk.img
 make android-uefi-check  # disposable USB/UEFI boots in QEMU; no physical writes
 ```
 
 Use a **64 GB or larger USB**, preferably USB 3. Install
-[out/gbos-builder/compact/disk.img](../out/gbos-builder/compact/disk.img)
+[out/gbos-builder/ruby-16693588/compact/disk.img](../out/gbos-builder/ruby-16693588/compact/disk.img)
 with `make install-usb`: **fresh installation erases that USB**.
 The 12 GiB super partition contains system 3 GiB, vendor 1.5 GiB, product 4 GiB,
 system_ext 1.5 GiB and both module partitions 256 MiB: 10.5 GiB allocated, about 1.5 GiB spare.
@@ -114,12 +118,14 @@ Metadata and small security/persistent partitions remain separate.
 The 576 MiB EFI-SYSTEM holds boot files; trailing userdata defaults to 32 GiB for QEMU
 and fills the USB during fresh installation. Raw imaging tools do not perform that expansion
 or reset copied Android encryption/data state; use the supported installer.
-Older local disk images are left untouched, including `out/gbos-builder/disk.img`.
-**An older-layout USB needs a full reflash once**, erasing its accounts and data; the updater
-deliberately refuses mismatched layouts. Afterwards, **update instead of reflashing** to preserve
-Android data. Normal boots omit the firmware framebuffer, following owner-confirmed tests on
-both laptops; a saved previous menu may predate the EFI crash-logging safeguard. The debug entry
-shows the earliest kernel messages for a black screen but adds about a minute to the boot.
+Older local disk images remain in place. The current disk path includes the Ruby build number;
+the previous compact image may have a different EFI-SYSTEM UUID and is not a bootable fallback.
+**A USB with a different GPT identity needs a full reflash**, erasing its accounts and data; the
+updater deliberately refuses mismatched GPTs. Afterwards, **update instead of reflashing** to
+preserve Android data while the GPT identity remains the same. Normal boots omit the firmware
+framebuffer, following owner-confirmed tests on both laptops; a saved previous menu may predate
+the EFI crash-logging safeguard. The debug entry shows the earliest kernel messages for a black
+screen but adds about a minute to the boot.
 
 #### Compact partition layout
 
@@ -480,10 +486,11 @@ make qemu                # builds what changed, then boots; use a VNC viewer on 
 less out/qemu/kernel.log # kernel and Android init log of the last run
 ```
 
-Google's image is the read-only starting point. Only `system`, `system_ext`, `vendor` and `vendor_dlkm` are
-rebuilt, with the changes listed below. QEMU uses this laptop's CPU (`-cpu host`, KVM);
-its only disk is `out/gbos-builder/compact/disk.img`. The serial shell and QMP monitor are local Unix sockets
-under `out/qemu/`. Use Android's shutdown menu for an orderly shutdown; Ctrl-C stops QEMU.
+Google's image is the read-only starting point. Only `system`, `system_ext`, `vendor` and
+`vendor_dlkm` are rebuilt, with the changes listed below. QEMU uses this laptop's CPU
+(`-cpu host`, KVM); its only disk is
+`out/gbos-builder/ruby-16693588/compact/disk.img`. The serial shell and QMP monitor are local
+Unix sockets under `out/qemu/`. Use Android's shutdown menu for an orderly shutdown; Ctrl-C stops QEMU.
 Virtual ACPI S3/S4 sleep is disabled for reliable development sessions. Input uses a standard
 virtio keyboard and relative mouse; the tablet's absolute pointer protocol is not used.
 
@@ -493,7 +500,8 @@ virtio keyboard and relative mouse; the tablet's absolute pointer protocol is no
   virtio-gpu, input and network modules, then the boot settings: Google's
   plus [android/bootconfig.txt](../android/bootconfig.txt), packed by
   [tools/bootconfig.py](../tools/bootconfig.py).
-- **Disk** (`make android-disk`): `out/gbos-builder/compact/disk.img`, a fresh compact GPT
+- **Disk** (`make android-disk`): the versioned `out/gbos-builder/ruby-16693588/compact/disk.img`,
+  a fresh compact GPT
   built by [tools/android_disk.py](../tools/android_disk.py), with A-only super assembled by
   [tools/android_fresh.py](../tools/android_fresh.py) using upstream lpmake.
   Retained partition UUIDs and contents are preserved, except new boot storage, blank metadata

@@ -1,15 +1,13 @@
 # QEMU VM
 
 **Status:** parked — gbos-builder screen/input regression verified; setup not finished.
-**Latest candidate:** 2026-11-05 — Combined compact/common-driver image passes direct normal
-and diagnostic boots with stable services, enforcing SELinux and softpipe. Setup screenshots
-and Tab-key focus response inspected; no successful page navigation claimed. FAT diagnostic
-streams/snapshot saved, normal boots preserve its entire partition. All VMs exited.
-[Evidence](../../out/common-hardware-validation/).
-**Last verified:** 2026-11-05 — Native-only graphics without sysfb/simpledrm: direct `make qemu-check`
-and graphical USB-UEFI pass stable services, enforcing SELinux and softpipe.
-Setup and direct injected-tap Accessibility screenshots inspected; both UEFI runs keep NVMe decoys unchanged.
-All VMs exited. [Evidence](../../out/native-framebuffer-removal/).
+**Latest candidate:** 2026-11-07 — Ruby recovery build 16693588 boots from its versioned compact
+disk. `make qemu-check` confirms boot completion, stable services, enforcing SELinux and softpipe;
+the setup screenshot was inspected. Input and USB-UEFI were not tested.
+[Evidence](../../out/qemu/).
+**Last verified:** 2026-11-07 — Direct `make qemu-check` passes on the new Ruby image; the VM exited.
+The first reuse attempt exposed a recovery/disk EFI UUID mismatch, so each Ruby build now has a
+separate disk path. No physical media were written.
 
 Earlier, 2026-11-04 — Full recipe image: disposable direct boot passes stable PIDs,
 enforcing SELinux and softpipe; setup and Accessibility after a tap inspected. Both USB-UEFI
@@ -98,6 +96,8 @@ Parked while the laptop is the focus (owner, 2026-10-31); these are still the ag
 - Keep the guest awake (for example Android's stay-awake setting) so it does not enter s2idle.
 
 ## Handoff log
+- 2026-11-07 uncommitted — Ruby 16693588 source pin and build-numbered disk path; focused tests,
+  image build, no-write repeat and direct QEMU setup pass. Screenshot inspected; no USB write.
 - 2026-11-05 uncommitted — Compact/common-driver normal and diagnostic direct boots pass;
   setup/focus inspected, FAT capture and normal-boot preservation verified. VMs exited;
   no physical-driver result or compact USB-UEFI check.

@@ -2,11 +2,9 @@
 
 **Status:** partial — Wi-Fi, input, speakers, built-in microphone, camera and video work by owner
 report. HDMI display performance feels fine; the brightness slider is unconfirmed.
-**Last verified:** 2026-11-04 — Recipe integration: 263 tests, exact declaration/asset/patch
-comparison, all 4,501 exports, signed-module metadata and image-fit checks pass. All 38 tracked
-output hashes match baseline; 23.8 s repeat preserves timestamps with no partition/boot writes.
-Disposable enforcing QEMU setup/input and USB-UEFI pass; no physical MSI/Lenovo retest.
-[Evidence](../../out/full-hardware-recipes/).
+**Last verified:** 2026-11-07 — The 20261019 firmware archive contains all 90 selected files;
+314 tests and image/kABI checks pass. Enforcing QEMU reaches inspected setup. No physical
+driver, Wi-Fi or audio retest on this image.
 
 Earlier, 2026-11-02 — owner confirms camera preview and video recording work after the
 NV12 pitch update. Its LED also flashes under Linux; the cause is unknown
@@ -33,10 +31,10 @@ MT7922 Wi-Fi/Bluetooth, ELAN touchpad, HDA/ACP audio), following the working Chu
 with readable source changes and incremental USB updates.
 
 ## Current state
-Verified candidate packaging: common network/touchpad modules and standard CA0132 firmware
-pass the combined build, 66 focused tests, kABI/imports/signatures, dependencies/aliases and
-image checks. QEMU setup/focus is inspected under enforcing SELinux; physical driver binding,
-networking and audio on new hardware remain untested.
+Verified packaging: common network/touchpad modules and standard CA0132 firmware pass;
+the 20261019 firmware archive contains all 90 selected files. The updated image passes
+314 tests and kABI/module/image checks; QEMU setup is inspected under enforcing SELinux.
+Physical driver binding, networking and audio on this image remain untested.
 [Evidence](../../out/common-hardware-validation/).
 
 The [common audio](../../hardware/drivers/common-audio/) recipe documents reused HDA/SOF
@@ -458,6 +456,8 @@ metadata/logd starts still needs a screen photo.
   remain unverified.
 
 ## Handoff log
+- 2026-11-07 uncommitted — Updated linux-firmware to 20261019; all 90 selected files exist.
+  314 tests, image checks and enforcing QEMU pass. No physical Wi-Fi/network retest.
 - 2026-11-05 uncommitted — Added file-manager retrieval from FAT32 `GBOS-LOGS` for owners
   without terminal sudo. Windows/macOS browsing remains untested; no device access.
 - 2026-11-05 uncommitted — Common network/touchpad/audio packaging now build-checked:

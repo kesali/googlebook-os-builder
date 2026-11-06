@@ -2,10 +2,10 @@
 # or no suitable prebuilt exists. Read the release tag or version; the build checks the Git
 # commit ID or archive SHA-256 next to it.
 
-# Unchanged official Ruby recovery, matching the existing extracted baseline.
+# Unchanged official Ruby recovery.
 # SHA-256 is for the unzipped image, not its transport ZIP.
-RUBY_RECOVERY_BUILD := 16658739
-RUBY_RECOVERY_SHA := 805de2e7251b2ec0c2089af0fe8f0547c386a58e8c5e24614d506697456837db
+RUBY_RECOVERY_BUILD := 16693588
+RUBY_RECOVERY_SHA := 76af59a4419c61a380c12adb2567009dfd5631377cd4e2de7335c174b30b0121
 RUBY_RECOVERY_URL := https://dl.google.com/device/recovery/ruby-user/$(RUBY_RECOVERY_BUILD)/recovery.zip
 RUBY_RECOVERY_MEMBER := android-desktop_signed_recovery_image.bin
 
@@ -64,18 +64,18 @@ DWARVES_REV := d884153887ce06fec729061016f7a0b412f08fc6
 MESA_VERSION := 26.3.0-rc3
 MESA_URL := https://archive.mesa3d.org/mesa-$(MESA_VERSION).tar.xz
 MESA_SHA := 3600c01f11439628d0a85de5ed9cb76f297d13e9783cdeecb91aa685055c9942
-LIBDRM_VERSION := 2.4.133
+LIBDRM_VERSION := 2.4.134
 LIBDRM_URL := https://dri.freedesktop.org/libdrm/libdrm-$(LIBDRM_VERSION).tar.xz
-LIBDRM_SHA := fc68f9d0ba2ea63c9432a299e14fea09fad7a8a66e8039fcd7802ca59f77b4f5
-EXPAT_VERSION := 2.7.3
-EXPAT_URL := https://github.com/libexpat/libexpat/releases/download/R_2_7_3/expat-$(EXPAT_VERSION).tar.xz
-EXPAT_SHA := 71df8f40706a7bb0a80a5367079ea75d91da4f8c65c58ec59bcdfbf7decdab9f
+LIBDRM_SHA := ac5e74d157830eb8bee44c6a6bf3ad49774ef0dd2a72bdad74a8f20308b52a95
+EXPAT_VERSION := 2.10.0
+EXPAT_URL := https://github.com/libexpat/libexpat/releases/download/R_2_10_0/expat-$(EXPAT_VERSION).tar.xz
+EXPAT_SHA := c624ba2998fc65df1163a49641ff3f9ab73138b11641d92c86bee0fb01b1bc7f
 
 # AMD's runtime firmware, unchanged from linux-firmware's official release.
 # SHA-256: https://cdn.kernel.org/pub/linux/kernel/firmware/sha256sums.asc
-FIRMWARE_VERSION := 20260916
+FIRMWARE_VERSION := 20261019
 FIRMWARE_URL := https://cdn.kernel.org/pub/linux/kernel/firmware/linux-firmware-$(FIRMWARE_VERSION).tar.xz
-FIRMWARE_SHA := f80dcb757a623deda62200c08e0e1a88c76fb6b54964f31b35fa74da1c90ccc5
+FIRMWARE_SHA := a10d1ab5baf2c74ba92e8c7cf313e691696c26bddfa6df00db795e48d70cd4ca
 
 # LineageOS's upstream minigbm includes its Mesa GBM backend. There is no matching Android
 # prebuilt, and Google's allocator lacks AMD support. lineage-23.2's current commit; the
@@ -120,9 +120,9 @@ BORINGSSL_URL := https://codeload.github.com/google/boringssl/tar.gz/$(BORINGSSL
 BORINGSSL_SHA := d9d20cb1df6a717908eda2340bd222f547d2fe6e3fc46900449da6d214c5bf5d
 # Official host Go runs upstream's FIPS integrity-hash injector, not target Android code.
 # SHA-256 verified against https://go.dev/dl/?mode=json&include=all.
-BORINGSSL_GO_VERSION := 1.25.14
+BORINGSSL_GO_VERSION := 1.27.3
 BORINGSSL_GO_URL := https://go.dev/dl/go$(BORINGSSL_GO_VERSION).linux-amd64.tar.gz
-BORINGSSL_GO_SHA := a21ae5633a269bcd7e90cf767e48225633795e99d831742cbf3397064fee7712
+BORINGSSL_GO_SHA := 65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
 
 # HttpEngine 150.0.7871.41 has a different BoringSSL/C++ ABI from platform crypto.
 # Pin verified against chromium/src's 150.0.7871.41 DEPS, not inferred from exported symbols.

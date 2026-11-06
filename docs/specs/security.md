@@ -1,10 +1,10 @@
 # Security services
 
-**Status:** working (software keys) — unconditional portable crypto passes focused tests;
-rebuilt-image/runtime validation pending.
-**Last verified:** 2026-11-05 — 26 overlay/crypto-ABI tests pass, including unconditional
-system/vendor replacement, APEX mount declarations and reduced policy patch application.
-Image rebuild and QEMU checks deferred by the owner; no new runtime verification.
+**Status:** working (software keys) — unconditional portable crypto and rebuilt-image
+QEMU checks pass; hardware-backed keys remain unavailable.
+**Last verified:** 2026-11-07 — 314 tests and `make android-image` pass; all BoringSSL
+crypto/SSL exports match. `make qemu-check` verifies software KeyMint/Gatekeeper, stable
+services and enforcing SELinux.
 
 Earlier, 2026-11-04 — 20 selector/overlay tests, image ABI/metadata/kABI checks, and
 enforcing QEMU boot. Live mountinfo shows Google's system crypto bound into Conscrypt.
@@ -84,6 +84,8 @@ Gatekeeper (`android.hardware.gatekeeper-service`) keep the same PID for 30 seco
   done when a PIN is set and survives a reboot (tracked with [qemu.md](qemu.md) setup action).
 
 ## Handoff log
+- 2026-11-07 uncommitted — Updated host Go to 1.27.3 for pinned BoringSSL; crypto/SSL exports
+  match. 314 tests, image checks and enforcing QEMU pass with software KeyMint/Gatekeeper.
 - 2026-11-05 (this commit) — Owner chooses portable crypto for all supported CPUs. Replace
   system/vendor libraries directly; remove the selector, property/domain and vendor mount rule.
   26 overlay/crypto-ABI tests pass. Owner defers image rebuild and QEMU checks.

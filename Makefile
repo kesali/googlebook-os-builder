@@ -32,7 +32,7 @@ GKI := $(OUT)/gki
 LP_CORE := $(OUT)/src/lp-core-$(LP_CORE_REV)
 LP_EXTRAS := $(OUT)/src/lp-extras-$(LP_EXTRAS_REV)
 ANDROID := $(OUT)/android
-ANDROID_DISK := $(OUT)/gbos-builder/compact/disk.img
+ANDROID_DISK := $(OUT)/gbos-builder/ruby-$(RUBY_RECOVERY_BUILD)/compact/disk.img
 ANDROID_LAYOUT := android/super-layout.json
 MESA := $(OUT)/mesa
 MESA_TAR := $(DL)/mesa-$(MESA_SHA).tar.xz
@@ -362,8 +362,8 @@ android-initrd: $(ANDROID)/initrd.img ## Build the initrd: Google's ramdisks, mo
 $(ANDROID)/initrd.img: $(GOOGLE)/inventory.txt $(ANDROID)/modules.lz4 android/bootconfig.txt scripts/android-initrd.sh tools/bootconfig.py
 	$(BUILDER) bash scripts/android-initrd.sh "$(GOOGLE)" android/bootconfig.txt "$(ANDROID)/modules.lz4" "$@"
 
-# A new layout uses a new disk path; preserve both older Android disks as fallbacks.
-# Once created, this disk holds Android's data and is updated, never regenerated.
+# The recovery EFI-SYSTEM UUID is embedded in the initrd; keep each Ruby build paired with
+# a disk made from that recovery. Once created, this disk holds Android's data and is updated.
 android-disk: $(ANDROID_DISK) ## Create the disk image once: layout, empty data, boot partition
 $(ANDROID_DISK): | $(GOOGLE)/inventory.txt $(OUT)/lp-tools/lpmake \
 		$(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img \

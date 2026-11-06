@@ -2,11 +2,10 @@
 
 **Status:** partial — QEMU softpipe passes; AMD desktop profiles remain, but the camera-only
 RadeonSI VA-API path was removed. Camera behavior after removal is unverified.
-**Last verified:** 2026-11-05 — Owner confirms MSI video and no-firmware-framebuffer boots on
-both laptops. Simplified kernel/image pass 81 focused tests, kABI/module/metadata checks,
-22 s no-write repeat and enforcing direct/USB-UEFI QEMU. Setup and direct injected-tap
-Accessibility screenshots inspected; physical retest of this rebuilt image remains.
-[Evidence](../../out/native-framebuffer-removal/).
+**Last verified:** 2026-11-07 — 314 tests and `make android-image` pass kABI, module,
+metadata and fit checks. `make qemu-check` passes with stable services, enforcing SELinux
+and Mesa softpipe; setup screenshot inspected. Physical graphics retest and camera fallback
+remain unverified.
 
 Earlier, 2026-11-04 — 289 tests pass; image build and bounded enforcing QEMU pass with
 softpipe and inspected setup screenshot. Repeat reports no partition or boot-file writes.
@@ -327,6 +326,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-07 uncommitted — Updated Expat to 2.10.0 and libdrm to 2.4.134. 314 tests,
+  image checks and enforcing softpipe QEMU pass; setup screenshot inspected. No physical retest.
 - 2026-11-05 (this commit) — Owner confirms MSI video playback and firmware-free boots on both
   laptops. Remove PCI handoff and ueventd serialization patches; keep Mesa's DRM-master patch.
   81 tests, kernel/image/ABI checks and inspected direct/UEFI QEMU pass; rebuilt-image hardware retest remains.

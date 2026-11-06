@@ -92,7 +92,8 @@ def verify(logs, process):
 
 def main():
     out = Path(sys.argv[1]).resolve()
-    disk = Path(sys.argv[4]) if len(sys.argv) > 4 else out / "gbos-builder/compact/disk.img"
+    disk = (Path(sys.argv[4]) if len(sys.argv) > 4
+            else out / "gbos-builder/ruby-16693588/compact/disk.img")
     logs = out / "qemu"
     logs.mkdir(exist_ok=True)
     console = logs / "console.sock"

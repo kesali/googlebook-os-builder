@@ -5,12 +5,11 @@ USB updater validation (2026-11-02): `make test` passes 129 tests, including reg
 OS/boot update, cancellation, multi-extent preservation and a write-free repeat. Range derivation
 on the real built image matches the old helper. Not verified: the new host mount/write workflow
 on physical USB hardware; no physical disk was written for this change.
-**Last verified:** 2026-11-05 — Combined image builds in 4m1s; all kABI/module/filesystem/fit
-checks pass. FAT mount policy fix rebuilds system only in 40 s. A 24.3 s repeat preserves all
-67 tracked published sizes/timestamps and writes no partitions/boot files. Direct normal and
-diagnostic QEMU setup/focus inspected under enforcing SELinux; normal boots preserve the
-entire saved 256 MiB FAT partition. Older disks and physical media untouched.
-[Evidence](../../out/common-hardware-validation/).
+**Last verified:** 2026-11-07 — Recovery build 16693588 remains paired with its versioned disk.
+314 tests and image kABI, metadata and fit checks pass; bounded enforcing QEMU reaches inspected
+setup. A repeat image build writes no partitions or boot files; disk size and timestamp stay
+unchanged. No physical USB writes; USB installation and input remain unverified.
+[Evidence](../../out/qemu/).
 
 Earlier, 2026-11-05 — 107 focused tests pass through the builder:
 disk/fresh/install/update, bootlog, laptop-log retrieval and overlay tests.
@@ -119,7 +118,8 @@ whole-file removals and explicitly ordered Android patches through the existing 
 Shared security/logging/native-bridge/storage changes stay common. Source-derived combined
 module metadata remains intact in `laptop-modules`; arbitrary driver removal is not automatic.
 The owner approved tests/build; exact input/output preservation and disposable QEMU checks
-pass above. The combined image remains `out/gbos-builder/disk.img`, ready for owner testing.
+pass above. The current combined image is
+`out/gbos-builder/ruby-16693588/compact/disk.img`, ready for owner testing.
 
 Verified: clean-break gbos-builder identity uses a separate `out/gbos-builder/disk.img`,
 FAT label `GBOS-BOOT`, boot directory `gbos-builder/` and new format markers.
@@ -130,15 +130,16 @@ Mesa/minigbm source prerequisites are order-only: their bytes already select con
 trees, so newer timestamps must not attempt to replace editable caches. Regression-tested.
 Not verified: renamed media on physical hardware; a fresh flash remains an explicit owner action.
 
-Recovery-source restoration verified: the old reference file no longer matched the pinned
-baseline, so the build refused it before extraction. A separate official Ruby `16658739`
-download now matches the unchanged image SHA-256 and is the default hash-named source cache.
-The downloader verifies the extracted ZIP member before publishing it; raw downloads retain
-their existing checks. The altered reference file remains untouched. Read-only comparison
-localizes its changes to the metadata partition; the cause of those changes is unknown.
+Earlier recovery-source restoration: the old reference file no longer matched the `16658739`
+pin, so the build refused it before extraction. The current official Ruby `16693588` image is
+downloaded and hash-verified from its ZIP member. Its EFI-SYSTEM UUID differs from the previous
+compact disk, so the build now uses a Ruby-build-numbered disk path; the updater refuses USBs
+whose GPT identity differs. The previous compact disk remains in place but is not a bootable
+fallback for this image. The first in-place build had updated its OS and boot files before the
+mismatch was caught; userdata and metadata were not touched.
 
-Verified build/direct QEMU: the owner-approved compact replacement uses
-`out/gbos-builder/compact/disk.img`, leaving both older working disks untouched.
+Verified build/direct QEMU: the owner-approved compact replacement used
+`out/gbos-builder/compact/disk.img`, leaving older working disks untouched at that time.
 [android_disk.py](../../tools/android_disk.py) now creates 14 aligned GPT entries: EFI-SYSTEM,
 super, boot_a, init_boot_a, vendor_boot_a, vbmeta_a, vbmeta_b, misc, metadata,
 desktop_security_persist, desktop_security_storage, frp_persist, gbos_logs and trailing userdata.
@@ -374,6 +375,12 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-07 uncommitted — Updated Expat, libdrm, linux-firmware and host Go pins. 314 tests,
+  image checks and enforcing QEMU pass; repeat build writes no partitions or boot files.
+  No physical USB writes.
+- 2026-11-07 uncommitted — Pinned Ruby 16693588 and gave its changed EFI UUID a fresh,
+  versioned disk path. Sixty focused tests, image build, no-write repeat and direct QEMU pass;
+  screenshot inspected, no physical USB write.
 - 2026-11-05 (this commit) — Fresh installation uses default-no `[y/N]`, matching updates,
   instead of serial retyping. Erase warnings and serial identity checks retained.
   All 45 installer/updater tests pass; no physical USB access.
