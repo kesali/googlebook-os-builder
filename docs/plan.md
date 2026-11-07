@@ -84,6 +84,9 @@ This is a flexible order, not a commitment to do every item.
    The existing USB progress TODO covers separate write/read-back progress, bytes, percentage,
    throughput and estimated remaining time; preserve device selection and verification safeguards.
    Compact installation images remain deferred.
+   - [ ] Add Podman support alongside Docker — deferred; do not implement yet.
+     Done when both runtimes use the same builder definition and pass fresh-build, no-write
+     repeat and QEMU checks, including file ownership and `/dev/kvm` permissions.
 
 4. **Make recipe composition inspectable and maintainable.**
    - Summarize selected recipes and their patches, modules and firmware through existing tooling.
