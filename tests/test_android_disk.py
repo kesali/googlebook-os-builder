@@ -49,9 +49,23 @@ class AndroidDiskTests(unittest.TestCase):
                 stream.seek(part["start"] * 512)
                 stream.write((part["name"] + "-original").encode())
 
-    def create(self):
+    def create(self, userdata_gib=1):
         with patch.object(android_disk, "SUPER_BYTES", 8 << 20):
-            android_disk.create(self.recovery, 1, self.output)
+            android_disk.create(self.recovery, userdata_gib, self.output)
+
+    def test_four_gib_userdata_reduces_only_trailing_data_allocation(self):
+        self.create(4)
+        parts = layout(self.output)["partitions"]
+        self.assertEqual(parts[-1]["size"] * 512, 4 << 30)
+        with patch.object(android_disk, "SUPER_BYTES", 8 << 20):
+            larger, larger_size = android_disk.compact_layout(self.original, 32)
+        for actual, expected in zip(parts[:-1], larger[:-1]):
+            self.assertEqual(
+                {key: value for key, value in actual.items() if key != "node"},
+                {**expected, "uuid": expected["uuid"].upper()},
+            )
+        self.assertEqual(parts[-1]["start"], larger[-1]["start"])
+        self.assertEqual(larger_size - self.output.stat().st_size, 28 << 30)
 
     def test_only_retained_partitions_are_repacked_with_original_ids_and_payloads(self):
         before = self.recovery.stat()

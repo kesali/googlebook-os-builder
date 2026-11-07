@@ -342,6 +342,9 @@ then `make android-image`. A second run
 must print no partition or boot-file writes and leave output timestamps unchanged.
 
 ## Pitfalls
+- `ANDROID_DATA_GIB` defaults to 4 GiB for new images; fresh USB installation expands userdata
+  to the device. Changing the setting does not shrink an existing disk. Keep existing Android
+  data intact; choose a separate output for a smaller fresh image.
 - fakeroot does keep ownership and xattrs, but only because the comparison checks every entry;
   never weaken [tools/fs_metadata.py](../../tools/fs_metadata.py) to make a build pass.
 - Logical partitions can span several extents; the updater handles multi-extent copies (tested).
@@ -375,6 +378,9 @@ must print no partition or boot-file writes and leave output timestamps unchange
   repeat. The USB version of this disk is tracked in [laptop-hardware.md](laptop-hardware.md).
 
 ## Handoff log
+- 2026-11-07 uncommitted — Reduced initial userdata default to 4 GiB; OS allocations and USB
+  expansion unchanged. 33 disk/fresh/install tests pass, including exact 28 GiB size reduction.
+  Existing image untouched; smaller real-image build and hardware boot not tested.
 - 2026-11-07 uncommitted — Updated Expat, libdrm, linux-firmware and host Go pins. 314 tests,
   image checks and enforcing QEMU pass; repeat build writes no partitions or boot files.
   No physical USB writes.

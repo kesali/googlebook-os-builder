@@ -57,7 +57,7 @@ Keep downloaded inputs and editable source trees under ignored `out/`.
 ## Run on a laptop
 
 Use a **64 GB or larger USB**, preferably USB 3. The compact image reserves 12 GiB for the OS
-and defaults to 32 GiB of sparse data for QEMU.
+and defaults to 4 GiB of sparse data for QEMU; fresh USB installation expands data to fit.
 Disable Secure Boot and select the USB's UEFI entry. The internal NVMe is hidden from Android.
 
 For a fresh USB (**erases all existing USB data**):

@@ -17,7 +17,7 @@ JOBS ?= $(shell nproc)
 
 # `make qemu`: initial data size (GiB, sparse); fresh USB installation expands it to the device.
 # The virtual machine's CPUs and memory follow.
-ANDROID_DATA_GIB ?= 32
+ANDROID_DATA_GIB ?= 4
 QEMU_CPUS ?= 4
 QEMU_MEMORY ?= 6G
 QEMU_VNC_PORT ?= 5900

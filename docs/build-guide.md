@@ -115,7 +115,7 @@ system_ext 1.5 GiB and both module partitions 256 MiB: 10.5 GiB allocated, about
 See [super-layout.json](../android/super-layout.json). The 14-entry compact GPT removes unused
 ChromeOS/B/C boot entries; only `vbmeta_b` remains for Google's boot-control HAL.
 Metadata and small security/persistent partitions remain separate.
-The 576 MiB EFI-SYSTEM holds boot files; trailing userdata defaults to 32 GiB for QEMU
+The 576 MiB EFI-SYSTEM holds boot files; trailing userdata defaults to 4 GiB for QEMU
 and fills the USB during fresh installation. Raw imaging tools do not perform that expansion
 or reset copied Android encryption/data state; use the supported installer.
 Older local disk images remain in place. The current disk path includes the Ruby build number;
@@ -148,7 +148,7 @@ Physical partitions appear in this order, with 1 MiB-aligned starts:
 | `desktop_security_storage` | 32 MiB | Retained Google security storage |
 | `frp_persist` | 2 MiB | Retained factory-reset-protection storage |
 | `gbos_logs` | 256 MiB | FAT32 `GBOS-LOGS`: direct, opt-in diagnostic captures |
-| `userdata` | Initially 32 GiB | Android apps, accounts and files; expanded during fresh USB installation |
+| `userdata` | Initially 4 GiB | Android apps, accounts and files; expanded during fresh USB installation |
 
 Small security partitions are retained conservatively; their removal has not been proven safe.
 Sizes other than EFI, super and userdata follow the pinned Google recovery.
@@ -175,6 +175,8 @@ verifying a fresh USB installation, the installer resets copied Android encrypti
 moves the backup GPT to the device's end and extends userdata into the remaining usable space.
 Android formats it on first boot. Ordinary updates preserve userdata and metadata, allow a
 larger target userdata partition, and never repartition; older layouts require a fresh install.
+The default applies only when creating a new disk; existing images are not resized.
+For more QEMU app storage, set `ANDROID_DATA_GIB=32` when creating the image.
 
 **Direct FAT32 diagnostics pass focused tests; image/boot validation is pending.** The diagnostic GRUB
 entry mounts `GBOS-LOGS` at `/metadata/gbos-builder-bootlog` and writes there directly;
