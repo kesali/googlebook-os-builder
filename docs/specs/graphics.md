@@ -2,7 +2,14 @@
 
 **Status:** partial — QEMU softpipe passes; AMD desktop profiles remain, but the camera-only
 RadeonSI VA-API path was removed. Camera behavior after removal is unverified.
-**Last verified:** 2026-11-07 — 314 tests and `make android-image` pass kABI, module,
+**Last verified:** 2026-11-13 — Mesa 26.3.0: 5 focused tests and `make android-image` pass
+kABI, metadata and fit checks. Full userdata and metadata hashes match before and after the
+image build; a repeat writes no partitions or boot files. `make qemu-check` passes with stable
+services, enforcing SELinux and Mesa softpipe; setup screenshot inspected, input not tested.
+Physical graphics and camera fallback remain unverified.
+[Evidence](../../out/mesa-26.3.0-validation.Fka1Ob/).
+
+Earlier, 2026-11-07 — 314 tests and `make android-image` pass kABI, module,
 metadata and fit checks. `make qemu-check` passes with stable services, enforcing SELinux
 and Mesa softpipe; setup screenshot inspected. Physical graphics retest and camera fallback
 remain unverified.
@@ -231,7 +238,7 @@ which decoder processed the frames. The webcam LED also flashes under Linux; its
 - Keep Zink/RADV for AMD desktop rendering and softpipe as the verified fallback; omit the separate
   RadeonSI VA-API camera driver and its shared DRM helper to reduce dependencies. Camera software
   fallback is not established.
-- Mesa 26.3.0-rc3, libdrm 2.4.133, Expat 2.7.3 from source, NDK r30 at API 35;
+- Mesa 26.3.0, libdrm 2.4.134, Expat 2.10.0 from source, NDK r30 at API 35;
   softpipe, Zink and RADV with ACO, no LLVM/GLX. Rendering links libdrm, Expat and Mesa's C++
   runtime statically to avoid vendor linker-namespace problems.
   Pins: [sources.mk](../../sources.mk).
@@ -326,6 +333,8 @@ a correctly sized image can still be QEMU's "Display output is not active" place
 - llvmpipe instead of softpipe as a cheaper speed-up (needs LLVM for Android).
 
 ## Handoff log
+- 2026-11-13 (this commit) — Pinned Mesa 26.3.0; three patches still apply. Focused tests,
+  image/metadata checks, no-write repeat and inspected QEMU setup pass; hardware retest remains.
 - 2026-11-07 uncommitted — Updated Expat to 2.10.0 and libdrm to 2.4.134. 314 tests,
   image checks and enforcing softpipe QEMU pass; setup screenshot inspected. No physical retest.
 - 2026-11-05 (this commit) — Owner confirms MSI video playback and firmware-free boots on both

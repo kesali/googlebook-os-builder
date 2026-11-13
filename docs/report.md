@@ -198,8 +198,8 @@ SurfaceFlinger and HWUI renderers have not been independently measured on the la
 | Density | 160 | 240 |
 | Boot animation, shader priming | Google's | skipped (saves about 27 s of software rendering) |
 
-- **Mesa:** 26.3.0-rc3, built with NDK r30 for API 35 and no LLVM (RADV uses ACO). libdrm and
-  expat are linked statically.
+- **Mesa:** the version pinned in [sources.mk](../sources.mk), built with NDK r30 for API 35
+  and no LLVM (RADV uses ACO). libdrm and expat are linked statically.
 - **Mesa patch:** [mesa-drm-master.patch](../hardware/drivers/drm-handoff/mesa-drm-master.patch) drops DRM master so
   the composer can drive the display.
 - **minigbm:** LineageOS minigbm with upstream's Mesa GBM path and

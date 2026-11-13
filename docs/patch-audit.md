@@ -7,6 +7,10 @@ Mesa `26.3.0-rc3` (26.3.0 is not final; latest stable 26.2.6), LineageOS minigbm
 lore.kernel.org, gitlab.freedesktop.org Mesa `main` and the LineageOS minigbm repository.
 Re-check when a pin changes.
 
+2026-11-13: Mesa 26.3.0's release archive matches the announced SHA-256. All three Mesa
+patches still apply without fuzz and are not already present in that release; build and
+QEMU softpipe checks pass. Physical graphics validation remains pending.
+
 ## Source patches
 
 | Patch | Upstream today | Verdict |
