@@ -63,14 +63,14 @@ fi
 printf '%s\n' "$boot_id" > current/boot-id
 fingerprint=$(getprop ro.build.fingerprint)
 test -n "$fingerprint"
-graphics=$(getprop ro.boot.gbos_builder.graphics)
+device_profile=$(getprop ro.boot.gbos_builder.device_profile)
 native_bridge=$(getprop ro.dalvik.vm.native.bridge)
 test -n "$native_bridge"
 bootreason=$(getprop ro.boot.bootreason)
 {
     echo "boot_id=$boot_id"
     echo "fingerprint=$fingerprint"
-    echo "graphics_boot_property=$graphics"
+    echo "device_profile_boot_property=$device_profile"
     echo "native_bridge=$native_bridge"
     echo "bootreason=$bootreason"
 } > current/boot.txt

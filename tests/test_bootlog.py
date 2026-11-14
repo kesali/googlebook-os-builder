@@ -74,7 +74,7 @@ class BootlogTests(unittest.TestCase):
         self.tool("getprop", 'test "${FAIL_GETPROP:-0}" = 0 || exit 1\n'
                   'case "$1" in\n'
                   'ro.build.fingerprint) echo test/fingerprint ;;\n'
-                  'ro.boot.gbos_builder.graphics) echo amd ;;\n'
+                  'ro.boot.gbos_builder.device_profile) echo msi ;;\n'
                   'ro.dalvik.vm.native.bridge) echo "${NATIVE_BRIDGE:-libndk_translation.so}" ;;\n'
                   'ro.boot.bootreason) echo cold ;;\n'
                   '*) exit 1 ;;\n'
@@ -104,7 +104,7 @@ class BootlogTests(unittest.TestCase):
         current = self.logs / "current"
         self.assertEqual((current / "boot-id").read_text(), BOOT_ONE + "\n")
         self.assertIn("fingerprint=test/fingerprint\n", (current / "boot.txt").read_text())
-        self.assertIn("graphics_boot_property=amd\n", (current / "boot.txt").read_text())
+        self.assertIn("device_profile_boot_property=msi\n", (current / "boot.txt").read_text())
         self.assertIn("native_bridge=libndk_translation.so\n", (current / "boot.txt").read_text())
         self.assertEqual(current.stat().st_mode & 0o777, 0o700)
         self.assertFalse((self.logs / "previous").exists())
