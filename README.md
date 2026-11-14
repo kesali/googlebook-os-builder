@@ -91,9 +91,9 @@ make hardware-check          # validate recipe wiring without an image build
 ```
 
 Log retrieval is read-only and saves private evidence under ignored `out/laptop-logs/`.
-Alternatively, after shutting down Android, open the USB's `GBOS-LOGS` FAT32 volume in another
-computer's file manager and copy `current/` and `previous/` locally; do not format or alter other
-partitions. Windows/macOS browsing is not yet tested. Details are in the
+New images use ext4 for `GBOS-LOGS`, which is not browsable by default in Windows/macOS file
+managers; use `make laptop-logs` to retrieve its contents. The command also supports legacy
+FAT32 log partitions. Details are in the
 [build guide](docs/build-guide.md#reading-laptop-logs).
 Do not publish raw logs. The combined image selects drivers in
 [hardware/drivers.list](hardware/drivers.list) and device configuration in

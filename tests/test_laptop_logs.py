@@ -4,12 +4,14 @@ import json
 import hashlib
 import io
 from contextlib import redirect_stderr
+import os
 from pathlib import Path
 import stat
 import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -29,12 +31,13 @@ class LaptopLogTests(unittest.TestCase):
         self.entries = {name: (stat.S_IFREG | 0o600, len(data))
                         for name, data in self.files.items()}
         self.device_patch = patch.object(laptop_logs, "log_device",
-                                         return_value=(self.device, "ext4"))
+                                         return_value=(self.device, "ext4",
+                                                       "/gbos-builder-bootlog"))
         self.device_patch.start()
         self.addCleanup(self.device_patch.stop)
 
     def listing(self, device, path):
-        return self.root_entries if path == "/gbos-builder-bootlog" else self.entries
+        return self.root_entries if path.endswith("gbos-builder-bootlog") else self.entries
 
     def read(self, device, request):
         return self.files[request.rsplit("/", 1)[-1]]
@@ -157,6 +160,34 @@ class LaptopLogTests(unittest.TestCase):
             destination = laptop_logs.retrieve({}, self.output)
         self.assertEqual((destination / "current/hardware.txt").read_bytes(), b"card=acp\n")
 
+    def test_reads_real_ext4_logs_partition_without_sudo_or_mounts(self):
+        root = self.output.parent / "ext4-seed"
+        for boot in ("current", "previous"):
+            directory = root / boot
+            directory.mkdir(parents=True)
+            for name, data in self.files.items():
+                (directory / name).write_bytes(data)
+        image = self.output.parent / "logs-ext4.img"
+        with image.open("wb") as stream:
+            stream.truncate(256 << 20)
+        subprocess.run(["mke2fs", "-q", "-t", "ext4", "-F", "-b", "4096", "-m", "0",
+                        "-L", "GBOS-LOGS", "-d", str(root), str(image)],
+                       check=True, capture_output=True)
+        run = subprocess.run
+
+        def direct_read(arguments, **kwargs):
+            self.assertEqual(arguments[:4], ["sudo", "--", "debugfs", "-R"])
+            self.assertNotIn("-w", arguments)
+            return run(arguments[2:], **kwargs)
+
+        with patch.object(laptop_logs, "log_device",
+                          return_value=(image, "ext4", "")), \
+                patch.object(laptop_logs.subprocess, "run", side_effect=direct_read):
+            destination = laptop_logs.retrieve({}, self.output)
+        for boot in ("current", "previous"):
+            self.assertEqual((destination / boot / "boot-id").read_bytes(), self.identity)
+            self.assertEqual((destination / boot / "hardware.txt").read_bytes(), b"card=acp\n")
+
     def test_rejects_missing_or_ambiguous_metadata(self):
         self.device_patch.stop()
         selected = {"name": "/dev/fake", "serial": "serial", "model": "Test",
@@ -169,6 +200,24 @@ class LaptopLogTests(unittest.TestCase):
                         "blockdevices": [{"name": "/dev/fake", "children": children}]})):
                 with self.assertRaisesRegex(ValueError, "exactly one"):
                     laptop_logs.log_device(selected)
+
+    def test_selects_ext4_logs_partition_and_root(self):
+        self.device_patch.stop()
+        selected = {"name": "/dev/fake", "serial": "serial", "model": "Test",
+                    "size": 1000, "maj:min": "8:0", "tran": "usb", "children": [
+                        {"name": "/dev/fake1", "maj:min": "8:1"},
+                    ]}
+        listing = {"blockdevices": [{"name": "/dev/fake", "children": [
+            {"name": "/dev/fake1", "partlabel": "gbos_logs", "fstype": "ext4"},
+        ]}]}
+        device_stat = SimpleNamespace(st_mode=stat.S_IFBLK, st_rdev=os.makedev(8, 1))
+        with patch.object(laptop_logs, "disks", return_value=[selected]), \
+                patch.object(laptop_logs, "check_unused"), \
+                patch.object(laptop_logs, "run", return_value=json.dumps(listing)) as run, \
+                patch.object(Path, "stat", return_value=device_stat):
+            self.assertEqual(laptop_logs.log_device(selected),
+                             (Path("/dev/fake1"), "ext4", ""))
+        self.assertIn("NAME,PARTLABEL,FSTYPE", run.call_args.args)
 
     def test_reads_real_fat32_image_without_sudo_mounts_or_source_writes(self):
         image = self.output.parent / "logs.img"
@@ -200,7 +249,7 @@ class LaptopLogTests(unittest.TestCase):
             self.assertIn(arguments[0], ("mdir", "mtype"))
             return popen(arguments, **kwargs)
 
-        with patch.object(laptop_logs, "log_device", return_value=(image, "vfat")), \
+        with patch.object(laptop_logs, "log_device", return_value=(image, "vfat", "")), \
                 patch.object(laptop_logs.subprocess, "run", side_effect=direct_run), \
                 patch.object(laptop_logs.subprocess, "Popen", side_effect=direct_popen):
             destination = laptop_logs.retrieve({}, self.output)
@@ -281,7 +330,7 @@ class LaptopLogTests(unittest.TestCase):
         self.output.mkdir()
         (self.output / "old").mkdir()
         (self.output / "latest").symlink_to("old")
-        with patch.object(laptop_logs, "log_device", return_value=(self.device, "vfat")), \
+        with patch.object(laptop_logs, "log_device", return_value=(self.device, "vfat", "")), \
                 patch.object(laptop_logs, "fat_directory", side_effect=listing), \
                 patch.object(laptop_logs.subprocess, "Popen", side_effect=popen):
             with self.assertRaisesRegex(ValueError, "incomplete"):

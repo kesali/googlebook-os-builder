@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Retrieve diagnostic FAT32 or legacy metadata logs; never mount or write USB devices."""
+"""Retrieve diagnostic logs; never mount or write USB devices."""
 
 import argparse
 from datetime import datetime
@@ -64,17 +64,28 @@ def log_device(selected):
         raise ValueError("Expected a USB disk with a serial number")
     check_unused(current)
     labeled = json.loads(run(
-        "lsblk", "--json", "--paths", "--output", "NAME,PARTLABEL", current["name"],
+        "lsblk", "--json", "--paths", "--output", "NAME,PARTLABEL,FSTYPE", current["name"],
     ))["blockdevices"]
     children = labeled[0].get("children", []) if len(labeled) == 1 else []
     matches = [child["name"] for child in children if child.get("partlabel") == "gbos_logs"]
-    filesystem = "vfat"
-    if not matches:
+    if matches:
+        if len(matches) != 1:
+            raise ValueError("Selected USB must have exactly one log partition")
+        log_partition = next(child for child in children if child["name"] == matches[0])
+        filesystem = log_partition.get("fstype")
+        if filesystem not in ("ext4", "vfat"):
+            raise ValueError(f"Unsupported diagnostic log filesystem: {filesystem}")
+        root = ""
+    else:
         # Older images stored captures on metadata; retrieval does not migrate or write them.
         matches = [child["name"] for child in children if child.get("partlabel") == "metadata"]
+        if len(matches) != 1:
+            raise ValueError("Selected USB must have exactly one log partition (or legacy metadata)")
+        metadata = next(child for child in children if child["name"] == matches[0])
+        if metadata.get("fstype") != "ext4":
+            raise ValueError("Legacy metadata log partition must be ext4")
         filesystem = "ext4"
-    if len(matches) != 1:
-        raise ValueError("Selected USB must have exactly one log partition (or legacy metadata)")
+        root = "/gbos-builder-bootlog"
     device = Path(matches[0])
     child = next((node for node in current.get("children", [])
                   if node["name"] == str(device)), None)
@@ -83,7 +94,7 @@ def log_device(selected):
         f"{os.major(info.st_rdev)}:{os.minor(info.st_rdev)}" != child["maj:min"]
     ):
         raise ValueError("Log device does not match the selected USB")
-    return device, filesystem
+    return device, filesystem, root
 
 
 def fat_diagnostic(error, status):
@@ -140,11 +151,10 @@ def fat_read(device, path):
 
 def retrieve(selected, output):
     reported_fat_warnings.clear()
-    device, filesystem = log_device(selected)
+    device, filesystem, root = log_device(selected)
     print(f"Reading {filesystem} diagnostic storage: {device}")
     listing = fat_directory if filesystem == "vfat" else directory
     read = fat_read if filesystem == "vfat" else lambda device, path: debugfs(device, f"cat {path}")
-    root = "" if filesystem == "vfat" else "/gbos-builder-bootlog"
     boots = listing(device, root)
     if "current" in boots and not stat.S_ISDIR(boots["current"][0]):
         raise ValueError("No current boot logs; this may not be the gbos-builder Android USB")
@@ -231,7 +241,7 @@ def retrieve(selected, output):
                 else:
                     if final_identity != identity:
                         raise ValueError("USB boot logs changed during retrieval; retry")
-        if log_device(selected) != (device, filesystem):
+        if log_device(selected) != (device, filesystem, root):
             raise ValueError("Log partition changed during retrieval")
         if problems:
             raise ValueError("Log retrieval incomplete:\n" + "\n".join(problems))

@@ -24,15 +24,13 @@ local; report only relevant filtered excerpts.
    when new evidence is needed. Preferred on Linux: have the owner run `make laptop-logs` and
    select the USB. It reads through sudo, makes no mount or USB writes, needs no image build,
    and stores normal-user-owned files under `out/laptop-logs/latest/`.
-   If sudo is unavailable or the owner prefers the file manager, have them shut Android down,
-   connect the USB to a desktop, open only the `GBOS-LOGS` FAT32 volume and copy `current/` and
-   `previous/` to a local folder. Cancel requests to format other partitions and do not alter
-   them. File-manager browsing is not yet tested on Windows/macOS. Keep the copy local and read
-   only relevant filtered excerpts.
-   New images use 256 MiB FAT32 `GBOS-LOGS`, written directly only during diagnostic boots.
+   New images use 256 MiB ext4 `GBOS-LOGS`, written directly only during diagnostic boots.
+   The filesystem is not browsable by default on Windows/macOS; use the supported retrieval
+   command rather than mounting it. The command also supports legacy FAT32 log partitions.
    Verify the boot identity/time after retrieval.
-   Older images without it use metadata: read only `gbos-builder-bootlog/current/` and
-   `previous/` with debugfs or an owner-approved `ro,noload` mount.
+   Older images without a dedicated log partition use metadata: read only
+   `gbos-builder-bootlog/current/` and `previous/` with debugfs or an owner-approved `ro,noload`
+   mount.
    Let the owner handle sudo credentials.
 3. Never replay a journal or repair the USB directly. If unclean shutdown prevents reading,
    explain the problem and ask before recovery on a private copy. Follow the spec's tmpfs

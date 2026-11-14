@@ -147,7 +147,7 @@ Physical partitions appear in this order, with 1 MiB-aligned starts:
 | `desktop_security_persist` | 16 MiB | Retained Google security/persistent storage |
 | `desktop_security_storage` | 32 MiB | Retained Google security storage |
 | `frp_persist` | 2 MiB | Retained factory-reset-protection storage |
-| `gbos_logs` | 256 MiB | FAT32 `GBOS-LOGS`: direct, opt-in diagnostic captures |
+| `gbos_logs` | 256 MiB | ext4 `GBOS-LOGS`: direct, opt-in diagnostic captures |
 | `userdata` | Initially 4 GiB | Android apps, accounts and files; expanded during fresh USB installation |
 
 Small security partitions are retained conservatively; their removal has not been proven safe.
@@ -178,16 +178,15 @@ larger target userdata partition, and never repartition; older layouts require a
 The default applies only when creating a new disk; existing images are not resized.
 For more QEMU app storage, set `ANDROID_DATA_GIB=32` when creating the image.
 
-**Direct FAT32 diagnostics pass focused tests; image/boot validation is pending.** The diagnostic GRUB
+**Direct ext4 diagnostics pass focused tests; image/boot validation is pending.** The diagnostic GRUB
 entry mounts `GBOS-LOGS` at `/metadata/gbos-builder-bootlog` and writes there directly;
 the path is a mountpoint, not storage on metadata. There is no export/copy loop.
 Only current/previous diagnostic boots are retained with the existing stream limits.
 Normal boots leave the log partition unmounted, and updates preserve it unchanged.
 Mount failure is reported and prevents persistent collectors from starting; Android continues.
 The guest never auto-formats or repairs this partition and never falls back to metadata.
-Synchronous FAT writes favor recoverable diagnostics over diagnostic-boot performance;
-a power loss can still damage FAT or lose evidence. Logs are unencrypted and readable by
-anyone with the USB: keep them private.
+Ext4 journals filesystem metadata, not all recent log contents; a power loss can still lose
+evidence. Logs are unencrypted and readable by anyone with the USB: keep them private.
 
 At the GRUB menu, use the arrow keys to highlight **Googlebook OS (Berberis)** or
 **Googlebook OS (Houdini)**, then press Enter. The highlighted translator is the saved default:
@@ -224,7 +223,7 @@ and Lenovo hardware have not been retested on this image. See
 Normal boots do not run the project's persistent log collectors or hardware snapshot.
 To investigate a problem, reboot using **Googlebook OS (diagnostic logs)** and reproduce it.
 Persistent kernel/Android diagnostics use native logcat and retain current/previous diagnostic
-boots on the dedicated FAT32 log partition,
+boots on the dedicated ext4 log partition,
 with an explicitly approved scoped enforcing policy. See [boot](../docs/specs/boot.md) for limits/coverage
 and [laptop hardware](../docs/specs/laptop-hardware.md#recovering-the-new-boot-logs)
 for Linux retrieval.
@@ -291,7 +290,8 @@ After returning to Linux, connect the Android USB and unmount its partitions, th
 make laptop-logs
 ```
 
-Select the USB by model/serial. Sudo authorizes read-only mtools (`mdir`/`mtype`); no mounts,
+Select the USB by model/serial. Sudo authorizes read-only `debugfs` (or mtools for an
+older FAT32 log partition); no mounts,
 filesystem repair or USB writes occur. Current and previous boot logs are copied to a private,
 timestamped folder under `out/laptop-logs/`, owned by your normal user.
 `out/laptop-logs/latest/current/` always points to the newest successful retrieval; older copies
@@ -300,17 +300,16 @@ are saved in a separate timestamped folder, the command reports the errors and `
 changed. A missing boot ID means the boot cannot be identified. FAT corruption can also cause
 undetected truncation, so a successful read does not prove a log is complete.
 
-No sudo or terminal? Shut Android down, connect the USB to a desktop computer and open the
-`GBOS-LOGS` FAT32 volume in its file manager. Copy `current/` and `previous/` to a local folder.
-Only open this named volume; cancel any request to format other partitions and do not change
-their contents. The volume uses a standard FAT32 filesystem, but file-manager browsing has not
-been tested on Windows or macOS.
+The new `GBOS-LOGS` partition is ext4, so it is not directly browsable by default on Windows or
+macOS. On Linux, use `make laptop-logs`; it reads files without mounting the partition.
 
 Only the diagnostic entry saves new logs; normal boots leave earlier captures untouched.
 Check the saved boot identity/time rather than assuming it describes the latest normal boot.
-Retrieval needs host mtools, sudo, lsblk and Python 3; it does not build an image.
-Older images without `gbos_logs` still use read-only `debugfs` (e2fsprogs) on metadata.
-The direct-FAT32 path passes regular-file tests; physical capture/retrieval is unverified.
+Retrieval needs host e2fsprogs (`debugfs`), sudo, lsblk and Python 3; it does not build an image.
+Older FAT32 log partitions remain readable with mtools. Older images without `gbos_logs` use
+read-only `debugfs` on metadata. The ext4 path passes regular-file tests; physical
+capture/retrieval is unverified. An ordinary USB update preserves an existing FAT32 log
+partition; use a fresh installation to create the new ext4 layout.
 Treat the logs as private.
 
 Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so

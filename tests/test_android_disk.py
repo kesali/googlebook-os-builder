@@ -109,19 +109,18 @@ class AndroidDiskTests(unittest.TestCase):
         self.assertGreaterEqual(clusters, 65525)
         self.assertLessEqual(total, esp["size"])
 
-    def test_logs_partition_is_fat32_and_precedes_userdata(self):
+    def test_logs_partition_is_ext4_and_precedes_userdata(self):
         self.create()
         parts = layout(self.output)["partitions"]
         logs = parts[-2]
         self.assertEqual(logs["name"], android_disk.LOG_PARTITION)
         self.assertEqual(logs["size"] * 512, 256 << 20)
-        boot = read_partition(self.output, logs, 512)
-        self.assertEqual(boot[71:90], b"GBOS-LOGS  FAT32   ")
-        total, fat = struct.unpack_from("<II", boot, 32)
-        reserved, = struct.unpack_from("<H", boot, 14)
-        clusters = (total - reserved - boot[16] * fat) // boot[13]
-        self.assertGreaterEqual(clusters, 65525)
-        self.assertLessEqual(total, logs["size"])
+        superblock = read_partition(self.output, logs, 2048)[1024:]
+        self.assertEqual(struct.unpack_from("<H", superblock, 56)[0], 0xEF53)
+        self.assertEqual(superblock[120:136].split(b"\0", 1)[0], b"GBOS-LOGS")
+        blocks, = struct.unpack_from("<I", superblock, 4)
+        self.assertEqual(blocks * (1024 << struct.unpack_from("<I", superblock, 24)[0]),
+                         logs["size"] * 512)
 
     def test_existing_output_symlink_and_device_sources_are_refused(self):
         self.output.parent.mkdir()

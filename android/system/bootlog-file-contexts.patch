@@ -1,5 +1,5 @@
-Label only our boot-log mountpoint and dedicated FAT32 partition device.
-The FAT mount uses a fixed context; never relabel Android's other metadata.
+Label only our boot-log mountpoint and dedicated ext4 partition device.
+The mount uses a fixed context; never relabel Android's other metadata.
 Drop this entry with the dedicated boot logger.
 
 --- a/system/etc/selinux/plat_file_contexts

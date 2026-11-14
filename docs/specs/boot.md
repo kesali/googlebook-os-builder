@@ -2,7 +2,8 @@
 
 **Status:** partial — enforcing QEMU checks and owner-confirmed firmware-free laptop
 boots pass; physical diagnostic-log retrieval remains.
-**Last verified:** 2026-11-14 — `make qemu-check` passes on the rebuilt image.
+**Last verified:** 2026-11-14 — `make test` passes (335 tests); ext4 guest mounting and
+physical capture have not been verified.
 
 ## Goal
 Assemble Google's boot images, initrd and boot configuration with the smallest set of
@@ -14,8 +15,9 @@ bootconfig. GRUB identifies device quirks by the known GPU IDs; init is configur
 select the AMD, Intel ANV/HasVK, or softpipe profile after DRM binding. Selection completes
 before the profile runs and Zygote starts; this ordering is verified for enforcing QEMU
 softpipe but not on physical GPUs. The bounded screenshot reaches Android's welcome screen.
-Diagnostic logging is opt-in and writes bounded logs to the dedicated FAT32 `GBOS-LOGS`
-partition; normal boots do not mount it or rotate saved logs. Berberis is the default
+Diagnostic logging is opt-in and the new image builder formats the dedicated `GBOS-LOGS`
+partition as ext4; guest mounting and physical capture have not been verified. Normal boots
+do not mount it or rotate saved logs. Berberis is the default
 native bridge, with a persistent GRUB choice for Houdini. The owner confirms firmware-free
 boots on both laptops. MSI diagnostic logs were reviewed from the previous image.
 
@@ -51,9 +53,10 @@ logs, SELinux denials and diagnostic files. Focused logging tests:
 - Bootconfig must be the final initrd payload and the command line must include `bootconfig`.
 - `modules.dep` entries without dependencies must be `name:` with no trailing space.
 - Never replay a journal on the physical USB. Recover only from an owner-approved copy.
-- The owner's log partition has FAT corruption; retrieval can save partial logs but does not
+- The previous FAT log partition had corruption; retrieval can save partial logs but does not
   repair the USB or prove individual files are complete.
+- Ext4 journals filesystem metadata; it cannot guarantee recent log data survives power loss.
 
 ## Actions
-- [ ] Review logs after a laptop retest — done when the new image's startup ordering
-  and relevant logs are checked on physical hardware.
+- [ ] Verify ext4 diagnostic logging on a fresh installation — done when a diagnostic boot
+  writes logs that `make laptop-logs` retrieves successfully.

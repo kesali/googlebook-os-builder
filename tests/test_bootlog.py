@@ -20,6 +20,8 @@ class BootlogTests(unittest.TestCase):
         self.assertIn(
             "+(allow init gbos_builder_bootlog_file "
             "(filesystem (mount unmount getattr relabelfrom relabelto)))", policy)
+        self.assertIn(
+            "+(allow init ext4 (filesystem (mount unmount getattr relabelfrom)))", policy)
         for line in policy.splitlines():
             if line.startswith("+(allow ") and "(filesystem " in line and "relabel" in line:
                 self.assertTrue(line.startswith("+(allow init "), line)
@@ -41,9 +43,10 @@ class BootlogTests(unittest.TestCase):
             "mkdir /metadata/gbos-builder-bootlog 0700 logd log",
             "restorecon /metadata/gbos-builder-bootlog",
             "wait /dev/block/by-name/gbos_logs 5",
-            "mount vfat /dev/block/by-name/gbos_logs /metadata/gbos-builder-bootlog "
-            "nosuid nodev noexec noatime sync "
-            "context=u:object_r:gbos_builder_bootlog_file:s0,uid=1036,gid=1007,fmask=0177,dmask=0077",
+            "mount ext4 /dev/block/by-name/gbos_logs /metadata/gbos-builder-bootlog "
+            "nosuid nodev noexec noatime sync context=u:object_r:gbos_builder_bootlog_file:s0",
+            "chown logd log /metadata/gbos-builder-bootlog",
+            "chmod 0700 /metadata/gbos-builder-bootlog",
             "start gbos_builder_bootlog_prepare",
         ])
         for trigger in actions:
@@ -66,7 +69,7 @@ class BootlogTests(unittest.TestCase):
         self.logs = self.work / "logs"
         self.logs.mkdir()
         self.mounts = self.work / "mounts"
-        self.mounts.write_text(f"/dev/fake {self.logs} vfat rw,nosuid,nodev,noexec 0 0\n")
+        self.mounts.write_text(f"/dev/fake {self.logs} ext4 rw,nosuid,nodev,noexec 0 0\n")
         self.boot_id = self.work / "boot-id"
         self.ready = self.work / "ready"
         self.bin = self.work / "bin"
@@ -110,9 +113,9 @@ class BootlogTests(unittest.TestCase):
         self.assertFalse((self.logs / "previous").exists())
 
     def test_missing_readonly_or_wrong_mount_never_prepares_or_signals_ready(self):
-        for entry in ("", f"/dev/fake {self.logs} ext4 rw 0 0\n",
-                      f"/dev/fake {self.logs} vfat ro 0 0\n",
-                      "/dev/fake /elsewhere vfat rw 0 0\n"):
+        for entry in ("", f"/dev/fake {self.logs} vfat rw 0 0\n",
+                      f"/dev/fake {self.logs} ext4 ro 0 0\n",
+                      "/dev/fake /elsewhere ext4 rw 0 0\n"):
             with self.subTest(entry=entry):
                 self.mounts.write_text(entry)
                 result = self.prepare()

@@ -116,12 +116,16 @@ def create(recovery, userdata_gib, output):
                         target, [(part["start"] * SECTOR, length)], length):
                     raise OSError(f"Partition read-back differs: {part['name']}")
             os.fsync(target.fileno())
-        for name, label, cluster_sectors in (
-                ("EFI-SYSTEM", "GBOS-BOOT", "8"), (LOG_PARTITION, "GBOS-LOGS", "1")):
-            part = next(part for part in parts if part["name"] == name)
-            subprocess.run(["mkfs.vfat", "-F", "32", "-s", cluster_sectors, "-n", label,
-                            "--offset", str(part["start"]), str(disk), str(part["size"] // 2)],
-                           check=True)
+        esp = next(part for part in parts if part["name"] == "EFI-SYSTEM")
+        subprocess.run(["mkfs.vfat", "-F", "32", "-s", "8", "-n", "GBOS-BOOT",
+                        "--offset", str(esp["start"]), str(disk), str(esp["size"] // 2)],
+                       check=True)
+        logs = next(part for part in parts if part["name"] == LOG_PARTITION)
+        subprocess.run([
+            "mke2fs", "-q", "-t", "ext4", "-F", "-b", "4096", "-m", "0",
+            "-L", "GBOS-LOGS", "-E", f"offset={logs['start'] * SECTOR}",
+            str(disk), str(logs["size"] * SECTOR // 4096),
+        ], check=True)
         verify_gpt(disk)
         with disk.open("rb") as stream:
             os.fsync(stream.fileno())

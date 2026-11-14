@@ -1,8 +1,9 @@
 # OS image and disk
 
-**Status:** partial — compact image build, metadata checks and direct QEMU pass;
-fresh physical installation and USB update remain unverified.
-**Last verified:** 2026-11-07 — image checks and enforcing QEMU pass.
+**Status:** partial — ext4 image-format tests and the full unit suite pass; updated image
+build, guest boot, fresh physical installation and USB update remain unverified.
+**Last verified:** 2026-11-14 — `make test` passes (335 tests), including fresh-image ext4
+format verification.
 
 ## Goal
 Build a private Android disk from Google's recovery image and update only declared OS
@@ -10,8 +11,8 @@ partitions without overwriting user data.
 
 ## Current state
 The build produces a compact GPT image with an A-only Android layout, a FAT32 boot
-partition, a diagnostic-log partition and userdata. Image updates preserve the disk
-layout and userdata. The owner-run fresh installer is destructive to its selected USB;
+partition, a journaled ext4 diagnostic-log partition and userdata. Image updates preserve the
+disk layout and userdata. The owner-run fresh installer is destructive to its selected USB;
 no physical disk is written by the build or validation agent.
 
 ## Decisions
@@ -26,7 +27,7 @@ no physical disk is written by the build or validation agent.
   metadata, GPT and liblp metadata.
 - Require explicit USB selection, identity/layout checks, default-no confirmation and
   read-back. The full installer is a separate, destructive owner action.
-- Keep SELinux enforcing. Diagnostic logs use the dedicated FAT32 partition and are
+- Keep SELinux enforcing. Diagnostic logs use the dedicated ext4 partition and are
   unencrypted.
 
 ## Files
@@ -46,6 +47,8 @@ for boot checks; never write physical media during validation.
 ## Pitfalls
 - `ANDROID_DATA_GIB` affects only new images; it does not shrink existing userdata.
 - Fresh installation is not a secure erase; old data may remain recoverable.
+- Ordinary updates preserve the existing diagnostic partition; recreating a USB is required
+  to replace its old FAT32 log filesystem with ext4.
 - Never weaken metadata, symlink, partition-fit, recovery-hash or USB identity checks.
 - Generate patches against Google's pristine files and apply them without fuzz.
 - An interrupted image update is repaired by rerunning `make android-image`; do not

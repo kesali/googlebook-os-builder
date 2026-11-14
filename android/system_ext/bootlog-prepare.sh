@@ -9,7 +9,7 @@ logs=$1
 # init continues after a failed mount. Never write into the underlying metadata directory.
 mounted=0
 while read -r device mountpoint filesystem options rest; do
-    if [ "$mountpoint" = "$logs" ] && [ "$filesystem" = vfat ]; then
+    if [ "$mountpoint" = "$logs" ] && [ "$filesystem" = ext4 ]; then
         case ",$options," in
             *,rw,*) mounted=1 ;;
         esac
