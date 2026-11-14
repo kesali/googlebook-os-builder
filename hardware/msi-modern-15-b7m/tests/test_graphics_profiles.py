@@ -1,4 +1,4 @@
-"""Keep AMD on GL HWUI without an unsupported Vulkan GRUB choice."""
+"""Keep shared AMD graphics separate from the MSI panel and audio quirks."""
 
 from pathlib import Path
 import unittest
@@ -13,8 +13,9 @@ from hardware_recipes import expand
 class GraphicsProfileTests(unittest.TestCase):
     def test_gl_hwui_is_default_for_amd_without_a_vulkan_grub_choice(self):
         menu = (REPO / "boot/android-menu.cfg").read_text()
-        profile = (REPO / "hardware/msi-modern-15-b7m/system_ext/graphics-amd.rc").read_text()
+        profile = (REPO / "hardware/drivers/amdgpu/system_ext/graphics-amd.rc").read_text()
         install_list = (REPO / "hardware/msi-modern-15-b7m/system_ext.install").read_text()
+        amd_install = (REPO / "hardware/drivers/amdgpu/system_ext.install").read_text()
 
         self.assertIn("setprop ro.hwui.use_vulkan false", profile)
         self.assertIn("setprop debug.hwui.renderer skiagl\n", profile)
@@ -23,7 +24,10 @@ class GraphicsProfileTests(unittest.TestCase):
         self.assertNotIn("Vulkan HWUI", menu)
         self.assertNotIn("graphics-amd-vulkan", menu)
         self.assertNotIn("amd-vulkan", menu)
-        self.assertNotIn("graphics-amd-vulkan", install_list)
+        self.assertIn("sys.gbos_builder.graphics=amd", profile)
+        self.assertNotIn("qemu.sf.lcd_density", profile)
+        self.assertNotIn("graphics-amd.rc", install_list)
+        self.assertIn("graphics-amd.rc", amd_install)
         self.assertFalse((REPO / "hardware/msi-modern-15-b7m/system_ext/"
                           "graphics-amd-vulkan.rc").exists())
         self.assertIn("set default=android-berberis", menu)

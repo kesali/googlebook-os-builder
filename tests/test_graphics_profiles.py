@@ -23,7 +23,8 @@ class GraphicsProfileTests(unittest.TestCase):
         profiles = {
             "graphics-amd.rc": ("false", "skiagl"),
             "graphics-softpipe.rc": ("false", "skiagl"),
-            "graphics-intel.rc": ("false", "skiagl"),
+            "graphics-intel-anv.rc": ("false", "skiagl"),
+            "graphics-intel-hasvk.rc": ("false", "skiagl"),
         }
         install_list = expand(SYSTEM_EXT / "install.list")
 
@@ -39,7 +40,8 @@ class GraphicsProfileTests(unittest.TestCase):
         profiles = {
             "graphics-amd.rc": ("true", "skiavkthreaded"),
             "graphics-softpipe.rc": ("false", "skiaglthreaded"),
-            "graphics-intel.rc": ("false", "skiaglthreaded"),
+            "graphics-intel-anv.rc": ("false", "skiaglthreaded"),
+            "graphics-intel-hasvk.rc": ("false", "skiaglthreaded"),
         }
 
         for name, (vulkan, backend) in profiles.items():
@@ -47,6 +49,17 @@ class GraphicsProfileTests(unittest.TestCase):
                 profile = profile_path(name).read_text()
                 self.assertIn(f"setprop debug.renderengine.vulkan {vulkan}", profile)
                 self.assertIn(f"setprop debug.renderengine.backend {backend}", profile)
+
+    def test_profiles_are_selected_by_runtime_graphics_property(self):
+        for name, profile in (
+            ("graphics-amd.rc", "amd"),
+            ("graphics-softpipe.rc", "softpipe"),
+            ("graphics-intel-anv.rc", "intel-anv"),
+            ("graphics-intel-hasvk.rc", "intel-hasvk"),
+        ):
+            with self.subTest(profile=name):
+                self.assertIn(f"on property:sys.gbos_builder.graphics={profile}",
+                              profile_path(name).read_text())
 
     def test_vendor_build_props_leave_hwui_renderer_to_the_selected_profile(self):
         patch = (REPO / "android/vendor/build-prop.patch").read_text()

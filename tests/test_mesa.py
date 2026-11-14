@@ -16,7 +16,8 @@ from hardware_recipes import expand
 class MesaPublicationTests(unittest.TestCase):
     def test_build_keeps_zink_and_radv_without_camera_va_driver(self):
         script = (ROOT / "scripts/mesa.sh").read_text()
-        self.assertIn("-Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd,intel_hasvk", script)
+        self.assertIn("-Dgallium-drivers=softpipe,zink,iris", script)
+        self.assertIn("-Dvulkan-drivers=amd,intel_hasvk", script)
         self.assertIn("-Dgallium-va=disabled", script)
         self.assertNotIn("-Dgallium-drivers=radeonsi", script)
         self.assertNotIn("libva", script)
@@ -74,7 +75,8 @@ fi
             cmake.chmod(0o755)
             legacy_outputs = root / "out/install/lib64"
             legacy_outputs.mkdir(parents=True)
-            for name in ("radeonsi_drv_video.so", "libdrm_amdgpu.so"):
+            for name in ("radeonsi_drv_video.so", "libdrm_amdgpu.so",
+                         "libvulkan_intel.so"):
                 (legacy_outputs / name).write_bytes(b"retired camera output")
 
             trace = root / "meson.log"
@@ -88,7 +90,8 @@ fi
             published = list((root / "out/install").rglob("*.so*")) + [root / "out/manifest"]
             self.assertEqual(len(published), 9)
             self.assertFalse(any((legacy_outputs / name).exists()
-                                 for name in ("radeonsi_drv_video.so", "libdrm_amdgpu.so")))
+                                 for name in ("radeonsi_drv_video.so", "libdrm_amdgpu.so",
+                                              "libvulkan_intel.so")))
             self.assertEqual(trace.read_text().count("setup\n"), 2)
 
             for path in published:

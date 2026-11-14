@@ -10,8 +10,8 @@ on what works now, constraints that still apply, and the next agreed action.
 | [Boot chain](boot.md) | partial; enforcing QEMU and firmware-free laptop boot verified | Owner captures logs from a current laptop boot |
 | [OS image and disk](os-image.md) | partial; image build and direct QEMU pass | Owner tests fresh installation and USB update |
 | [Security services](security.md) | working with software keys; hardware-backed keys unavailable | Owner verifies PIN setup and persistence |
-| [Graphics](graphics.md) | partial; QEMU softpipe and MSI graphics pass by report | Diagnose camera failure; confirm renderer |
-| [QEMU VM](qemu.md) | parked; latest direct boot and softpipe pass | Finish setup/network checks if QEMU work resumes |
+| [Graphics](graphics.md) | partial; QEMU selector sets softpipe under enforcing SELinux; physical GPU behavior unverified | Owner verifies Intel HAL loading and native display |
+| [QEMU VM](qemu.md) | parked; bounded boot reaches Android welcome screen with softpipe | Finish setup/network checks if QEMU work resumes |
 | [Laptop hardware](laptop-hardware.md) | partial; graphics work, camera does not on Mesa 26.3.0 | Retrieve current diagnostic logs and investigate camera |
 
 **Status words:** `working` means verified as described; `partial` means some

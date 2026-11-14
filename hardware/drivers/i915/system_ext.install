@@ -1,1 +1,2 @@
-etc/gbos-builder/graphics-intel.rc 0644 0:0 system_file ./system_ext/graphics-intel.rc
+etc/gbos-builder/graphics-intel-anv.rc 0644 0:0 system_file ./system_ext/graphics-intel-anv.rc
+etc/gbos-builder/graphics-intel-hasvk.rc 0644 0:0 system_file ./system_ext/graphics-intel-hasvk.rc

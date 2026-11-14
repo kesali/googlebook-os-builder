@@ -59,8 +59,8 @@ BINDGEN_REV := 4155cb466dcd9b53c6f873829c53aa6f905449dd
 DWARVES_URL := https://android.googlesource.com/platform/external/dwarves
 DWARVES_REV := d884153887ce06fec729061016f7a0b412f08fc6
 
-# QEMU's softpipe fallback and the laptop's RADV/Zink renderer (ACO, no LLVM). Built from
-# source: Mesa publishes no Android binaries; selected hardware recipes carry our source patches.
+# QEMU's softpipe fallback plus laptop RADV/Zink, ANV and Broadwell HasVK. Built from source:
+# Mesa publishes no Android binaries; selected hardware recipes carry our source patches.
 MESA_VERSION := 26.3.0
 MESA_URL := https://archive.mesa3d.org/mesa-$(MESA_VERSION).tar.xz
 MESA_SHA := 91d729aa68bb89e4ec857841300bbe922bcb3e52b1f97566ca83930d3b28343a

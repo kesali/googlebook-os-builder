@@ -1,0 +1,3 @@
+# MSI's 15.6" 1920x1080 panel at 160 dpi; keep this quirk separate from the AMD profile.
+on early-init && property:ro.boot.gbos_builder.device_profile=msi
+    setprop qemu.sf.lcd_density 160

@@ -1,11 +1,11 @@
-Dedicated enforcing logging domains for persistent logcat and a read-only hardware snapshot.
-Keep permissions scoped to these collectors; neither needs access to raw input events.
+Dedicated enforcing domains for boot logs, read-only hardware diagnostics and graphics selection.
+Keep permissions scoped to these services; none needs access to raw input events.
 The FAT context mount needs init relabelfrom/relabelto on the dedicated filesystem label.
-Drop with the persistent diagnostic logger.
+Drop with the persistent diagnostic logger and graphics selector.
 
 --- a/system/etc/selinux/plat_sepolicy.cil
 +++ b/system/etc/selinux/plat_sepolicy.cil
-@@ -87210,3 +87210,88 @@
+@@ -87210,3 +87210,113 @@
  (typeattributeset gpu_sphal_domain (hal_graphics_allocator))
  (typeattributeset gpu_sphal_domain (hal_graphics_composer))
  (typeattributeset gpu_sphal_domain (hal_neuralnetworks))
@@ -93,4 +93,29 @@ Drop with the persistent diagnostic logger.
 +(allow gbos_builder_hardware_diag sysfs_leds (dir (getattr open read search)))
 +(allow gbos_builder_hardware_diag sysfs_leds (lnk_file (getattr read)))
 +(allow gbos_builder_hardware_diag sysfs_leds (file (getattr open read)))
++(type gbos_builder_graphics_prop)
++(roletype object_r gbos_builder_graphics_prop)
++(typeattributeset property_type (gbos_builder_graphics_prop))
++(typeattributeset system_property_type (gbos_builder_graphics_prop))
++(typeattributeset system_internal_property_type (gbos_builder_graphics_prop))
 +(allow gbos_builder_hardware_diag device (dir (search)))
++
++; Read-only sysfs selector with access to one runtime property.
++(type gbos_builder_graphics_select)
++(roletype object_r gbos_builder_graphics_select)
++(typeattributeset domain (gbos_builder_graphics_select))
++(typeattributeset coredomain (gbos_builder_graphics_select))
++(allow init gbos_builder_graphics_select (process (transition siginh rlimitinh)))
++(dontaudit init gbos_builder_graphics_select (process (noatsecure)))
++(allow gbos_builder_graphics_select shell_exec (file (read getattr map execute open entrypoint execute_no_trans)))
++(allow gbos_builder_graphics_select toolbox_exec (file (read getattr map execute open execute_no_trans)))
++(allow gbos_builder_graphics_select self (process (fork)))
++(allow gbos_builder_graphics_select sysfs (dir (getattr open read search)))
++(allow gbos_builder_graphics_select sysfs (lnk_file (getattr read)))
++(allow gbos_builder_graphics_select sysfs (file (getattr open read)))
++(allow gbos_builder_graphics_select sysfs_gpu (dir (getattr open read search)))
++(allow gbos_builder_graphics_select sysfs_gpu (lnk_file (getattr read)))
++(allow gbos_builder_graphics_select sysfs_gpu (file (getattr open read)))
++(allow gbos_builder_graphics_select property_socket (sock_file (write)))
++(allow gbos_builder_graphics_select init (unix_stream_socket (connectto)))
++(allow gbos_builder_graphics_select gbos_builder_graphics_prop (property_service (set)))

@@ -1,5 +1,11 @@
 # Development image: software keys have no hardware-backed security.
-import /system_ext/etc/gbos-builder/graphics-${ro.boot.gbos_builder.graphics:-softpipe}.rc
+import /system_ext/etc/gbos-builder/graphics-softpipe.rc
+import /system_ext/etc/gbos-builder/graphics-amd.rc
+import /system_ext/etc/gbos-builder/graphics-intel-anv.rc
+import /system_ext/etc/gbos-builder/graphics-intel-hasvk.rc
+
+on post-fs-data
+    start gbos_builder_graphics_select
 
 on early-init
     # ro.* properties cannot change once set; the system patch leaves this one to init.
@@ -8,6 +14,15 @@ on early-init
     setprop remote_provisioning.tee.rkp_only 0
     setprop remote_provisioning.strongbox.rkp_only 0
     setprop remote_provisioning.hostname ""
+
+service gbos_builder_graphics_select /system/bin/sh /system_ext/etc/gbos-builder/graphics-select.sh /sys
+    user root
+    group root
+    seclabel u:r:gbos_builder_graphics_select:s0
+    disabled
+    oneshot
+    stdio_to_kmsg
+
 # Neither the VM nor the MSI has Google's security chip.
 service android.system.desktop.security.gscd /system/bin/gscd
     override

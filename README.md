@@ -8,8 +8,8 @@ No executable byte edits.
 Developed on the **MSI Modern 15 B7M** and **Lenovo E50-80**, with QEMU as the regression
 baseline. The aim is to make device bring-up understandable: inspect the hardware, add or
 fix only what is missing, test it on the device, and share useful findings upstream.
-Other laptops are not yet verified; automatic detection and easier device contributions
-are future work, not features promised today.
+Other laptops are not yet verified. The image is configured with an experimental graphics
+selector for bound DRM drivers; it is not a compatibility guarantee.
 
 **Personal project, not a supported distribution.** Back up your data and use at your own risk.
 Software KeyMint/Gatekeeper are not hardware-protected; this is not a certified or

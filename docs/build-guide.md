@@ -208,11 +208,16 @@ choices reach Android and persist in `grubenv`; physical menu selection has not 
 The boot record names the selected translator, and a separate `crash.log*` retains fatal records
 independently of noisy desktop logs.
 
-Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on the MSI's
-`1002:15e7` GPU and Intel graphics on the Lenovo's Broadwell `8086:1616`.
-The Intel profile uses Iris GLES and hasvk Vulkan; both laptops use panel density 160, while
-QEMU keeps 240 and softpipe. The internal NVMe remains hidden on laptops. Signed amdgpu
-modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm are included.
+Disable Secure Boot and choose the USB's UEFI entry. GRUB identifies the known MSI and Lenovo
+device profiles by GPU ID. Init is configured to select AMD RADV/Zink, Intel ANV for i915/Xe,
+or HasVK for the known Broadwell `8086:1616`; unknown driver families use softpipe. This
+selector is not yet built or boot-verified. Other i915 generations are experimental: ANV requires
+Gfx9 or newer. The device profiles separately keep the two laptops' panel and audio quirks;
+both panels use density 160, while QEMU keeps 240 and softpipe. The internal NVMe remains
+hidden on laptops. Signed amdgpu modules, official runtime firmware, RADV/Zink, HasVK, ANGLE
+and AMD-capable minigbm are included. The pinned Google vendor image already provides ANV;
+the overlay keeps that HAL unchanged and builds HasVK for Broadwell. The image rebuild
+passes, but the selector has not been boot-verified.
 The latest MSI report says graphics work but the camera is not detected; other MSI peripherals
 and Lenovo hardware have not been retested on this image. See
 [laptop hardware](../docs/specs/laptop-hardware.md) for current evidence and remaining checks.
@@ -552,7 +557,8 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   removed; software KeyMint/Gatekeeper and their missing library dependencies come **unmodified**
   from the SHA-256-pinned Android 17 emulator. Software keys are **not hardware protected**.
   Remote attestation provisioning is disabled; this is not a certified or Play-Integrity device.
-- Mesa EGL/GLES, softpipe, Zink and RADV are built from source, with libdrm/Expat linked statically.
+- Mesa EGL/GLES, softpipe, Zink, RADV and HasVK are built from source, with libdrm/Expat
+  linked statically. ANV comes unchanged from Google's pinned vendor image.
   Google's DRM composer, mapper and allocator service remain; minigbm's libraries are rebuilt
   with AMD support and an ABI check against those clients. Virtio-gpu supplies QEMU scanout.
   [mesa-drm-master.patch](../hardware/drivers/drm-handoff/mesa-drm-master.patch) fixes Mesa's Android software
@@ -560,7 +566,8 @@ SELinux label. To change something, edit a list or a patch; regenerate a patch w
   composer from displaying anything. This is a small **source patch**, not a binary edit or
   added service privilege. [android/vendor/build-prop.patch](../android/vendor/build-prop.patch)
   contains common graphics settings; selected [hardware recipes](../hardware/) install the
-  AMD, Intel and softpipe graphics profiles.
+  runtime-selected AMD, Intel and softpipe graphics profiles. Device-specific panel/audio
+  behavior uses a separate boot property.
 - Google builds bionic (libc, linker and the runtime APEX) and libz for Intel Panther Lake. On
   older CPUs their GFNI/AVX-VNNI instructions trap into the kernel's emulator thousands of times
   a second. The same files from the pinned Android 17 emulator image, a generic x86-64 build,

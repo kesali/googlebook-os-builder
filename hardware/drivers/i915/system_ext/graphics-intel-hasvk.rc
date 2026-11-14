@@ -1,0 +1,9 @@
+# Broadwell uses Iris GLES and HasVK Vulkan; ANV requires Gen9 or newer.
+on property:sys.gbos_builder.graphics=intel-hasvk
+    setprop ro.hardware.egl mesa
+    setprop ro.hardware.vulkan intel_hasvk
+    setprop ro.hwui.use_vulkan false
+    setprop debug.hwui.renderer skiagl
+    setprop debug.renderengine.vulkan false
+    setprop debug.renderengine.backend skiaglthreaded
+    export GALLIUM_DRIVER iris

@@ -50,7 +50,8 @@ Google recovery image (read-only, RECOVERY_IMAGE in config.mk)
   └─ make unpack ─────────────► out/google/       partitions, ramdisks, inventory
 GKI source + Google toolchain ► kernel bzImage + our signed modules     (make gki)
 linux-firmware (pinned)       ► only the listed AMD/MT7922 files
-Mesa + libdrm + NDK           ► softpipe / Zink / RADV for Android      (make mesa)
+Mesa + libdrm + NDK           ► softpipe / Zink / RADV / HasVK (make mesa)
+Google vendor image           ► ANV Vulkan HAL (kept unchanged)
 LineageOS minigbm             ► AMD gralloc                             (make minigbm)
 emulator system image         ► software KeyMint/Gatekeeper, generic bionic/libz
                  │
@@ -129,12 +130,12 @@ plus [android/cmdline.txt](../android/cmdline.txt) and [android/bootconfig.txt](
 |---|---|
 | Generic bionic/libz/runtime from the pinned Android 17 emulator image | Same API, plain x86-64. QEMU traps fell from 15.3 M to 44,644 (99.7% fewer). |
 | Software KeyMint and Gatekeeper from the emulator image, bytes unchanged | Replace Trusty/GSC; lock screen and file encryption work. |
-| Mesa (softpipe, Zink, RADV), minigbm, pinned firmware | Graphics on AMD and in QEMU; Wi-Fi/BT firmware. |
+| Mesa (softpipe, Zink, RADV, HasVK), Google ANV HAL, minigbm, firmware | AMD/QEMU graphics; Intel profile selection remains unverified. |
 | Our signed kernel modules in vendor_dlkm (amdgpu, mt7921e/mt76, …) | Drivers Google does not ship. |
 | `crossystem` stand-in ([crossystem-qemu.c](../android/crossystem-qemu.c)) | The boot HAL calls it; it accepts only the success values and rejects everything else. |
 | [no-face.xml](../android/vendor/no-face.xml) | Declares that there is no face feature. |
 | `get_variant_audio` and [audio-msi.rc](../hardware/msi-modern-15-b7m/vendor/audio-msi.rc) | Rename the ALC256 card to the ID Google's audio HAL expects, then restart the HAL. |
-| [gbos-builder.rc](../android/system_ext/gbos-builder.rc), `graphics-*.rc` | Disable gscd/udsattestation; choose the graphics profile from the GRUB argument. |
+| [gbos-builder.rc](../android/system_ext/gbos-builder.rc), `graphics-*.rc` | Disable gscd/udsattestation; choose graphics from the bound DRM driver and keep device quirks separate. |
 | [bootlog.rc](../android/system_ext/bootlog.rc) and helpers | Save kernel and Android logs plus a read-only hardware snapshot to `/metadata/gbos-builder-bootlog`. |
 
 ### Patched (unified diffs of Google's text files)
@@ -185,10 +186,15 @@ Intel instructions that Zen 3 lacks.
 
 ## 6. Graphics
 
-GRUB detects the Barcelo GPU (PCI `1002:15e7`) and passes `androidboot.gbos_builder.graphics=amd`.
-Without that GPU it selects softpipe.
-The table describes the configured profiles; Chrome logs confirm ANGLE/RADV, but the
-SurfaceFlinger and HWUI renderers have not been independently measured on the laptop.
+GRUB tags the known MSI (`1002:15e7`) and Lenovo (`8086:1616`) device profiles separately.
+The pinned Google vendor image already includes the ANV HAL; the rebuild keeps it unchanged
+and installs Mesa HasVK under a separate name for Broadwell. The configured selector maps
+amdgpu to RADV/Zink, i915/Xe to ANV except the known Broadwell HasVK profile, and other drivers
+to softpipe. The image rebuild passes; the selector is not boot-verified.
+The table summarizes the previously observed AMD/QEMU paths. Intel profile selection and
+display remain untested. Chrome logs confirm ANGLE/RADV, but the SurfaceFlinger and HWUI
+renderers have not been independently measured on the laptop. The installed HasVK file's
+SONAME differs from its Android HAL filename; loader acceptance remains untested.
 
 | | AMD laptop | QEMU |
 |---|---|---|

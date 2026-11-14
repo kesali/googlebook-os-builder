@@ -2,7 +2,7 @@
 
 **Status:** partial — enforcing QEMU checks and owner-confirmed firmware-free laptop
 boots pass; physical diagnostic-log retrieval remains.
-**Last verified:** 2026-11-05 — direct normal/diagnostic QEMU checks pass.
+**Last verified:** 2026-11-14 — `make qemu-check` passes on the rebuilt image.
 
 ## Goal
 Assemble Google's boot images, initrd and boot configuration with the smallest set of
@@ -10,7 +10,10 @@ source-based changes needed for QEMU and the laptops.
 
 ## Current state
 The initrd combines Google's ramdisks with the declared first-stage modules and
-bootconfig. GRUB selects the MSI AMD profile by PCI ID and otherwise uses softpipe.
+bootconfig. GRUB identifies device quirks by the known GPU IDs; init is configured to
+select the AMD, Intel ANV/HasVK, or softpipe profile after DRM binding. This selector
+sets the softpipe profile successfully in enforcing QEMU; physical GPU selection remains
+unverified. The bounded screenshot reaches Android's welcome screen.
 Diagnostic logging is opt-in and writes bounded logs to the dedicated FAT32 `GBOS-LOGS`
 partition; normal boots do not mount it or rotate saved logs. Berberis is the default
 native bridge, with a persistent GRUB choice for Houdini. The owner confirms firmware-free

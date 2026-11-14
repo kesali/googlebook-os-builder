@@ -1,7 +1,7 @@
-# Broadwell: upstream Iris GLES renders; hasvk Vulkan only for apps such as the camera HAL.
-on early-init
+# Experimental Intel profile: Iris GLES and ANV Vulkan; ANV requires Gen9 or newer.
+on property:sys.gbos_builder.graphics=intel-anv
     setprop ro.hardware.egl mesa
-    setprop ro.hardware.vulkan intel_hasvk
+    setprop ro.hardware.vulkan intel
     setprop ro.hwui.use_vulkan false
     setprop debug.hwui.renderer skiagl
     setprop debug.renderengine.vulkan false

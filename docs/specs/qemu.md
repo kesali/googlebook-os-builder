@@ -1,8 +1,8 @@
 # QEMU VM
 
-**Status:** parked — direct graphical boot and softpipe pass; SetupWizard and guest
-networking are not complete.
-**Last verified:** 2026-11-07 — `make qemu-check` passes on the pinned recovery image.
+**Status:** parked — bounded graphical boot reaches the Android welcome screen with
+softpipe; SetupWizard and guest networking are not complete.
+**Last verified:** 2026-11-14 — `make qemu-check` passes on the rebuilt image.
 
 ## Goal
 Provide a safe, repeatable graphical development VM and a bounded boot regression check.
@@ -10,9 +10,9 @@ Provide a safe, repeatable graphical development VM and a bounded boot regressio
 ## Current state
 QEMU runs the private NVMe disk with KVM, VNC on localhost, virtio input, serial shell
 and QMP. The bounded check verifies boot completion, stable services, enforcing SELinux
-and softpipe. The screenshot must be inspected; setup has not been completed. Input and
-USB-UEFI were not checked on the latest image. Network access beyond DHCP, Google sign-in
-and apps remain unverified.
+and softpipe. The screenshot shows the Android welcome screen; setup has not been completed.
+Input and USB-UEFI were not checked on the latest image. Network access beyond DHCP,
+Google sign-in and apps remain unverified.
 
 ## Decisions
 - Run QEMU inside the builder; publish VNC only on `127.0.0.1`.

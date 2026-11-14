@@ -1,5 +1,5 @@
 # Google's audio HAL uses its board mapping's card ID, not SoundCardName alone.
-on boot && property:ro.boot.gbos_builder.graphics=amd
+on boot && property:ro.boot.gbos_builder.device_profile=msi
     start vendor.gbos_builder.audio
 
 service vendor.gbos_builder.audio /vendor/bin/get_variant_audio /sys ALC256

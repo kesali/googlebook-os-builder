@@ -401,6 +401,11 @@ class ChangeDataTests(unittest.TestCase):
             self.assertNotIn("gbos_builder_crypto_selector", text)
             self.assertNotIn("gbos_builder_crypto_prop", text)
             self.assertIn("(type gbos_builder_bootlog)", text)
+            self.assertIn(
+                "(allow gbos_builder_graphics_select gbos_builder_graphics_prop "
+                "(property_service (set)))",
+                text,
+            )
             self.assertNotIn("gbos_builder_touchpad_diag", text)
 
             property_contexts_patch = (

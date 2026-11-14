@@ -81,7 +81,8 @@ if $configure; then
     setup "$build/mesa" "$mesa" --cross-file "$out/cross.ini" \
         --prefix=/ --libdir=lib64 --buildtype=release -Db_ndebug=true --wrap-mode=nofallback \
         -Dplatforms=android -Dplatform-sdk-version=35 -Dandroid-stub=true \
-        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe,zink,iris -Dvulkan-drivers=amd,intel_hasvk \
+        -Dandroid-libbacktrace=disabled -Dgallium-drivers=softpipe,zink,iris \
+        -Dvulkan-drivers=amd,intel_hasvk \
         -Dgallium-va=disabled -Dandroid-strict=false \
         -Dllvm=disabled -Damd-use-llvm=false -Dgbm=enabled -Dgbm-backends-path=/vendor/lib64/gbm \
         -Dglx=disabled -Degl=enabled \
@@ -94,7 +95,8 @@ meson compile -C "$build/mesa" -j "${JOBS:-4}"
 DESTDIR="$build/install" meson install -C "$build/mesa" --no-rebuild --only-changed --strip
 printf '%s\n' "$settings" > "$build/settings"
 for file in libEGL_mesa.so libGLESv1_CM_mesa.so libGLESv2_mesa.so libgallium_dri.so \
-        libvulkan_radeon.so libvulkan_intel_hasvk.so libgbm_mesa.so gbm/dri_gbm.so; do
+        libvulkan_radeon.so libvulkan_intel_hasvk.so \
+        libgbm_mesa.so gbm/dri_gbm.so; do
     test -s "$build/install/lib64/$file"
     if ! cmp -s "$build/install/lib64/$file" "$out/install/lib64/$file"; then
         mkdir -p "$(dirname "$out/install/lib64/$file")"
@@ -102,8 +104,9 @@ for file in libEGL_mesa.so libGLESv1_CM_mesa.so libGLESv2_mesa.so libgallium_dri
         mv "$out/install/lib64/$file.partial" "$out/install/lib64/$file"
     fi
 done
-# Remove only the two retired outputs from the previous camera-only VA build.
-rm -f -- "$out/install/lib64/radeonsi_drv_video.so" "$out/install/lib64/libdrm_amdgpu.so"
+# Remove outputs retired from the camera-only VA and custom ANV builds.
+rm -f -- "$out/install/lib64/radeonsi_drv_video.so" \
+    "$out/install/lib64/libdrm_amdgpu.so" "$out/install/lib64/libvulkan_intel.so"
 (cd "$out/install" && find . -type f -name '*.so*' -print0 | sort -z | xargs -0 sha256sum) > "$out/manifest.partial"
 if ! cmp -s "$out/manifest.partial" "$out/manifest"; then
     mv "$out/manifest.partial" "$out/manifest"

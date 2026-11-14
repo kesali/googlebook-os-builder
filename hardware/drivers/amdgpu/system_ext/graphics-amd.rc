@@ -1,5 +1,5 @@
 # Google's ANGLE GLES and Vulkan RenderEngine use RADV; minigbm uses Mesa GBM/Zink.
-on early-init
+on property:sys.gbos_builder.graphics=amd
     setprop ro.hardware.egl angle
     setprop ro.hardware.vulkan radeon
     setprop ro.hwui.use_vulkan false
@@ -7,6 +7,3 @@ on early-init
     setprop debug.renderengine.vulkan true
     setprop debug.renderengine.backend skiavkthreaded
     export MESA_LOADER_DRIVER_OVERRIDE zink
-    # The MSI's 15.6" 1920x1080 panel at 160 dpi (owner's choice; Churro uses 180). Google's
-    # ro.sf.lcd_density (240) stays for QEMU; SurfaceFlinger and zygote read this property first.
-    setprop qemu.sf.lcd_density 160

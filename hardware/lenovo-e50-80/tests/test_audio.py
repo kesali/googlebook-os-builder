@@ -42,7 +42,7 @@ class LenovoAudioRouteTests(unittest.TestCase):
 
     def test_config_is_bind_mounted_before_the_hal_restarts(self):
         text = (REPO / "hardware/lenovo-e50-80/vendor/audio-lenovo.rc").read_text()
-        self.assertIn("on boot && property:ro.boot.gbos_builder.graphics=intel", text)
+        self.assertIn("on boot && property:ro.boot.gbos_builder.device_profile=lenovo", text)
         self.assertIn("/vendor/bin/get_variant_audio /sys ALC233", text)
         self.assertIn("on property:vendor.audio.gbos_builder.ready=ALC233\n"
                       f"    mount none /vendor/{LENOVO} /vendor/{BOARD} bind\n"

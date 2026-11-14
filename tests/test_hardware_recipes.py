@@ -114,8 +114,10 @@ class HardwareRecipeTests(unittest.TestCase):
 
     def test_recipe_local_assets_are_rebased_without_changing_install_metadata(self):
         text = hardware_recipes.expand(REPO / "android/system_ext/install.list")
-        self.assertIn("etc/gbos-builder/graphics-intel.rc 0644 0:0 system_file "
-                      "hardware/drivers/i915/system_ext/graphics-intel.rc\n", text)
+        self.assertIn("etc/gbos-builder/graphics-intel-anv.rc 0644 0:0 system_file "
+                      "hardware/drivers/i915/system_ext/graphics-intel-anv.rc\n", text)
+        self.assertIn("etc/gbos-builder/graphics-amd.rc 0644 0:0 system_file "
+                      "hardware/drivers/amdgpu/system_ext/graphics-amd.rc\n", text)
         self.assertIn("etc/init/zz-gbos-builder.rc", text)
 
     def test_runtime_firmware_includes_both_gpu_and_wireless_recipes(self):
