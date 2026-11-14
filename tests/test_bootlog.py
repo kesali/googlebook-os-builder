@@ -20,8 +20,7 @@ class BootlogTests(unittest.TestCase):
         self.assertIn(
             "+(allow init gbos_builder_bootlog_file "
             "(filesystem (mount unmount getattr relabelfrom relabelto)))", policy)
-        self.assertIn(
-            "+(allow init ext4 (filesystem (mount unmount getattr relabelfrom)))", policy)
+        self.assertNotIn("+(allow init ext4 (filesystem ", policy)
         for line in policy.splitlines():
             if line.startswith("+(allow ") and "(filesystem " in line and "relabel" in line:
                 self.assertTrue(line.startswith("+(allow init "), line)

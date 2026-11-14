@@ -26,7 +26,7 @@ local; report only relevant filtered excerpts.
    and stores normal-user-owned files under `out/laptop-logs/latest/`.
    New images use 256 MiB ext4 `GBOS-LOGS`, written directly only during diagnostic boots.
    The filesystem is not browsable by default on Windows/macOS; use the supported retrieval
-   command rather than mounting it. The command also supports legacy FAT32 log partitions.
+   command rather than mounting it. The command rejects legacy FAT32 log partitions.
    Verify the boot identity/time after retrieval.
    Older images without a dedicated log partition use metadata: read only
    `gbos-builder-bootlog/current/` and `previous/` with debugfs or an owner-approved `ro,noload`

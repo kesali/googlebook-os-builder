@@ -18,7 +18,6 @@ from update_usb import check_unused, choose, disks, run
 
 LOG_NAME = re.compile(r"(?:boot-id|boot\.txt|hardware\.txt|touchpad\.log|"
                       r"(?:kernel|android|android-boot|crash)\.log(?:\.[0-9]+)?)\Z")
-reported_fat_warnings = set()
 
 
 class LogReadError(ValueError):
@@ -73,7 +72,7 @@ def log_device(selected):
             raise ValueError("Selected USB must have exactly one log partition")
         log_partition = next(child for child in children if child["name"] == matches[0])
         filesystem = log_partition.get("fstype")
-        if filesystem not in ("ext4", "vfat"):
+        if filesystem != "ext4":
             raise ValueError(f"Unsupported diagnostic log filesystem: {filesystem}")
         root = ""
     else:
@@ -97,65 +96,10 @@ def log_device(selected):
     return device, filesystem, root
 
 
-def fat_diagnostic(error, status):
-    error = error.strip()
-    if not status and re.fullmatch(
-            r"Hidden \([0-9]+\) does not match sectors \([0-9]+\)", error):
-        # mtools reports legacy block geometry even when the partition read succeeds.
-        if error not in reported_fat_warnings:
-            print(f"mtools warning: {error}", file=sys.stderr)
-            reported_fat_warnings.add(error)
-        return ""
-    return error
-
-
-def fat_directory(device, path):
-    result = subprocess.run(
-        ["sudo", "--", "mdir", "-b", "-i", str(device), "::" + path.rstrip("/") + "/"],
-        capture_output=True, text=True, env={**os.environ, "LC_ALL": "C"},
-    )
-    error = fat_diagnostic(result.stderr, result.returncode)
-    if result.returncode or error:
-        raise LogReadError(f"Cannot list FAT32 logs: "
-                           f"{error or result.stdout or f'exit {result.returncode}'}")
-    entries = {}
-    prefix = "::" + path.rstrip("/") + "/"
-    for line in result.stdout.splitlines():
-        if not line.startswith(prefix):
-            raise ValueError(f"Unexpected FAT32 directory entry: {line}")
-        name = line[len(prefix):]
-        is_directory = name.endswith("/")
-        name = name.rstrip("/")
-        if not name or "/" in name or name in (".", "..") or name in entries:
-            raise ValueError(f"Invalid or duplicate FAT32 log entry: {line}")
-        mode = stat.S_IFDIR if is_directory else stat.S_IFREG
-        entries[name] = (mode, -1)  # mdir -b has no sizes; each read is bounded independently.
-    return entries
-
-
-def fat_read(device, path):
-    command = ["sudo", "--", "mtype", "-i", str(device), "::" + path]
-    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
-        data = process.stdout.read((10 << 20) + 1)
-        if len(data) > 10 << 20:
-            process.terminate()
-            process.communicate()
-            raise ValueError(f"FAT32 log exceeds 10 MiB: {path}")
-        _, error = process.communicate()
-        error = fat_diagnostic(error.decode(errors="replace"), process.returncode)
-        if process.returncode or error:
-            raise LogReadError(f"Cannot read FAT32 log {path}: "
-                               f"{error or f'exit {process.returncode}'}")
-    return data
-
-
 def retrieve(selected, output):
-    reported_fat_warnings.clear()
     device, filesystem, root = log_device(selected)
     print(f"Reading {filesystem} diagnostic storage: {device}")
-    listing = fat_directory if filesystem == "vfat" else directory
-    read = fat_read if filesystem == "vfat" else lambda device, path: debugfs(device, f"cat {path}")
-    boots = listing(device, root)
+    boots = directory(device, root)
     if "current" in boots and not stat.S_ISDIR(boots["current"][0]):
         raise ValueError("No current boot logs; this may not be the gbos-builder Android USB")
     if "current" not in boots and "previous" not in boots:
@@ -177,7 +121,7 @@ def retrieve(selected, output):
                 raise ValueError(f"USB log directory {boot} is not a directory")
             source = f"{root}/{boot}"
             try:
-                entries = listing(device, source)
+                entries = directory(device, source)
             except LogReadError as error:
                 problems.append(str(error))
                 continue
@@ -186,28 +130,26 @@ def retrieve(selected, output):
             temporary_snapshot = entries.pop("hardware.txt.tmp", None)
             if temporary_snapshot is not None:
                 mode, size = temporary_snapshot
-                if not stat.S_ISREG(mode) or size > 10 << 20 or (
-                        size < 0 and not (filesystem == "vfat" and size == -1)):
+                if not stat.S_ISREG(mode) or size > 10 << 20 or size < 0:
                     raise ValueError(f"Invalid temporary hardware snapshot: {boot}")
                 print(f"Skipping unfinished {boot}/hardware.txt.tmp; "
                       "only completed hardware snapshots are retrieved.")
             for name, (mode, size) in entries.items():
                 if not LOG_NAME.fullmatch(name):
                     raise ValueError(f"Unexpected USB log entry: {boot}/{name}")
-                if not stat.S_ISREG(mode) or size > 10 << 20 or (
-                        size < 0 and not (filesystem == "vfat" and size == -1)):
+                if not stat.S_ISREG(mode) or size > 10 << 20 or size < 0:
                     raise ValueError(f"Invalid log file type/size: {boot}/{name}")
             target = destination / boot
             target.mkdir(mode=0o700)
             identity = None
             if "boot-id" in entries:
                 try:
-                    identity = read(device, f"{source}/boot-id")
+                    identity = debugfs(device, f"cat {source}/boot-id")
                 except LogReadError as error:
                     problems.append(str(error))
                 else:
                     size = entries["boot-id"][1]
-                    if size >= 0 and len(identity) != size:
+                    if len(identity) != size:
                         problems.append(f"Log changed or was unreadable: {boot}/boot-id")
                         identity = None
                     else:
@@ -222,11 +164,11 @@ def retrieve(selected, output):
                     data = identity
                 else:
                     try:
-                        data = read(device, f"{source}/{name}")
+                        data = debugfs(device, f"cat {source}/{name}")
                     except LogReadError as error:
                         problems.append(str(error))
                         continue
-                if size >= 0 and len(data) != size:
+                if len(data) != size:
                     problems.append(f"Log changed or was unreadable: {boot}/{name}")
                     continue
                 total += len(data)
@@ -235,7 +177,7 @@ def retrieve(selected, output):
                 (target / name).write_bytes(data)
             if identity is not None:
                 try:
-                    final_identity = read(device, f"{source}/boot-id")
+                    final_identity = debugfs(device, f"cat {source}/boot-id")
                 except LogReadError as error:
                     problems.append(str(error))
                 else:

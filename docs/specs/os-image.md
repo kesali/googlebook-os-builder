@@ -1,9 +1,9 @@
 # OS image and disk
 
-**Status:** partial — ext4 image-format tests and the full unit suite pass; updated image
-build, guest boot, fresh physical installation and USB update remain unverified.
-**Last verified:** 2026-11-14 — `make test` passes (335 tests), including fresh-image ext4
-format verification.
+**Status:** partial — a separate ext4 image builds and boots in enforcing QEMU; physical
+installation remains unverified.
+**Last verified:** 2026-11-14 — fresh-image build, disposable UEFI boot and no-write repeat
+of OS/boot synchronization. Diagnostic capture was checked on a disposable ext4 image.
 
 ## Goal
 Build a private Android disk from Google's recovery image and update only declared OS
@@ -47,8 +47,9 @@ for boot checks; never write physical media during validation.
 ## Pitfalls
 - `ANDROID_DATA_GIB` affects only new images; it does not shrink existing userdata.
 - Fresh installation is not a secure erase; old data may remain recoverable.
-- Ordinary updates preserve the existing diagnostic partition; recreating a USB is required
-  to replace its old FAT32 log filesystem with ext4.
+- Updates preserve the diagnostic partition. A fresh USB installation copies the source
+  image's filesystem, so an older FAT32 source image must be replaced with a separately
+  created ext4 image before installation. Preserve the existing image and its userdata.
 - Never weaken metadata, symlink, partition-fit, recovery-hash or USB identity checks.
 - Generate patches against Google's pristine files and apply them without fuzz.
 - An interrupted image update is repaired by rerunning `make android-image`; do not

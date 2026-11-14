@@ -78,7 +78,7 @@ The pieces, with the files that implement them:
 | Partitions | Google's original + declared changes → EROFS; each file's metadata is checked. | [scripts/android-partition.sh](../scripts/android-partition.sh), [scripts/android-overlay.sh](../scripts/android-overlay.sh), [tools/fs_metadata.py](../tools/fs_metadata.py) |
 | Replacement check | A replaced library must keep every export that something imports. A replaced APEX keeps its name, version and file list. | [scripts/check-replacements.sh](../scripts/check-replacements.sh) |
 | Vendor link check | Programs we add may link only to vendor libraries or the LLNDK. | [scripts/check-vendor-libs.sh](../scripts/check-vendor-libs.sh) |
-| Disk | Fresh compact GPT with retained partition UUIDs, 12 GiB A-only super, 576 MiB FAT32 `GBOS-BOOT`, 256 MiB ext4 `GBOS-LOGS` and trailing userdata. Created once; never recreated automatically. Fresh USB installation expands userdata. Focused tests pass; image/boot pending. | [tools/android_disk.py](../tools/android_disk.py) |
+| Disk | Fresh compact GPT with retained partition UUIDs, 12 GiB A-only super, 576 MiB FAT32 `GBOS-BOOT`, 256 MiB ext4 `GBOS-LOGS` and trailing userdata. Created once; never recreated automatically. Fresh USB installation expands userdata. Ext4 capture passes on a disposable QEMU image; physical validation is pending. | [tools/android_disk.py](../tools/android_disk.py) |
 | Sync | Copy only changed partitions into the disk, then read them back. Refuses while QEMU holds the disk. | [tools/android_sync.py](../tools/android_sync.py) |
 | Boot files | Kernel, initrd, GRUB and menu; written into the ESP with mtools (no mounts, no root). | [scripts/android-boot.sh](../scripts/android-boot.sh), [tools/deploy.py](../tools/deploy.py), [boot/android-menu.cfg](../boot/android-menu.cfg) |
 | USB update | List USB disks, select by model/capacity/serial and confirm; verify the existing layout, copy changed OS ranges, then install boot files menu-last via a private mount. No formatting or data writes. | [tools/update_usb.py](../tools/update_usb.py), [tools/deploy.py](../tools/deploy.py) |
@@ -243,7 +243,8 @@ SONAME differs from its Android HAL filename; loader acceptance remains untested
   - DRM connectors;
   - cpufreq settings.
 - Read the logs from Linux with `debugfs` on the dedicated log partition. An ordinary update
-  preserves the log partition; a fresh installation creates it as ext4.
+  preserves it; a fresh installation copies the source image's filesystem, which can be FAT32
+  if the source image predates the ext4 change.
 - GRUB has a debug entry with `earlycon=efifb`. It is not the default because it costs about a
   minute per boot.
 

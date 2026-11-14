@@ -178,7 +178,7 @@ larger target userdata partition, and never repartition; older layouts require a
 The default applies only when creating a new disk; existing images are not resized.
 For more QEMU app storage, set `ANDROID_DATA_GIB=32` when creating the image.
 
-**Direct ext4 diagnostics pass focused tests; image/boot validation is pending.** The diagnostic GRUB
+**Direct ext4 diagnostics were exercised on a disposable QEMU image; physical validation is pending.** The diagnostic GRUB
 entry mounts `GBOS-LOGS` at `/metadata/gbos-builder-bootlog` and writes there directly;
 the path is a mountpoint, not storage on metadata. There is no export/copy loop.
 Only current/previous diagnostic boots are retained with the existing stream limits.
@@ -268,6 +268,9 @@ make install-usb
 ```
 
 This builds the Android image, then runs the host [fresh flasher](../tools/install_usb.py).
+It reuses the existing disk image, including its log filesystem: a fresh USB installation
+does not convert an older FAT32 log partition to ext4. Creating a new source image requires
+a separate path; never delete the existing image, which holds Android data.
 Select a USB by model, capacity and serial before sudo authentication. Review the erase warning
 and confirm with `y` or `yes` at `[y/N]`. Enter or any other answer cancels without writing.
 Internal disks, missing serials, mounted/in-use, read-only and undersized devices are refused.
@@ -290,15 +293,13 @@ After returning to Linux, connect the Android USB and unmount its partitions, th
 make laptop-logs
 ```
 
-Select the USB by model/serial. Sudo authorizes read-only `debugfs` (or mtools for an
-older FAT32 log partition); no mounts,
+Select the USB by model/serial. Sudo authorizes read-only `debugfs`; no mounts,
 filesystem repair or USB writes occur. Current and previous boot logs are copied to a private,
 timestamped folder under `out/laptop-logs/`, owned by your normal user.
 `out/laptop-logs/latest/current/` always points to the newest successful retrieval; older copies
 are retained. If a boot ID is missing or a log cannot be read, readable files from both boots
 are saved in a separate timestamped folder, the command reports the errors and `latest` is not
-changed. A missing boot ID means the boot cannot be identified. FAT corruption can also cause
-undetected truncation, so a successful read does not prove a log is complete.
+changed. A missing boot ID means the boot cannot be identified.
 
 The new `GBOS-LOGS` partition is ext4, so it is not directly browsable by default on Windows or
 macOS. On Linux, use `make laptop-logs`; it reads files without mounting the partition.
@@ -306,10 +307,11 @@ macOS. On Linux, use `make laptop-logs`; it reads files without mounting the par
 Only the diagnostic entry saves new logs; normal boots leave earlier captures untouched.
 Check the saved boot identity/time rather than assuming it describes the latest normal boot.
 Retrieval needs host e2fsprogs (`debugfs`), sudo, lsblk and Python 3; it does not build an image.
-Older FAT32 log partitions remain readable with mtools. Older images without `gbos_logs` use
-read-only `debugfs` on metadata. The ext4 path passes regular-file tests; physical
+FAT32 log partitions are not supported. Older images without `gbos_logs` use read-only
+`debugfs` on metadata. The ext4 path has been exercised in QEMU; physical
 capture/retrieval is unverified. An ordinary USB update preserves an existing FAT32 log
-partition; use a fresh installation to create the new ext4 layout.
+partition. A fresh USB installation uses ext4 only if its source disk image was newly created
+with ext4.
 Treat the logs as private.
 
 Optional, once: more space in `/data`. Android cannot enlarge its encrypted ext4 in place, so

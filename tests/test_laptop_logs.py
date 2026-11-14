@@ -1,9 +1,6 @@
 """Check log retrieval with fake debugfs and device metadata, never physical disks."""
 
 import json
-import hashlib
-import io
-from contextlib import redirect_stderr
 import os
 from pathlib import Path
 import stat
@@ -12,7 +9,7 @@ import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import laptop_logs
@@ -219,120 +216,40 @@ class LaptopLogTests(unittest.TestCase):
                              (Path("/dev/fake1"), "ext4", ""))
         self.assertIn("NAME,PARTLABEL,FSTYPE", run.call_args.args)
 
-    def test_reads_real_fat32_image_without_sudo_mounts_or_source_writes(self):
-        image = self.output.parent / "logs.img"
-        with image.open("wb") as stream:
-            stream.truncate(256 << 20)
-        subprocess.run(["mkfs.vfat", "-F", "32", "-s", "1", "-n", "GBOS-LOGS", str(image)],
-                       check=True, capture_output=True)
-        subprocess.run(["mmd", "-i", str(image), "::/current", "::/previous"],
-                       check=True, capture_output=True)
-        for name, data in self.files.items():
-            seed = self.output.parent / name
-            seed.write_bytes(data)
-            for boot in ("current", "previous"):
-                subprocess.run(["mcopy", "-i", str(image), str(seed), f"::/{boot}/{name}"],
-                               check=True, capture_output=True)
-        before = image.stat()
-        with image.open("rb") as stream:
-            digest = hashlib.file_digest(stream, "sha256").digest()
-        run = subprocess.run
-        popen = subprocess.Popen
-
-        def direct_run(arguments, **kwargs):
-            self.assertEqual(arguments[:2], ["sudo", "--"])
-            return run(arguments[2:], **kwargs)
-
-        def direct_popen(arguments, **kwargs):
-            if arguments[:2] == ["sudo", "--"]:
-                arguments = arguments[2:]
-            self.assertIn(arguments[0], ("mdir", "mtype"))
-            return popen(arguments, **kwargs)
-
-        with patch.object(laptop_logs, "log_device", return_value=(image, "vfat", "")), \
-                patch.object(laptop_logs.subprocess, "run", side_effect=direct_run), \
-                patch.object(laptop_logs.subprocess, "Popen", side_effect=direct_popen):
-            destination = laptop_logs.retrieve({}, self.output)
-        self.assertEqual((destination / "current/hardware.txt").read_bytes(), b"card=acp\n")
-        self.assertEqual((destination / "previous/boot-id").read_bytes(), self.identity)
-        self.assertEqual(image.stat().st_mtime_ns, before.st_mtime_ns)
-        with image.open("rb") as stream:
-            self.assertEqual(hashlib.file_digest(stream, "sha256").digest(), digest)
-
-    def test_fat_directory_rejects_bad_entries_and_reports_reader_errors(self):
-        for result in (
-                subprocess.CompletedProcess([], 0, "::/current/boot-id\n::/current/boot-id\n", ""),
-                subprocess.CompletedProcess([], 0, "::/elsewhere/secret\n", ""),
-                subprocess.CompletedProcess([], 0, "", "FAT damaged"),
-                subprocess.CompletedProcess([], 1, "", "Cannot read")):
-            with self.subTest(result=result), \
-                    patch.object(laptop_logs.subprocess, "run", return_value=result), \
-                    self.assertRaises(ValueError):
-                laptop_logs.fat_directory(self.device, "/current")
-
-    def test_fat_geometry_warning_does_not_block_successful_reads(self):
-        warning = "Hidden (6075) does not match sectors (63)\n"
-        result = subprocess.CompletedProcess([], 0, "::/current/boot-id\n", warning)
-        process = MagicMock()
-        process.__enter__.return_value = process
-        process.stdout = io.BytesIO(self.identity)
-        process.communicate.return_value = (b"", warning.encode())
-        process.returncode = 0
-        reported = io.StringIO()
-        with patch.object(laptop_logs, "reported_fat_warnings", set()), \
-                redirect_stderr(reported), \
-                patch.object(laptop_logs.subprocess, "run", return_value=result), \
-                patch.object(laptop_logs.subprocess, "Popen", return_value=process):
-            self.assertIn("boot-id", laptop_logs.fat_directory(self.device, "/current"))
-            self.assertEqual(laptop_logs.fat_read(self.device, "/current/boot-id"),
-                             self.identity)
-        self.assertEqual(reported.getvalue().count(warning.strip()), 1)
-
-    def test_geometry_warning_does_not_hide_other_reader_errors(self):
-        warning = "Hidden (6075) does not match sectors (63)\n"
-        for status, error in ((1, warning), (0, warning + "FAT damaged\n")):
-            with self.subTest(status=status, error=error), \
-                    patch.object(laptop_logs.subprocess, "run",
-                                 return_value=subprocess.CompletedProcess(
-                                     [], status, "::/current/boot-id\n", error)), \
-                    self.assertRaises(ValueError):
-                laptop_logs.fat_directory(self.device, "/current")
-
-    def test_geometry_warning_is_reported_once_per_retrieval(self):
-        error = "Hidden (6075) does not match sectors (63)"
-        stderr = io.StringIO()
-        with patch.object(laptop_logs, "reported_fat_warnings", set()), redirect_stderr(stderr):
-            for _ in range(3):
-                laptop_logs.fat_diagnostic(error, 0)
-        self.assertEqual(stderr.getvalue().count(error), 1)
+    def test_rejects_fat_log_partition(self):
+        self.device_patch.stop()
+        selected = {"name": "/dev/fake", "serial": "serial", "model": "Test",
+                    "size": 1000, "maj:min": "8:0", "tran": "usb", "children": []}
+        listing = {"blockdevices": [{"name": "/dev/fake", "children": [
+            {"name": "/dev/fake1", "partlabel": "gbos_logs", "fstype": "vfat"},
+        ]}]}
+        with patch.object(laptop_logs, "disks", return_value=[selected]), \
+                patch.object(laptop_logs, "check_unused"), \
+                patch.object(laptop_logs, "run", return_value=json.dumps(listing)):
+            with self.assertRaisesRegex(ValueError, "Unsupported diagnostic log filesystem: vfat"):
+                laptop_logs.log_device(selected)
 
     def test_incomplete_current_does_not_block_readable_previous(self):
-        root = {"current": (stat.S_IFDIR, -1), "previous": (stat.S_IFDIR, -1)}
-        current = {"hardware.txt": (stat.S_IFREG, -1),
-                   "android.log": (stat.S_IFREG, -1)}
-        previous = {"boot-id": (stat.S_IFREG, -1),
-                    "hardware.txt": (stat.S_IFREG, -1)}
+        root = {"current": (stat.S_IFDIR, 0), "previous": (stat.S_IFDIR, 0)}
+        current = {"hardware.txt": (stat.S_IFREG, len(b"card=acp\n")),
+                   "android.log": (stat.S_IFREG, 10)}
+        previous = {"boot-id": (stat.S_IFREG, len(self.identity)),
+                    "hardware.txt": (stat.S_IFREG, len(b"card=acp\n"))}
 
         def listing(device, path):
             return {"": root, "/current": current, "/previous": previous}[path]
 
-        def popen(command, **kwargs):
-            name = command[-1]
-            process = MagicMock()
-            process.__enter__.return_value = process
-            data = self.identity if name.endswith("/boot-id") else b"card=acp\n"
-            process.stdout = io.BytesIO(data)
-            damaged = name.endswith("/android.log")
-            process.communicate.return_value = (b"", b"FAT damaged" if damaged else b"")
-            process.returncode = 1 if damaged else 0
-            return process
+        def read(device, request):
+            if request.endswith("/android.log"):
+                raise laptop_logs.LogReadError("Cannot read android.log")
+            return self.identity if request.endswith("/boot-id") else b"card=acp\n"
 
         self.output.mkdir()
         (self.output / "old").mkdir()
         (self.output / "latest").symlink_to("old")
-        with patch.object(laptop_logs, "log_device", return_value=(self.device, "vfat", "")), \
-                patch.object(laptop_logs, "fat_directory", side_effect=listing), \
-                patch.object(laptop_logs.subprocess, "Popen", side_effect=popen):
+        with patch.object(laptop_logs, "log_device", return_value=(self.device, "ext4", "")), \
+                patch.object(laptop_logs, "directory", side_effect=listing), \
+                patch.object(laptop_logs, "debugfs", side_effect=read):
             with self.assertRaisesRegex(ValueError, "incomplete"):
                 laptop_logs.retrieve({}, self.output)
 
@@ -342,23 +259,6 @@ class LaptopLogTests(unittest.TestCase):
         self.assertFalse((destination / "current/android.log").exists())
         self.assertEqual((destination / "previous/boot-id").read_bytes(), self.identity)
         self.assertEqual((self.output / "latest").resolve(), self.output / "old")
-
-    def test_fat_read_is_bounded_and_reports_failures(self):
-        for data, error, status in (
-                (bytes((10 << 20) + 1), b"", 0),
-                (b"", b"FAT damaged", 0), (b"", b"", 1)):
-            with self.subTest(length=len(data), status=status):
-                process = MagicMock()
-                process.__enter__.return_value = process
-                process.stdout = io.BytesIO(data)
-                process.communicate.return_value = (b"", error)
-                process.returncode = status
-                with patch.object(laptop_logs.subprocess, "Popen", return_value=process), \
-                        self.assertRaises(ValueError):
-                    laptop_logs.fat_read(self.device, "/current/kernel.log")
-                if len(data) > 10 << 20:
-                    process.terminate.assert_called_once()
-
 
 if __name__ == "__main__":
     unittest.main()

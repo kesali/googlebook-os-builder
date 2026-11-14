@@ -1,9 +1,9 @@
 # Boot chain
 
-**Status:** partial — enforcing QEMU checks and owner-confirmed firmware-free laptop
-boots pass; physical diagnostic-log retrieval remains.
-**Last verified:** 2026-11-14 — `make test` passes (335 tests); ext4 guest mounting and
-physical capture have not been verified.
+**Status:** partial — the corrected policy boots in enforcing QEMU and writes ext4 diagnostic
+logs; physical boot and retrieval with this policy remain unverified.
+**Last verified:** 2026-11-14 — focused tests and disposable-image QEMU boot; ext4 kernel
+and Android logs were nonempty. QEMU input and physical capture were not checked.
 
 ## Goal
 Assemble Google's boot images, initrd and boot configuration with the smallest set of
@@ -16,7 +16,7 @@ select the AMD, Intel ANV/HasVK, or softpipe profile after DRM binding. Selectio
 before the profile runs and Zygote starts; this ordering is verified for enforcing QEMU
 softpipe but not on physical GPUs. The bounded screenshot reaches Android's welcome screen.
 Diagnostic logging is opt-in and the new image builder formats the dedicated `GBOS-LOGS`
-partition as ext4; guest mounting and physical capture have not been verified. Normal boots
+partition as ext4; a disposable QEMU image mounted ext4 and wrote logs. Normal boots
 do not mount it or rotate saved logs. Berberis is the default
 native bridge, with a persistent GRUB choice for Houdini. The owner confirms firmware-free
 boots on both laptops. MSI diagnostic logs were reviewed from the previous image.
@@ -53,9 +53,9 @@ logs, SELinux denials and diagnostic files. Focused logging tests:
 - Bootconfig must be the final initrd payload and the command line must include `bootconfig`.
 - `modules.dep` entries without dependencies must be `name:` with no trailing space.
 - Never replay a journal on the physical USB. Recover only from an owner-approved copy.
-- The previous FAT log partition had corruption; retrieval can save partial logs but does not
-  repair the USB or prove individual files are complete.
+- FAT32 log partitions are unsupported; retrieval never repairs a filesystem.
 - Ext4 journals filesystem metadata; it cannot guarantee recent log data survives power loss.
+- QEMU logged `installd` quota-query denials on the log filesystem; their impact is unverified.
 
 ## Actions
 - [ ] Verify ext4 diagnostic logging on a fresh installation — done when a diagnostic boot

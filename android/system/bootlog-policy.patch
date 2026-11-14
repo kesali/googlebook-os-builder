@@ -1,11 +1,11 @@
 Dedicated enforcing domains for boot logs, read-only hardware diagnostics and graphics selection.
 Keep permissions scoped to these services; none needs access to raw input events.
-The ext4 context mount needs init relabelfrom/relabelto on the dedicated filesystem label.
+Init already has labeledfs permissions; the context mount also needs the dedicated label.
 Drop with the persistent diagnostic logger and graphics selector.
 
 --- a/system/etc/selinux/plat_sepolicy.cil
 +++ b/system/etc/selinux/plat_sepolicy.cil
-@@ -87210,3 +87210,113 @@
+@@ -87210,3 +87210,112 @@
  (typeattributeset gpu_sphal_domain (hal_graphics_allocator))
  (typeattributeset gpu_sphal_domain (hal_graphics_composer))
  (typeattributeset gpu_sphal_domain (hal_neuralnetworks))
@@ -25,7 +25,6 @@ Drop with the persistent diagnostic logger and graphics selector.
 +(typeattributeset dev_type (gbos_builder_logs_device))
 +(allow init gbos_builder_logs_device (blk_file (getattr open read write ioctl)))
 +(allow init gbos_builder_bootlog_file (dir (mounton)))
-+(allow init ext4 (filesystem (mount unmount getattr relabelfrom)))
 +(allow init gbos_builder_bootlog_file (filesystem (mount unmount getattr relabelfrom relabelto)))
 +(allow gbos_builder_bootlog_file gbos_builder_bootlog_file (filesystem (associate)))
 +(allow gbos_builder_bootlog proc_mounts (file (read getattr open)))
