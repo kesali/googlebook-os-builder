@@ -11,7 +11,8 @@ The priority is that a person can understand how to build, update and deploy it,
 2. Read the spec for the component you are changing. Its **Decisions** are settled; reopening one
    needs the user's agreement.
 3. Before handing back, update only the documentation affected by this change. For component
-   work, update its spec (status, actions, handoff-log entry); the `/handoff` prompt does this.
+   work, update its spec's current status, verified state and next agreed action; do not append
+   a change log. Git history records past changes.
 
 ## Working with the owner
 

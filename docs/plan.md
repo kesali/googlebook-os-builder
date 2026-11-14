@@ -46,8 +46,8 @@ removable once upstream covers it.
   takes about an hour.
 - QEMU reaches the setup screen with software rendering; setup there is not finished (parked).
 
-Detailed status, evidence and handoffs live in the [component specs](specs/README.md).
-This plan orders the work; it does not replace those records.
+Current component status and next actions live in the [component specs](specs/README.md).
+Git history records past changes; this plan orders the work.
 
 ## Compared with the references
 

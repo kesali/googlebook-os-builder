@@ -1,66 +1,59 @@
 # Component specs
 
-One short document per component: what it must do, what works today, the decisions behind it,
-and the next actions. These are the project's handoff notes: whoever picks up a component —
-a person or an AI agent — starts from its spec and leaves it updated.
+These are current-state notes for the components in [the project plan](../plan.md).
+Use Git history for past implementation and validation details; keep these files focused
+on what works now, constraints that still apply, and the next agreed action.
 
-Read the [project plan](../plan.md) for overall priorities and the proposed order of work.
-The component specs track the details; the plan keeps the overall direction in one place.
-
-| Spec | Status | Next action |
+| Spec | Current status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial; common-driver build/kABI/module checks pass | Owner tests physical drivers |
-| [Boot chain](boot.md) | partial; FAT32 enforcing QEMU logging passes | Compact USB-UEFI and physical diagnostic entry checks |
-| [OS image and disk](os-image.md) | partial; compact image/direct QEMU/no-write repeat pass | Owner fresh installation and physical tests |
-| [Security services](security.md) | working (software keys); unconditional portable crypto focused tests pass | Rebuild/check simplified crypto image, then setup/account flows |
-| [Graphics](graphics.md) | partial; MSI video and firmware-free laptop tests owner-confirmed | Owner retests native-only rebuilt image; camera fallback unverified |
-| [QEMU VM](qemu.md) | parked | Renamed setup/input verified; finishing setup/networking can wait |
-| [Laptop hardware](laptop-hardware.md) | partial; common network/touchpad/audio build-checked, hardware untested | Owner physical tests; model-specific audio configuration |
+| [Kernel (GKI)](kernel.md) | partial; ABI-preserving kernel and selected modules build | Owner checks remaining physical drivers and brightness |
+| [Boot chain](boot.md) | partial; enforcing QEMU and firmware-free laptop boot verified | Owner captures logs from a current laptop boot |
+| [OS image and disk](os-image.md) | partial; image build and direct QEMU pass | Owner tests fresh installation and USB update |
+| [Security services](security.md) | working with software keys; hardware-backed keys unavailable | Owner verifies PIN setup and persistence |
+| [Graphics](graphics.md) | partial; QEMU softpipe and MSI graphics pass by report | Diagnose camera failure; confirm renderer |
+| [QEMU VM](qemu.md) | parked; latest direct boot and softpipe pass | Finish setup/network checks if QEMU work resumes |
+| [Laptop hardware](laptop-hardware.md) | partial; graphics work, camera does not on Mesa 26.3.0 | Retrieve current diagnostic logs and investigate camera |
 
-**Status words:** `working` = verified as described in the spec · `partial` = some parts verified ·
-`planned` = agreed, not started · `parked` = works, not being developed now.
+**Status words:** `working` means verified as described; `partial` means some
+requirements remain unverified; `planned` means agreed but not started; `parked`
+means working enough to pause development.
 
-## Rules
+## Updating a spec
 
-- Only write what was verified as working, and say how it was verified. Untested is not working.
-- **Decisions** are settled. Reopening one needs the user's agreement; record the new decision and why.
-- **Actions** are agreed next steps with a "done when". Unapproved ideas go under *Ideas (not approved)*.
-- Keep each spec readable in a few minutes. Link to code and the [README](../../README.md); don't copy them.
-- At the end of a work session, update every spec you touched and add a handoff-log entry
-  (the `/handoff` prompt does this). Update the table above when a status or next action changes.
+- Keep status, verification date, and current state factual. Put unknowns under
+  **Not verified**; don't treat older results as current.
+- Keep decisions that still constrain implementation, useful file links, focused
+  verification commands, real pitfalls, and agreed next actions.
+- Do not add a change log or dated history. Git history records past changes; ignored
+  `out/` files may hold detailed evidence.
+- Keep the spec short and update the index when status or next action changes.
 
 ## Template
 
 ```markdown
 # <Component>
 
-**Status:** working | partial | planned | parked — one-line reason
-**Last verified:** YYYY-MM-DD — how (command, evidence file)
+**Status:** working | partial | planned | parked — current summary
+**Last verified:** YYYY-MM-DD — command or owner-reported result
 
 ## Goal
-What this component must achieve, in one or two sentences.
+What this component must do.
 
 ## Current state
-Verified: … Not verified / not working: …
+What works, what does not, and what remains unverified.
 
 ## Decisions
-- Choice — why.
+- Settled constraints that future changes must preserve.
 
 ## Files
-- [path](../../path) — responsibility.
+Link directly to implementation using paths relative to this spec.
 
 ## Verify
-Commands that prove it works, and what to look at.
+Focused commands and the evidence to inspect.
 
 ## Pitfalls
-- Specific things that cost time before, and the fix.
+- Current, actionable failure modes only.
 
 ## Actions
-- [ ] Next step — done when …
-
-### Ideas (not approved)
-- …
-
-## Handoff log
-- YYYY-MM-DD `commit` — what changed; what's left. (Newest first, at most three lines each.)
+- [ ] Next agreed step — done when …
 ```
