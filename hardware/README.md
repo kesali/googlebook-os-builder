@@ -39,14 +39,15 @@ Use these verification labels:
 - **Included; validation pending:** declared for the image, without completed build checks.
 - **Emulator-tested:** verified in QEMU, not evidence for physical hardware.
 
-The table summarizes earlier verified images; it is not a claim that the latest unbuilt image
-has been retested. Detailed evidence and outstanding physical checks are in the
+The table summarizes the latest build checks and owner reports; a build does not prove
+physical behavior. Detailed evidence and outstanding physical checks are in the
 [hardware spec](../docs/specs/laptop-hardware.md) and [QEMU spec](../docs/specs/qemu.md).
 
 | Included driver/support | Verification | Limits / remaining checks |
 |---|---|---|
 | [amdgpu](drivers/amdgpu/) | Hardware-tested: MSI Modern 15 B7M display/video | Other AMD GPUs untested; HDMI frame rate not measured |
 | [i915](drivers/i915/) | Hardware-tested: Lenovo E50-80 Broadwell graphics | Other Intel GPUs untested; AV1 playback does not prove hardware decoding |
+| [Generic Intel i915 loading](drivers/i915/) | Build-checked; hardware untested | Google ships Xe; the broad alias requests i915 loading, not binding. Physical binding and display remain unverified |
 | AMD DesignWare I2C-HID ([shared config](../kernel/gki.config)) | Hardware-tested: MSI touchpad | Other I2C-HID laptops untested |
 | [PS/2 Elantech](drivers/elantech-ps2/) | Hardware-tested: Lenovo touchpad movement | Palm rejection unverified; other enabled PS/2 protocols hardware untested |
 | [Common I2C/HID touchpads](drivers/common-touchpads/) | Stock Elan/Cypress/HID-RMI and Intel controller modules included unchanged; hardware untested | Existing MSI I2C-HID result above does not verify these other paths |

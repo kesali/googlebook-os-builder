@@ -2,8 +2,8 @@
 
 **Status:** partial — the source-built GKI preserves Google's ABI and selected laptop
 modules build; physical driver and brightness checks remain.
-**Last verified:** 2026-11-05 — `make gki`, image checks and enforcing QEMU passed;
-the current kernel source checks are in `tests/test_kernel_source.py`.
+**Last verified:** 2026-11-14 — `make gki` and `make android-image` passed; the build
+reported 4,501 unchanged Google exports and validated the module metadata and image.
 
 ## Goal
 Build Google's Googlebook kernel from source while keeping Google's modules loadable
@@ -14,7 +14,11 @@ The kernel is pinned to Google's Android 17 GKI release and toolchain. Build che
 require all 4,501 Google exports and CRCs to match. Laptop modules are signed with the
 build's trusted key and checked against Google's helpers. QEMU uses Google's prebuilt
 virtual-device modules. The owner reports the MSI and Lenovo boot without the firmware
-framebuffer; the current image's physical driver behavior is not fully retested.
+framebuffer; the current image's physical driver behavior is not fully retested. The i915
+recipe requests module loading for Intel display-class devices. GKI and image checks pass,
+but generic binding and display are not hardware-verified. Google's original vendor_dlkm
+contains and preloads `xe.ko` with 139 Xe aliases. `CONFIG_DRM_XE` is unset in the resolved
+GKI config, but that does not remove Google's prebuilt vendor module.
 
 ## Decisions
 - Keep Google's exact kernel toolchain and release. A compiler or source mismatch can
@@ -24,6 +28,8 @@ framebuffer; the current image's physical driver behavior is not fully retested.
 - Use Google's prebuilt QEMU modules for the same kernel release. Sign added laptop
   modules with the trusted build key.
 - Disable sysfb/simpledrm instead of keeping a custom PCI framebuffer handoff.
+- Preserve Google's Xe module and aliases. The i915 alias requests module loading; the
+  drivers' PCI tables and force-probe checks determine which one can bind.
 - Keep the VEX instruction-emulation patch for the Zen 3 host; it covers VEX GFNI and
   AVX-VNNI, not legacy SSE GFNI.
 - Keep Renoir capture-buffer compatibility separate from laptop audio routing and driver

@@ -2,13 +2,14 @@ Google blocks snd_hda_intel and forces Lenovo SOF codec options. Unblock legacy 
 the MSI's Realtek ALC256 and AMD HDMI codecs. Add upstream Renoir ACP microphone modules and
 their hotplug aliases. Preload PDM DMA and Google's DMIC codec before the machine driver;
 Android relies on ueventd aliases rather than the kernel's request_module fallback.
-Add upstream i915/intel-gtt with only the verified Broadwell 8086:1616 hotplug alias.
-Do not let i915 claim newer Intel GPUs handled by Google's Xe driver.
+Add upstream i915/intel-gtt and load it for Intel display devices. Keep Google's preloaded
+Xe module and aliases; the drivers' PCI tables and force-probe checks gate binding. Remove
+this alias when Google's image packages the required i915 modules and aliases.
 Add unchanged upstream ath9k modules with only the verified AR9565 168c:0036 alias;
 enable its documented Bluetooth coexistence. Add ath3k only for the AR3012 0cf3:3004,
 which needs firmware uploaded before Google's btusb binds it.
 Add upstream psmouse for the Lenovo's PS/2 AUX port; its imports are built into the kernel.
-Drop when Google supports these laptops.
+Drop when Google packages the required laptop driver paths.
 
 --- a/lib/modules/modules.dep
 +++ b/lib/modules/modules.dep
@@ -48,7 +49,7 @@ Drop when Google supports these laptops.
 +alias pci:v00001022d000015E2sv*sd*bc04sc80i00* snd_rn_pci_acp3x
 +alias platform:acp_rn_pdm_dma snd_acp3x_pdm_dma
 +alias platform:acp_pdm_mach snd_acp3x_rn
-+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915
++alias pci:v00008086d*sv*sd*bc03sc*i* i915
 +alias pci:v0000168Cd00000036sv*sd*bc*sc*i* ath9k
 +alias usb:v0CF3p3004d*dc*dsc*dp*ic*isc*ip*in* ath3k
 +alias serio:ty01pr*id*ex* psmouse

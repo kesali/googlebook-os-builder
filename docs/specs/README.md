@@ -6,13 +6,13 @@ on what works now, constraints that still apply, and the next agreed action.
 
 | Spec | Current status | Next action |
 |---|---|---|
-| [Kernel (GKI)](kernel.md) | partial; ABI-preserving kernel and selected modules build | Owner checks remaining physical drivers and brightness |
+| [Kernel (GKI)](kernel.md) | partial; ABI-preserving build and generic i915 image checks pass | Owner verifies physical i915 behavior; other drivers remain unverified |
 | [Boot chain](boot.md) | partial; enforcing QEMU and firmware-free laptop boot verified | Owner captures logs from a current laptop boot |
 | [OS image and disk](os-image.md) | partial; image build and direct QEMU pass | Owner tests fresh installation and USB update |
 | [Security services](security.md) | working with software keys; hardware-backed keys unavailable | Owner verifies PIN setup and persistence |
 | [Graphics](graphics.md) | partial; QEMU selector sets softpipe under enforcing SELinux; physical GPU behavior unverified | Owner verifies Intel HAL loading and native display |
 | [QEMU VM](qemu.md) | parked; bounded boot reaches Android welcome screen with softpipe | Finish setup/network checks if QEMU work resumes |
-| [Laptop hardware](laptop-hardware.md) | partial; graphics work, camera does not on Mesa 26.3.0 | Retrieve current diagnostic logs and investigate camera |
+| [Laptop hardware](laptop-hardware.md) | partial; Intel image checks pass, generic display untested | Verify i915 display; investigate camera |
 
 **Status words:** `working` means verified as described; `partial` means some
 requirements remain unverified; `planned` means agreed but not started; `parked`

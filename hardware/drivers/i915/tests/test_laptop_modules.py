@@ -10,7 +10,7 @@ from hardware_recipes import expand
 
 
 class LaptopModuleTests(unittest.TestCase):
-    def test_broadwell_modules_are_modular_and_explicitly_packaged(self):
+    def test_i915_module_is_packaged_with_generic_display_alias(self):
         config = expand(REPO / "kernel/gki.config")
         paths = expand(REPO / "kernel/laptop-modules.list").splitlines()
         installs = expand(REPO / "android/vendor_dlkm/install.list")
@@ -20,11 +20,13 @@ class LaptopModuleTests(unittest.TestCase):
             self.assertIn(path, paths)
             self.assertIn(f"gki/{Path(path).name}", installs)
         module_patch = (REPO / "hardware/drivers/laptop-modules/vendor_dlkm/modules.patch").read_text()
-        self.assertIn("+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915\n", module_patch)
+        self.assertIn("+alias pci:v00008086d*sv*sd*bc03sc*i* i915\n", module_patch)
+        aliases = (REPO / "hardware/drivers/i915/aliases").read_text()
+        self.assertIn("i915 pci:v00008086d*sv*sd*bc03sc*i*\n", aliases)
         self.assertEqual(
             [line for line in module_patch.splitlines()
              if line.startswith("+alias ") and line.endswith(" i915")],
-            ["+alias pci:v00008086d00001616sv*sd*bc03sc*i* i915"],
+            ["+alias pci:v00008086d*sv*sd*bc03sc*i* i915"],
         )
 
 

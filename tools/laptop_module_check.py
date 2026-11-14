@@ -25,7 +25,7 @@ def dependency_closure(direct, dependencies, system_modules=frozenset()):
     return result
 
 
-# Narrow device aliases retained for the existing laptop recipes.
+# Hotplug aliases selected for the included driver recipes.
 LAPTOP_ALIASES = recipe_aliases()
 
 
@@ -35,7 +35,8 @@ def check_module_aliases(path, installed, require_all=False):
         ["modinfo", "-F", "alias", str(path)], text=True).splitlines())
     declared = {line.split()[1] for line in installed
                 if line.startswith("alias ") and line.split()[-1] == module}
-    if declared - compiled or (require_all and compiled != declared):
+    manual = {LAPTOP_ALIASES["i915"]} if module == "i915" else set()
+    if declared - compiled - manual or (require_all and compiled != declared):
         raise ValueError(f"{path.name}: missing hotplug aliases or aliases not in compiled module")
 
 
@@ -78,13 +79,18 @@ def check(root, install_list):
             ["modinfo", "-F", "alias", str(modules / f"{module}.ko")], text=True).splitlines()
         module_name = subprocess.check_output(
             ["modinfo", "-F", "name", str(modules / f"{module}.ko")], text=True).strip()
-        if alias not in aliases or f"alias {alias} {module_name}" not in installed_aliases:
+        if (f"alias {alias} {module_name}" not in installed_aliases
+                or (module != "i915" and alias not in aliases)):
             raise ValueError(f"The kernel or installed aliases do not match the laptop's {module} device")
         if module == "i915":
+            if not any(value.startswith("pci:v00008086d") and "bc03sc" in value
+                       for value in aliases):
+                raise ValueError("The kernel i915 module does not support Intel display devices")
             expected_alias = f"alias {alias} {module_name}"
-            if any(line.split()[-1:] == [module_name] and line != expected_alias
-                   for line in installed_aliases):
-                raise ValueError("i915 aliases must select only the verified Broadwell GPU")
+            declared = {line for line in installed_aliases
+                        if line.startswith("alias ") and line.split()[-1] == module_name}
+            if declared != {expected_alias}:
+                raise ValueError("i915 must use only the Intel display-class alias")
     print("Laptop module signatures, dependency metadata and device aliases verified")
 
 

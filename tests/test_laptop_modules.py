@@ -9,11 +9,23 @@ from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
-from laptop_module_check import check, dependency_closure, LAPTOP_ALIASES
+from laptop_module_check import check, check_module_aliases, dependency_closure, LAPTOP_ALIASES
 from hardware_recipes import expand
 
 
 class LaptopModuleTests(unittest.TestCase):
+    def test_generic_i915_alias_is_the_only_uncompiled_alias_allowed(self):
+        compiled = "pci:v00008086d00001616sv*sd*bc03sc*i*\n"
+        generic = f"alias {LAPTOP_ALIASES['i915']} i915"
+
+        with patch("laptop_module_check.subprocess.check_output",
+                   side_effect=["i915\n", compiled]):
+            check_module_aliases(Path("i915.ko"), [generic])
+        with patch("laptop_module_check.subprocess.check_output",
+                   side_effect=["i915\n", compiled]):
+            with self.assertRaisesRegex(ValueError, "missing hotplug aliases"):
+                check_module_aliases(Path("i915.ko"), ["alias pci:other i915"])
+
     def test_includes_transitive_dependencies(self):
         graph = {"video.ko": ["wmi.ko"], "wmi.ko": [], "hwmon.ko": []}
         self.assertEqual(dependency_closure(["video.ko", "hwmon.ko"], graph), set(graph))
@@ -52,6 +64,8 @@ class LaptopModuleTests(unittest.TestCase):
                 self.assertTrue(text)
                 name = Path(arguments[-1]).stem
                 if arguments[2] == "alias":
+                    if name == "i915":
+                        return "pci:v00008086d00001616sv*sd*bc03sc*i*\n"
                     return LAPTOP_ALIASES[name] + "\n"
                 self.assertEqual(arguments[2], "name")
                 return name.replace("-", "_") + "\n"
@@ -67,7 +81,7 @@ class LaptopModuleTests(unittest.TestCase):
                     f"alias {alias} {name.replace('-', '_')}\n"
                     for name, alias in LAPTOP_ALIASES.items()) +
                     "alias pci:v00008086d000056A0sv*sd*bc03sc*i* i915\n")
-                with self.assertRaisesRegex(ValueError, "only the verified Broadwell"):
+                with self.assertRaisesRegex(ValueError, "only the Intel display-class"):
                     check(root, installs)
 
 
