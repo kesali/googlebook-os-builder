@@ -3,6 +3,7 @@
 import json
 import hashlib
 import io
+from contextlib import redirect_stderr
 from pathlib import Path
 import stat
 import subprocess
@@ -52,9 +53,25 @@ class LaptopLogTests(unittest.TestCase):
         self.assertTrue(first.is_dir())
         self.assertEqual((self.output / "latest").resolve(), second)
 
+    def test_checks_boot_identity_before_other_files(self):
+        self.entries = {"hardware.txt": self.entries["hardware.txt"],
+                        "boot-id": self.entries["boot-id"]}
+        with patch.object(laptop_logs, "directory", side_effect=self.listing), \
+                patch.object(laptop_logs, "debugfs", side_effect=self.read) as read:
+            laptop_logs.retrieve({}, self.output)
+        self.assertTrue(read.call_args_list[0].args[1].endswith("/current/boot-id"))
+
     def test_previous_boot_is_optional(self):
         del self.root_entries["previous"]
         self.assertFalse((self.retrieve() / "previous").exists())
+
+    def test_missing_current_still_saves_previous_without_updating_latest(self):
+        del self.root_entries["current"]
+        with self.assertRaisesRegex(ValueError, "incomplete"):
+            self.retrieve()
+        destination = next(self.output.iterdir())
+        self.assertEqual((destination / "previous/boot-id").read_bytes(), self.identity)
+        self.assertFalse((self.output / "latest").exists())
 
     def test_partial_touchpad_capture_is_retrieved_without_treating_it_as_finished(self):
         data = b"status=capturing\n[   60.000002] 0000 0000 00000000\n"
@@ -203,6 +220,79 @@ class LaptopLogTests(unittest.TestCase):
                     patch.object(laptop_logs.subprocess, "run", return_value=result), \
                     self.assertRaises(ValueError):
                 laptop_logs.fat_directory(self.device, "/current")
+
+    def test_fat_geometry_warning_does_not_block_successful_reads(self):
+        warning = "Hidden (6075) does not match sectors (63)\n"
+        result = subprocess.CompletedProcess([], 0, "::/current/boot-id\n", warning)
+        process = MagicMock()
+        process.__enter__.return_value = process
+        process.stdout = io.BytesIO(self.identity)
+        process.communicate.return_value = (b"", warning.encode())
+        process.returncode = 0
+        reported = io.StringIO()
+        with patch.object(laptop_logs, "reported_fat_warnings", set()), \
+                redirect_stderr(reported), \
+                patch.object(laptop_logs.subprocess, "run", return_value=result), \
+                patch.object(laptop_logs.subprocess, "Popen", return_value=process):
+            self.assertIn("boot-id", laptop_logs.fat_directory(self.device, "/current"))
+            self.assertEqual(laptop_logs.fat_read(self.device, "/current/boot-id"),
+                             self.identity)
+        self.assertEqual(reported.getvalue().count(warning.strip()), 1)
+
+    def test_geometry_warning_does_not_hide_other_reader_errors(self):
+        warning = "Hidden (6075) does not match sectors (63)\n"
+        for status, error in ((1, warning), (0, warning + "FAT damaged\n")):
+            with self.subTest(status=status, error=error), \
+                    patch.object(laptop_logs.subprocess, "run",
+                                 return_value=subprocess.CompletedProcess(
+                                     [], status, "::/current/boot-id\n", error)), \
+                    self.assertRaises(ValueError):
+                laptop_logs.fat_directory(self.device, "/current")
+
+    def test_geometry_warning_is_reported_once_per_retrieval(self):
+        error = "Hidden (6075) does not match sectors (63)"
+        stderr = io.StringIO()
+        with patch.object(laptop_logs, "reported_fat_warnings", set()), redirect_stderr(stderr):
+            for _ in range(3):
+                laptop_logs.fat_diagnostic(error, 0)
+        self.assertEqual(stderr.getvalue().count(error), 1)
+
+    def test_incomplete_current_does_not_block_readable_previous(self):
+        root = {"current": (stat.S_IFDIR, -1), "previous": (stat.S_IFDIR, -1)}
+        current = {"hardware.txt": (stat.S_IFREG, -1),
+                   "android.log": (stat.S_IFREG, -1)}
+        previous = {"boot-id": (stat.S_IFREG, -1),
+                    "hardware.txt": (stat.S_IFREG, -1)}
+
+        def listing(device, path):
+            return {"": root, "/current": current, "/previous": previous}[path]
+
+        def popen(command, **kwargs):
+            name = command[-1]
+            process = MagicMock()
+            process.__enter__.return_value = process
+            data = self.identity if name.endswith("/boot-id") else b"card=acp\n"
+            process.stdout = io.BytesIO(data)
+            damaged = name.endswith("/android.log")
+            process.communicate.return_value = (b"", b"FAT damaged" if damaged else b"")
+            process.returncode = 1 if damaged else 0
+            return process
+
+        self.output.mkdir()
+        (self.output / "old").mkdir()
+        (self.output / "latest").symlink_to("old")
+        with patch.object(laptop_logs, "log_device", return_value=(self.device, "vfat")), \
+                patch.object(laptop_logs, "fat_directory", side_effect=listing), \
+                patch.object(laptop_logs.subprocess, "Popen", side_effect=popen):
+            with self.assertRaisesRegex(ValueError, "incomplete"):
+                laptop_logs.retrieve({}, self.output)
+
+        destination = next(path for path in self.output.iterdir()
+                           if path.name not in ("old", "latest"))
+        self.assertEqual((destination / "current/hardware.txt").read_bytes(), b"card=acp\n")
+        self.assertFalse((destination / "current/android.log").exists())
+        self.assertEqual((destination / "previous/boot-id").read_bytes(), self.identity)
+        self.assertEqual((self.output / "latest").resolve(), self.output / "old")
 
     def test_fat_read_is_bounded_and_reports_failures(self):
         for data, error, status in (

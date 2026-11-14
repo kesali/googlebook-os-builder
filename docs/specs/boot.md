@@ -52,6 +52,9 @@ logs, SELinux denials and diagnostic files. Focused logging tests:
 - `modules.dep` entries without dependencies must be `name:` with no trailing space.
 - Never replay a journal on the physical USB. Recover only from an owner-approved copy.
 
+- The owner's log partition has FAT corruption; retrieval can save partial logs but does not
+  repair the USB or prove individual files are complete.
+
 ## Actions
 - [ ] Review logs after a laptop retest — done when the current boot's snapshot and
   relevant logs are retrieved and reviewed.

@@ -295,7 +295,10 @@ Select the USB by model/serial. Sudo authorizes read-only mtools (`mdir`/`mtype`
 filesystem repair or USB writes occur. Current and previous boot logs are copied to a private,
 timestamped folder under `out/laptop-logs/`, owned by your normal user.
 `out/laptop-logs/latest/current/` always points to the newest successful retrieval; older copies
-are retained.
+are retained. If a boot ID is missing or a log cannot be read, readable files from both boots
+are saved in a separate timestamped folder, the command reports the errors and `latest` is not
+changed. A missing boot ID means the boot cannot be identified. FAT corruption can also cause
+undetected truncation, so a successful read does not prove a log is complete.
 
 No sudo or terminal? Shut Android down, connect the USB to a desktop computer and open the
 `GBOS-LOGS` FAT32 volume in its file manager. Copy `current/` and `previous/` to a local folder.

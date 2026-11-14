@@ -10,6 +10,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import uuid
 
@@ -17,6 +18,11 @@ from update_usb import check_unused, choose, disks, run
 
 LOG_NAME = re.compile(r"(?:boot-id|boot\.txt|hardware\.txt|touchpad\.log|"
                       r"(?:kernel|android|android-boot|crash)\.log(?:\.[0-9]+)?)\Z")
+reported_fat_warnings = set()
+
+
+class LogReadError(ValueError):
+    """A log or directory could not be read from the filesystem."""
 
 
 def debugfs(device, request):
@@ -27,8 +33,8 @@ def debugfs(device, request):
     diagnostics = result.stderr.decode(errors="replace").splitlines()
     errors = [line for line in diagnostics if not line.startswith("debugfs ")]
     if result.returncode or errors:
-        raise ValueError(f"Cannot read USB logs ({request}): "
-                         + ("\n".join(errors) or f"exit {result.returncode}"))
+        raise LogReadError(f"Cannot read USB logs ({request}): "
+                           + ("\n".join(errors) or f"exit {result.returncode}"))
     return result.stdout
 
 
@@ -80,13 +86,27 @@ def log_device(selected):
     return device, filesystem
 
 
+def fat_diagnostic(error, status):
+    error = error.strip()
+    if not status and re.fullmatch(
+            r"Hidden \([0-9]+\) does not match sectors \([0-9]+\)", error):
+        # mtools reports legacy block geometry even when the partition read succeeds.
+        if error not in reported_fat_warnings:
+            print(f"mtools warning: {error}", file=sys.stderr)
+            reported_fat_warnings.add(error)
+        return ""
+    return error
+
+
 def fat_directory(device, path):
     result = subprocess.run(
         ["sudo", "--", "mdir", "-b", "-i", str(device), "::" + path.rstrip("/") + "/"],
         capture_output=True, text=True, env={**os.environ, "LC_ALL": "C"},
     )
-    if result.returncode or result.stderr.strip():
-        raise ValueError(f"Cannot list FAT32 logs: {result.stderr or result.stdout}")
+    error = fat_diagnostic(result.stderr, result.returncode)
+    if result.returncode or error:
+        raise LogReadError(f"Cannot list FAT32 logs: "
+                           f"{error or result.stdout or f'exit {result.returncode}'}")
     entries = {}
     prefix = "::" + path.rstrip("/") + "/"
     for line in result.stdout.splitlines():
@@ -111,20 +131,25 @@ def fat_read(device, path):
             process.communicate()
             raise ValueError(f"FAT32 log exceeds 10 MiB: {path}")
         _, error = process.communicate()
-        if process.returncode or error.strip():
-            raise ValueError(f"Cannot read FAT32 log {path}: {error.decode(errors='replace')}")
+        error = fat_diagnostic(error.decode(errors="replace"), process.returncode)
+        if process.returncode or error:
+            raise LogReadError(f"Cannot read FAT32 log {path}: "
+                               f"{error or f'exit {process.returncode}'}")
     return data
 
 
 def retrieve(selected, output):
+    reported_fat_warnings.clear()
     device, filesystem = log_device(selected)
     print(f"Reading {filesystem} diagnostic storage: {device}")
     listing = fat_directory if filesystem == "vfat" else directory
     read = fat_read if filesystem == "vfat" else lambda device, path: debugfs(device, f"cat {path}")
     root = "" if filesystem == "vfat" else "/gbos-builder-bootlog"
     boots = listing(device, root)
-    if "current" not in boots or not stat.S_ISDIR(boots["current"][0]):
+    if "current" in boots and not stat.S_ISDIR(boots["current"][0]):
         raise ValueError("No current boot logs; this may not be the gbos-builder Android USB")
+    if "current" not in boots and "previous" not in boots:
+        raise ValueError("No boot logs; this may not be the gbos-builder Android USB")
     output.mkdir(parents=True, exist_ok=True, mode=0o700)
     latest = output / "latest"
     if latest.exists() and not latest.is_symlink():
@@ -133,6 +158,7 @@ def retrieve(selected, output):
         prefix=datetime.now().strftime("%Y%m%d-%H%M%S-"), dir=output,
     ))
     total = 0
+    problems = [] if "current" in boots else ["Current boot logs are missing"]
     try:
         for boot in ("current", "previous"):
             if boot not in boots:
@@ -140,9 +166,13 @@ def retrieve(selected, output):
             if not stat.S_ISDIR(boots[boot][0]):
                 raise ValueError(f"USB log directory {boot} is not a directory")
             source = f"{root}/{boot}"
-            entries = listing(device, source)
+            try:
+                entries = listing(device, source)
+            except LogReadError as error:
+                problems.append(str(error))
+                continue
             if "boot-id" not in entries:
-                raise ValueError(f"{boot} logs have no boot-id")
+                problems.append(f"{boot} logs have no boot-id; boot identity is unknown")
             temporary_snapshot = entries.pop("hardware.txt.tmp", None)
             if temporary_snapshot is not None:
                 mode, size = temporary_snapshot
@@ -157,22 +187,54 @@ def retrieve(selected, output):
                 if not stat.S_ISREG(mode) or size > 10 << 20 or (
                         size < 0 and not (filesystem == "vfat" and size == -1)):
                     raise ValueError(f"Invalid log file type/size: {boot}/{name}")
-            identity = read(device, f"{source}/boot-id")
-            uuid.UUID(identity.decode().strip())
             target = destination / boot
             target.mkdir(mode=0o700)
+            identity = None
+            if "boot-id" in entries:
+                try:
+                    identity = read(device, f"{source}/boot-id")
+                except LogReadError as error:
+                    problems.append(str(error))
+                else:
+                    size = entries["boot-id"][1]
+                    if size >= 0 and len(identity) != size:
+                        problems.append(f"Log changed or was unreadable: {boot}/boot-id")
+                        identity = None
+                    else:
+                        try:
+                            uuid.UUID(identity.decode().strip())
+                        except (UnicodeDecodeError, ValueError):
+                            problems.append(f"{boot} boot-id is invalid; boot identity is unknown")
             for name, (_, size) in entries.items():
-                data = read(device, f"{source}/{name}")
+                if name == "boot-id":
+                    if identity is None:
+                        continue
+                    data = identity
+                else:
+                    try:
+                        data = read(device, f"{source}/{name}")
+                    except LogReadError as error:
+                        problems.append(str(error))
+                        continue
                 if size >= 0 and len(data) != size:
-                    raise ValueError(f"Log changed or was unreadable: {boot}/{name}")
+                    problems.append(f"Log changed or was unreadable: {boot}/{name}")
+                    continue
                 total += len(data)
                 if total > 40 << 20:
                     raise ValueError("Saved boot logs exceed the 40 MiB retrieval limit")
                 (target / name).write_bytes(data)
-            if read(device, f"{source}/boot-id") != identity:
-                raise ValueError("USB boot logs changed during retrieval; retry")
+            if identity is not None:
+                try:
+                    final_identity = read(device, f"{source}/boot-id")
+                except LogReadError as error:
+                    problems.append(str(error))
+                else:
+                    if final_identity != identity:
+                        raise ValueError("USB boot logs changed during retrieval; retry")
         if log_device(selected) != (device, filesystem):
             raise ValueError("Log partition changed during retrieval")
+        if problems:
+            raise ValueError("Log retrieval incomplete:\n" + "\n".join(problems))
         temporary_link = destination / "latest-link"
         temporary_link.symlink_to(destination.name)
         temporary_link.replace(latest)
