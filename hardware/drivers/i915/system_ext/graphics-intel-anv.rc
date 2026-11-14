@@ -1,5 +1,5 @@
 # Experimental Intel profile: Iris GLES and ANV Vulkan; ANV requires Gen9 or newer.
-on property:sys.gbos_builder.graphics=intel-anv
+on load-bpf-programs && property:sys.gbos_builder.graphics=intel-anv
     setprop ro.hardware.egl mesa
     setprop ro.hardware.vulkan intel
     setprop ro.hwui.use_vulkan false

@@ -5,7 +5,8 @@ import /system_ext/etc/gbos-builder/graphics-intel-anv.rc
 import /system_ext/etc/gbos-builder/graphics-intel-hasvk.rc
 
 on post-fs-data
-    start gbos_builder_graphics_select
+    # Finish selection before load-bpf-programs applies the profile and zygote starts.
+    exec_start gbos_builder_graphics_select
 
 on early-init
     # ro.* properties cannot change once set; the system patch leaves this one to init.

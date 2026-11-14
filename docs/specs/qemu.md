@@ -9,8 +9,9 @@ Provide a safe, repeatable graphical development VM and a bounded boot regressio
 
 ## Current state
 QEMU runs the private NVMe disk with KVM, VNC on localhost, virtio input, serial shell
-and QMP. The bounded check verifies boot completion, stable services, enforcing SELinux
-and softpipe. The screenshot shows the Android welcome screen; setup has not been completed.
+and QMP. The bounded check verifies boot completion, stable services, enforcing SELinux,
+softpipe, and profile application before the first Zygote and SurfaceFlinger starts.
+The screenshot shows the Android welcome screen; setup has not been completed.
 Input and USB-UEFI were not checked on the latest image. Network access beyond DHCP,
 Google sign-in and apps remain unverified.
 

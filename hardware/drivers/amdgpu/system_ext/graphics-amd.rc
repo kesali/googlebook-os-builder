@@ -1,5 +1,5 @@
 # Google's ANGLE GLES and Vulkan RenderEngine use RADV; minigbm uses Mesa GBM/Zink.
-on property:sys.gbos_builder.graphics=amd
+on load-bpf-programs && property:sys.gbos_builder.graphics=amd
     setprop ro.hardware.egl angle
     setprop ro.hardware.vulkan radeon
     setprop ro.hwui.use_vulkan false

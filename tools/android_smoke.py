@@ -21,6 +21,18 @@ def check_scanout(path):
         raise RuntimeError(f"QEMU scanout is {size}, not the requested 1280x720 display")
 
 
+def check_graphics_startup(kernel_log):
+    lines = kernel_log.splitlines()
+    profile = next((position for position, line in enumerate(lines)
+                    if "init: processing action (" in line and "graphics-softpipe.rc:" in line), -1)
+    zygote = next((position for position, line in enumerate(lines)
+                   if "init: starting service 'zygote'" in line), -1)
+    surfaceflinger = next((position for position, line in enumerate(lines)
+                           if "init: starting service 'surfaceflinger'" in line), -1)
+    if profile < 0 or zygote < 0 or surfaceflinger < 0 or profile > min(zygote, surfaceflinger):
+        raise RuntimeError("QEMU graphics profile was not applied before zygote and SurfaceFlinger")
+
+
 def qmp(path, execute, arguments=None):
     with socket.socket(socket.AF_UNIX) as connection:
         connection.settimeout(15)
@@ -83,6 +95,7 @@ def verify(logs, process):
     (logs / "surfaceflinger.txt").write_text(graphics)
     if "softpipe" not in graphics.lower():
         raise RuntimeError("SurfaceFlinger did not report the source-built softpipe renderer")
+    check_graphics_startup((logs / "kernel.log").read_text(errors="replace"))
     qmp(logs / "monitor.sock", "screendump", {"filename": str(logs / "screen.png"), "format": "png"})
     check_scanout(logs / "screen.png")
     (logs / "boot-state.txt").write_text(

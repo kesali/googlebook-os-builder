@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from android_sync import copy_component, disk_hash, sync
-from android_smoke import check_scanout
+from android_smoke import check_graphics_startup, check_scanout
 from lp import (
     GEOMETRY_CHECKSUM_OFFSET, HEADER_CHECKSUM_OFFSET, LP_METADATA_GEOMETRY_MAGIC,
     LP_METADATA_GEOMETRY_SIZE, LP_METADATA_HEADER_MAGIC, LP_PARTITION_RESERVED_BYTES,
@@ -122,6 +122,20 @@ def expected_update(before, root, table, logical):
 
 
 class AndroidTests(unittest.TestCase):
+    def test_graphics_profile_precedes_first_service_start(self):
+        profile = "init: processing action (sys.gbos_builder.graphics=softpipe && load-bpf-programs) from (/system_ext/etc/gbos-builder/graphics-softpipe.rc:2)\n"
+        zygote = "init: starting service 'zygote'...\n"
+        surface = "init: starting service 'surfaceflinger'...\n"
+        check_graphics_startup(profile + zygote + surface)
+        with self.assertRaisesRegex(RuntimeError, "graphics profile"):
+            check_graphics_startup(zygote + surface + profile + surface)
+        with self.assertRaisesRegex(RuntimeError, "graphics profile"):
+            check_graphics_startup(surface + profile + zygote)
+        with self.assertRaisesRegex(RuntimeError, "graphics profile"):
+            check_graphics_startup(zygote + surface)
+        with self.assertRaisesRegex(RuntimeError, "graphics profile"):
+            check_graphics_startup(profile + zygote)
+
     def test_declared_layout_mismatch_rejects_all_writes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

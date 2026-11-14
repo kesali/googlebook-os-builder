@@ -1,9 +1,8 @@
 # Laptop hardware
 
-**Status:** partial — the goal is best-effort support for most x86-64-v3 laptops, starting
-with USB boot, native display and basic input. Current MSI graphics work is owner-reported;
-the camera is not detected and shows a black screen.
-**Last verified:** 2026-11-13 — owner report; no new hardware logs supplied.
+**Status:** partial — the owner reports essential Lenovo peripherals working and MSI
+booting with the camera still failing; MSI microphone needs a specific retest.
+**Last verified:** 2026-11-14 — owner-reported Lenovo and MSI tests.
 
 ## Goal
 Provide best-effort support for most x86-64-v3 laptops, starting with USB boot, native
@@ -13,16 +12,19 @@ available regression targets.
 ## Current state
 | Device | Current status |
 |---|---|
-| MSI graphics | Owner reports working on the Mesa 26.3.0 image; renderer not confirmed |
-| MSI camera | Not detected; camera app shows a black screen (owner report) |
-| MSI Wi-Fi, touchpad, keyboard, speakers, microphone and video | Not retested on Mesa 26.3.0 |
+| MSI graphics | Owner reports working; earlier logs show RADV, with an initial SurfaceFlinger failure |
+| MSI camera | Owner reports failure; recovered logs show a detected USB camera and provider crashes during hardware JPEG initialization |
+| MSI microphone | Previously failed with an I/O error; current test did not explicitly confirm microphone capture |
+| MSI Wi-Fi, touchpad, keyboard, speakers and video | Not retested on Mesa 26.3.0 |
 | MSI Bluetooth, HDMI audio, headphones, brightness slider | Not verified |
-| Lenovo peripherals | Current-image status unverified |
+| Lenovo camera, touchpad, graphics, Wi-Fi, brightness, speakers and microphone | Owner reports working; logs show i915 and Mesa Intel rendering |
+| Lenovo HDMI audio and video | Not tested |
 | Other Intel display devices | i915 alias passes GKI/image checks; Google Xe remains included; physical binding and display unverified |
 
 Common network, touchpad and audio recipes package selected modules, firmware and
 device-specific configuration. New hardware claims require physical testing; QEMU cannot
-verify laptop devices.
+verify laptop devices. The latest MSI diagnostic recovery is incomplete and unverified;
+it cannot establish that absent errors did not occur.
 
 ## Decisions
 - Keep QEMU and the MSI/Lenovo as available regression targets. No installer or dual
@@ -66,9 +68,7 @@ disposable enforcing QEMU for boot regressions. Physical peripheral checks are o
 - Never recover a journal on a physical USB; use an owner-approved temporary copy.
 
 ## Actions
-- [ ] Validate the generic Intel slice — done when a laptop reports native display and
-  basic input; do not claim untested devices work.
-- [ ] Diagnose the MSI camera — done when current diagnostic logs identify whether the
-  USB device is enumerated and why preview fails.
+- [ ] Diagnose the MSI camera — done when the cause of the provider's hardware JPEG
+  failure is established.
 - [ ] Retest remaining MSI peripherals — done when the owner confirms the current image's
   Wi-Fi, input, audio, video, Bluetooth, brightness and HDMI behavior.

@@ -1,9 +1,9 @@
 # Graphics
 
-**Status:** partial — the QEMU selector sets softpipe with SELinux enforcing and reaches
-the Android welcome screen; native graphics on physical devices remain unverified.
-**Last verified:** 2026-11-14 — `make test` (326 tests), `make android-image` and
-`make qemu-check` pass; the packed policy contains the selector's property-set rule.
+**Status:** partial — QEMU applies softpipe before graphics clients start; the new
+startup ordering has not been tested on physical devices.
+**Last verified:** 2026-11-14 — QEMU image and boot checks pass; Lenovo diagnostic logs
+confirm i915 and Mesa Intel rendering on the previous startup configuration.
 
 ## Goal
 Provide a software fallback and best-effort native graphics across more x86-64-v3 laptops,
@@ -18,17 +18,23 @@ marked `boot_vga`.
 The pinned drivers expose no stable graphics-generation sysfs attribute, so other i915 devices
 try ANV even if they predate its Gfx9 support. Device quirks now use a separate boot property,
 though GRUB still identifies the two known models by their existing GPU IDs. The image build
-preserved Google's ANV HAL byte-for-byte and installed Mesa HasVK. The selector now sets
-`sys.gbos_builder.graphics=softpipe` in QEMU; the service exits successfully and the softpipe
-profile starts. HasVK's ELF SONAME is `libvulkan_intel_hasvk.so`, while its HAL filename is
+preserved Google's ANV HAL byte-for-byte and installed Mesa HasVK. The selector completes
+synchronously at `post-fs-data`; the selected profile runs at `load-bpf-programs`, before
+Zygote and SurfaceFlinger. This ordering was verified with softpipe in QEMU, not on physical
+GPUs. HasVK's ELF SONAME is `libvulkan_intel_hasvk.so`, while its HAL filename is
 `vulkan.intel_hasvk.so`; loader acceptance, physical-device selector timing and binding,
 multi-GPU behavior, and graphics on other physical devices remain unverified.
 
-The owner reports the MSI graphics work on the existing image; the active SurfaceFlinger/HWUI
-renderer was not supplied. The camera is not detected and shows a black screen; its cause and
-a software camera fallback are unknown. The Lenovo profile has not been retested on the
-current image. The generic i915 module-load alias passed GKI and image checks. Google's Xe
-module remains included; binding and display on another device remain untested.
+The owner reports the MSI display works; earlier logs show RADV and an initial
+SurfaceFlinger failure before the AMD profile was applied. The latest recovered MSI logs
+are incomplete and cannot verify startup ordering. They show a detected USB camera and
+provider crashes during hardware JPEG initialization; the cause remains unverified.
+The owner reports Lenovo graphics working; diagnostic logs show i915 and Mesa Intel HD
+Graphics 5500 rendering. Its property-only HasVK profile action ran after Zygote and
+SurfaceFlinger started, so that boot did not use the new startup ordering. No SurfaceFlinger
+crash was found in the retained logs. The generic i915 module-load alias passed GKI and image
+checks. Google's Xe module remains included; binding and display on another device remain
+untested.
 
 ## Decisions
 - Keep softpipe as the verified QEMU fallback. Build Mesa without LLVM; RADV uses ACO.
@@ -84,12 +90,10 @@ selected profile, native display, and SurfaceFlinger/HWUI renderer logs.
 ## Actions
 - [ ] Verify Intel Vulkan HAL loading — done when ANV works on Gfx9+ and HasVK works on
   Broadwell without loader errors.
-- [ ] Verify generic i915 display — done when a physical result is reported separately
-  from the software-rendering fallback, including the selected runtime profile.
-- [ ] Diagnose the camera — done when current boot logs establish whether the USB camera
-  is enumerated and which camera/JPEG path fails.
-- [ ] Confirm laptop rendering — done when current SurfaceFlinger or HWUI logs identify
-  the active renderer.
+- [ ] Verify the new startup ordering on laptops — done when selected profiles precede the
+  first Zygote and SurfaceFlinger starts without an initial graphics crash.
+- [ ] Diagnose the camera — done when the cause of the provider's hardware JPEG failure is
+  established.
 
 ### Ideas (not approved)
 - Accelerated QEMU rendering; compare virgl/Venus options before implementation.

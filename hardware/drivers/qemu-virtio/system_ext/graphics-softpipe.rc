@@ -1,5 +1,5 @@
 # Working QEMU fallback. No GPU acceleration or Vulkan.
-on property:sys.gbos_builder.graphics=softpipe
+on load-bpf-programs && property:sys.gbos_builder.graphics=softpipe
     setprop ro.hardware.egl mesa
     setprop ro.hardware.vulkan none
     setprop ro.hwui.use_vulkan false

@@ -51,6 +51,9 @@ class GraphicsProfileTests(unittest.TestCase):
                 self.assertIn(f"setprop debug.renderengine.backend {backend}", profile)
 
     def test_profiles_are_selected_by_runtime_graphics_property(self):
+        init = (SYSTEM_EXT / "gbos-builder.rc").read_text()
+        post_fs_data = init.split("on post-fs-data\n", 1)[1].split("\non ", 1)[0]
+        self.assertIn("    exec_start gbos_builder_graphics_select\n", post_fs_data)
         for name, profile in (
             ("graphics-amd.rc", "amd"),
             ("graphics-softpipe.rc", "softpipe"),
@@ -58,7 +61,7 @@ class GraphicsProfileTests(unittest.TestCase):
             ("graphics-intel-hasvk.rc", "intel-hasvk"),
         ):
             with self.subTest(profile=name):
-                self.assertIn(f"on property:sys.gbos_builder.graphics={profile}",
+                self.assertIn(f"on load-bpf-programs && property:sys.gbos_builder.graphics={profile}",
                               profile_path(name).read_text())
 
     def test_vendor_build_props_leave_hwui_renderer_to_the_selected_profile(self):

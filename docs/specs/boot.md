@@ -11,13 +11,13 @@ source-based changes needed for QEMU and the laptops.
 ## Current state
 The initrd combines Google's ramdisks with the declared first-stage modules and
 bootconfig. GRUB identifies device quirks by the known GPU IDs; init is configured to
-select the AMD, Intel ANV/HasVK, or softpipe profile after DRM binding. This selector
-sets the softpipe profile successfully in enforcing QEMU; physical GPU selection remains
-unverified. The bounded screenshot reaches Android's welcome screen.
+select the AMD, Intel ANV/HasVK, or softpipe profile after DRM binding. Selection completes
+before the profile runs and Zygote starts; this ordering is verified for enforcing QEMU
+softpipe but not on physical GPUs. The bounded screenshot reaches Android's welcome screen.
 Diagnostic logging is opt-in and writes bounded logs to the dedicated FAT32 `GBOS-LOGS`
 partition; normal boots do not mount it or rotate saved logs. Berberis is the default
 native bridge, with a persistent GRUB choice for Houdini. The owner confirms firmware-free
-boots on both laptops. Current physical diagnostic logs have not been supplied.
+boots on both laptops. MSI diagnostic logs were reviewed from the previous image.
 
 ## Decisions
 - Keep Google's command line except for disabling firmware-write paths and hardware
@@ -51,10 +51,9 @@ logs, SELinux denials and diagnostic files. Focused logging tests:
 - Bootconfig must be the final initrd payload and the command line must include `bootconfig`.
 - `modules.dep` entries without dependencies must be `name:` with no trailing space.
 - Never replay a journal on the physical USB. Recover only from an owner-approved copy.
-
 - The owner's log partition has FAT corruption; retrieval can save partial logs but does not
   repair the USB or prove individual files are complete.
 
 ## Actions
-- [ ] Review logs after a laptop retest — done when the current boot's snapshot and
-  relevant logs are retrieved and reviewed.
+- [ ] Review logs after a laptop retest — done when the new image's startup ordering
+  and relevant logs are checked on physical hardware.
