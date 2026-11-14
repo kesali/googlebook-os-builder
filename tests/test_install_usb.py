@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import install_usb
@@ -121,6 +121,13 @@ class InstallUSBTests(unittest.TestCase):
             with self.subTest(answer=answer):
                 self.target.write_bytes(b"T" * 8192)
                 self.run_install(answer)
+
+    def test_confirmation_warns_install_is_not_a_secure_erase(self):
+        with patch("builtins.print") as print_message:
+            self.run_install("")
+        self.assertIn(
+            call("This is not a secure erase; old data may remain recoverable."),
+            print_message.call_args_list)
 
     def test_cancelled_selection_writes_nothing(self):
         self.run_install("", selected=False)

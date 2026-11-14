@@ -17,21 +17,10 @@ Play-Integrity device. SELinux stays enforcing.
 
 ## Current status
 
-Owner-confirmed on the latest combined image (2026-11-04):
-
-| Device | Verified |
-|---|---|
-| MSI Modern 15 B7M | USB boot/setup, Wi-Fi, keyboard/touchpad, speaker, microphone, camera preview/recording and Chrome; latest audio/camera regression is fine |
-| Lenovo E50-80 | USB boot, Wi-Fi, keyboard/touchpad, Bluetooth, speaker, microphone, camera and Chrome; smaller UI at density 160 |
-| QEMU | Inspected setup screen and input with Mesa softpipe and software security services; not accelerated graphics |
-
-MSI graphics use ANGLE/RADV; Lenovo uses Iris GLES and hasvk Vulkan.
-Headphones, brightness controls and suspend/resume still need checks.
-MSI Bluetooth pairing is unconfirmed; HDMI audio is not implemented.
-See the [component specs](docs/specs/README.md) for evidence and device-specific limitations.
-
-CPU-portable BoringSSL makes Chrome launch and load pages faster on the Lenovo (owner report);
-temporary touchpad capture is retired. QEMU checks pass; MSI regression after crypto is pending.
+On the latest MSI report, graphics work on Mesa 26.3.0, but the camera is not detected
+and the camera app shows a black screen. Other MSI peripherals and Lenovo hardware have
+not been retested on this image. QEMU softpipe checks pass; this is not accelerated graphics.
+See the [component specs](docs/specs/README.md) for current evidence and remaining checks.
 
 ## Build and try in QEMU
 
@@ -60,7 +49,7 @@ Use a **64 GB or larger USB**, preferably USB 3. The compact image reserves 12 G
 and defaults to 4 GiB of sparse data for QEMU; fresh USB installation expands data to fit.
 Disable Secure Boot and select the USB's UEFI entry. The internal NVMe is hidden from Android.
 
-For a fresh USB (**erases all existing USB data**):
+For a fresh USB (**replaces its data; this is not a secure erase**):
 
 ```sh
 make install-usb
@@ -68,7 +57,8 @@ make install-usb
 
 The host tool asks you to select a USB by model, capacity and serial, confirm the erase,
 and verifies the copied image. It resets copied Android data/encryption state and expands
-userdata to the remaining USB space before Android's first format.
+userdata to the remaining USB space before Android's first format. It does not overwrite
+every sector; old data may remain recoverable, especially on a larger USB.
 Physical deployment is the owner's operation, not an agent action.
 
 For an existing compatible gbos-builder USB (**preserves apps, accounts and data**):

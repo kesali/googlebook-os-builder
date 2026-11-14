@@ -45,6 +45,7 @@ for boot checks; never write physical media during validation.
 
 ## Pitfalls
 - `ANDROID_DATA_GIB` affects only new images; it does not shrink existing userdata.
+- Fresh installation is not a secure erase; old data may remain recoverable.
 - Never weaken metadata, symlink, partition-fit, recovery-hash or USB identity checks.
 - Generate patches against Google's pristine files and apply them without fuzz.
 - An interrupted image update is repaired by rerunning `make android-image`; do not

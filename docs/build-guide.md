@@ -130,7 +130,7 @@ screen but adds about a minute to the boot.
 #### Compact partition layout
 
 This is a GPT disk image, not an ISO. The layout below is implemented and covered by focused
-regular-file tests; the compact image build and boot checks are still pending.
+regular-file tests; compact image builds, metadata checks and direct QEMU boots pass.
 Physical partitions appear in this order, with 1 MiB-aligned starts:
 
 | GPT partition | Size | Purpose |
@@ -210,15 +210,12 @@ independently of noisy desktop logs.
 
 Disable Secure Boot and choose the USB's UEFI entry. GRUB selects AMD graphics on the MSI's
 `1002:15e7` GPU and Intel graphics on the Lenovo's Broadwell `8086:1616`.
-The Intel profile uses Iris GLES and hasvk Vulkan; the owner confirms Chrome and camera work
-after the hasvk Android-buffer query fix. Both laptops use panel density 160; QEMU keeps 240
-and softpipe. The internal NVMe remains hidden on the laptop.
-Signed amdgpu modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm
-are included. The owner has confirmed the built-in microphone, camera preview and video recording.
-HDMI display performance feels fine, though its frame rate has not been measured. The brightness
-slider, MSI Bluetooth pairing, headphone output and suspend remain unverified; HDMI audio is
-not implemented. Lenovo Bluetooth, audio and microphone are owner-confirmed.
-Details and evidence: [laptop hardware](../docs/specs/laptop-hardware.md).
+The Intel profile uses Iris GLES and hasvk Vulkan; both laptops use panel density 160, while
+QEMU keeps 240 and softpipe. The internal NVMe remains hidden on laptops. Signed amdgpu
+modules, official runtime firmware, RADV/Zink, ANGLE and AMD-capable minigbm are included.
+The latest MSI report says graphics work but the camera is not detected; other MSI peripherals
+and Lenovo hardware have not been retested on this image. See
+[laptop hardware](../docs/specs/laptop-hardware.md) for current evidence and remaining checks.
 Normal boots do not run the project's persistent log collectors or hardware snapshot.
 To investigate a problem, reboot using **Googlebook OS (diagnostic logs)** and reproduce it.
 Persistent kernel/Android diagnostics use native logcat and retain current/previous diagnostic
@@ -270,11 +267,11 @@ This builds the Android image, then runs the host [fresh flasher](../tools/insta
 Select a USB by model, capacity and serial before sudo authentication. Review the erase warning
 and confirm with `y` or `yes` at `[y/N]`. Enter or any other answer cancels without writing.
 Internal disks, missing serials, mounted/in-use, read-only and undersized devices are refused.
-The whole image is copied and SHA-256 read-back verified; **all existing USB data is lost**.
+The whole image is copied and SHA-256 read-back verified; existing data is not securely erased.
 After read-back, the installer clears metadata and the userdata filesystem signature,
 relocates the backup GPT to the USB's end and expands only the trailing userdata partition.
 Android formats fresh encrypted data at the expanded size on first boot. This also discards
-any accounts/data copied from a QEMU-used image; it is not a secure erase of all old sectors.
+any accounts/data copied from a QEMU-used image.
 The final GPT is checked against the source, allowing only larger userdata, and verified.
 Ordinary `make update-usb` never performs this initialization, growth or GPT relocation.
 Safely unplug/replug afterwards, then boot its UEFI entry.

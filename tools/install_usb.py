@@ -193,6 +193,7 @@ def install(image, selected=None):
                       f"{selected['size'] / (1 << 30):.1f} GiB")
                 print(f"Source: {image} ({info.st_size} bytes)")
                 print("ALL existing USB accounts, apps, files and partitions will be lost.")
+                print("This is not a secure erase; old data may remain recoverable.")
                 print("Copied Android data/encryption state is reset; userdata fills remaining USB space.")
                 answer = input(
                     f"Erase and install to {path} ({selected['model']}, {selected['serial']})? [y/N] "
