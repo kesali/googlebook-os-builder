@@ -1,0 +1,14 @@
+Skip the incompatible OS OTA while keeping Google's subsequent early-update step.
+Drop this when Google's setup no longer requires an OTA for this image.
+
+--- a/wizard_script_connect_and_update_flow.xml
++++ b/wizard_script_connect_and_update_flow.xml
+@@ -232,7 +232,7 @@
+             wizard:action="network_unavailable" />
+         <result wizard:name="ota_available"
+             wizard:resultCode="102"
+-            wizard:action="ota_update" />
++            wizard:action="early_update" />
+         <result wizard:action="post_checkin_and_update" />
+     </WizardAction>
+ 

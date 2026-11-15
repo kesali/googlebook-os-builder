@@ -1,0 +1,4 @@
+<overlay xmlns:android="http://schemas.android.com/apk/res/android">
+    <item target="raw/wizard_script_connect_and_update_flow"
+        value="@raw/wizard_script_connect_and_update_flow" />
+</overlay>

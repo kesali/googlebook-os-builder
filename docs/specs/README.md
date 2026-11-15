@@ -8,7 +8,7 @@ on what works now, constraints that still apply, and the next agreed action.
 |---|---|---|
 | [Kernel (GKI)](kernel.md) | partial; ABI-preserving build and generic i915 image checks pass | Owner verifies physical i915 behavior; other drivers remain unverified |
 | [Boot chain](boot.md) | partial; enforcing QEMU captures ext4 logs; physical boot and capture unverified | Owner verifies diagnostic log capture on a fresh installation |
-| [OS image and disk](os-image.md) | partial; fresh image and disposable QEMU boot pass; physical installation unverified | Owner tests fresh installation and USB update |
+| [OS image and disk](os-image.md) | partial; integrated setup OTA bypass passes in QEMU | Owner verifies complete setup and USB update |
 | [Security services](security.md) | working with software keys; hardware-backed keys unavailable | Owner verifies PIN setup and persistence |
 | [Graphics](graphics.md) | partial; QEMU applies softpipe before graphics clients start | Owner checks laptop startup ordering and Intel graphics |
 | [QEMU VM](qemu.md) | parked; bounded boot reaches Android welcome screen with softpipe | Finish setup/network checks if QEMU work resumes |

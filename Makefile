@@ -70,6 +70,7 @@ BASE_HEADERS := $(OUT)/src/android-base-$(ANDROID_BASE_REV)
 INTERFACE_HEADERS := $(OUT)/src/android-interfaces-$(ANDROID_INTERFACES_REV)
 BUILDTOOLS_ZIP := $(DL)/build-tools-$(ANDROID_BUILDTOOLS_SHA).zip
 AIDL := $(TOOLCHAIN)/build-tools-$(ANDROID_BUILDTOOLS_SHA)/aidl
+SETUP_OVERLAY := $(ANDROID)/setup-overlay.apk
 BUILDER := scripts/builder.sh
 BUILD_READY := $(OUT)/stamps/builder
 # Recipe directories are explicit build inputs; no runtime hardware detection or installer.
@@ -277,6 +278,12 @@ $(AIDL): $(BUILDTOOLS_ZIP) $(dir $(AIDL))lib64/libc++.so
 	chmod 755 "$@.partial"
 	mv "$@.partial" "$@"
 
+$(SETUP_OVERLAY): $(GOOGLE)/inventory.txt $(BUILDTOOLS_ZIP) scripts/setup-overlay.sh \
+		scripts/setup-overlay/AndroidManifest.xml scripts/setup-overlay/overlays.xml \
+		scripts/setup-overlay/wizard-script.patch | $(BUILD_READY)
+	$(BUILDER) bash scripts/setup-overlay.sh "$(GOOGLE)" "$(BUILDTOOLS_ZIP)" \
+		scripts/setup-overlay "$(OUT)/setup-overlay-key" "$@"
+
 # Only headers, at the exact Android release the Google image uses.
 $(CORE_HEADERS)/.ready: | $(BUILD_READY)
 	$(BUILDER) bash scripts/git-fetch.sh https://android.googlesource.com/platform/system/core \
@@ -343,7 +350,7 @@ $(ANDROID)/system_a.img $(ANDROID)/vendor_a.img $(ANDROID)/system_ext_a.img $(AN
 android_recipe_inputs = $(call recipe_inputs,$(1).install $(1).remove $(1)*.patches $(1) $(1)/*)
 $(ANDROID)/system_a.img: android/system $(wildcard android/system/*) $(ANDROID_EMU)/.ready \
 		$(call android_recipe_inputs,system) $(BORINGSSL)/manifest $(HTTPENGINE_CRYPTO)/manifest
-$(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*) $(call android_recipe_inputs,system_ext)
+$(ANDROID)/system_ext_a.img: android/system_ext $(wildcard android/system_ext/*) $(call android_recipe_inputs,system_ext) $(SETUP_OVERLAY)
 $(ANDROID)/vendor_a.img: android/vendor $(wildcard android/vendor/*) scripts/check-vendor-libs.sh \
 		$(call android_recipe_inputs,vendor) \
 		$(ANDROID_EMU)/.ready $(MESA)/manifest $(MINIGBM)/manifest $(FIRMWARE)/manifest $(ANDROID)/crossystem $(BORINGSSL)/manifest

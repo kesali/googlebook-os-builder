@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.gbos.setupoverlay">
+    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="35" />
+    <application android:hasCode="false" />
+    <overlay android:targetPackage="com.google.android.desktop.setupwizard"
+        android:resourcesMap="@xml/overlays" />
+</manifest>

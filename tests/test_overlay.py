@@ -37,6 +37,61 @@ class OverlayTests(unittest.TestCase):
     def write(self, name, text):
         (self.changes / name).write_text(text)
 
+    def test_setup_patch_skips_only_the_ota_branch(self):
+        wizard = self.work / "wizard_script_connect_and_update_flow.xml"
+        original = (
+            '            wizard:action="network_unavailable" />\n'
+            '        <result wizard:name="ota_available"\n'
+            '            wizard:resultCode="102"\n'
+            '            wizard:action="ota_update" />\n'
+            '        <result wizard:action="post_checkin_and_update" />\n'
+            '    </WizardAction>\n\n'
+        )
+        wizard.write_text(original)
+        patch = REPO / "scripts/setup-overlay/wizard-script.patch"
+        result = subprocess.run(
+            ["patch", "--batch", "--forward", "--fuzz=0", "--reject-file=-",
+             "-p1", "-d", str(self.work), "-i", str(patch)],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(wizard.read_text(),
+                         original.replace('wizard:action="ota_update"',
+                                          'wizard:action="early_update"'))
+
+        wizard.write_text(original.replace('wizard:resultCode="102"',
+                                           'wizard:resultCode="103"'))
+        result = subprocess.run(
+            ["patch", "--batch", "--forward", "--fuzz=0", "--reject-file=-",
+             "-p1", "-d", str(self.work), "-i", str(patch)],
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_setup_overlay_refuses_missing_or_incomplete_signing_identity(self):
+        google = self.work / "google"
+        google.mkdir()
+        buildtools = self.work / "buildtools.zip"
+        buildtools.touch()
+        key_dir = self.work / "identity"
+        output = self.work / "overlay.apk"
+        output.write_bytes(b"existing overlay")
+        arguments = [
+            "bash", str(REPO / "scripts/setup-overlay.sh"), str(google), str(buildtools),
+            str(REPO / "scripts/setup-overlay"), str(key_dir), str(output),
+        ]
+        result = subprocess.run(arguments, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("signing identity is missing", result.stderr)
+        self.assertEqual(output.read_bytes(), b"existing overlay")
+        self.assertFalse(key_dir.exists())
+
+        key_dir.mkdir()
+        result = subprocess.run(arguments, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("signing identity is incomplete or unsafe", result.stderr)
+        self.assertEqual(output.read_bytes(), b"existing overlay")
+
     def run_overlay(self, before="", after=""):
         """Run the overlay under fakeroot, with optional shell setup and inspection around it."""
         script = f'{before}\nbash "{OVERLAY}" changes root input=inputs\n{after}'

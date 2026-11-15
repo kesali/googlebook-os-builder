@@ -1,9 +1,9 @@
 # OS image and disk
 
-**Status:** partial — a separate ext4 image builds and boots in enforcing QEMU; physical
-installation remains unverified.
-**Last verified:** 2026-11-14 — fresh-image build, disposable UEFI boot and no-write repeat
-of OS/boot synchronization. Diagnostic capture was checked on a disposable ext4 image.
+**Status:** partial — the integrated overlay passes the mandatory setup OTA gate in QEMU;
+complete setup and physical installation remain unverified.
+**Last verified:** 2026-11-15 — a fresh disposable QEMU disk reached user selection after
+Google reported an OTA available; Play early update completed and SELinux was enforcing.
 
 ## Goal
 Build a private Android disk from Google's recovery image and update only declared OS
@@ -14,6 +14,11 @@ The build produces a compact GPT image with an A-only Android layout, a FAT32 bo
 partition, a journaled ext4 diagnostic-log partition and userdata. Image updates preserve the
 disk layout and userdata. The owner-run fresh installer is destructive to its selected USB;
 no physical disk is written by the build or validation agent.
+
+Google's setup requires an OTA even though this image has no compatible update engine.
+A preinstalled resource overlay routes that result to the existing early-update step without
+changing Google's APK. The integrated image passed the OTA gate on a disposable QEMU disk;
+finishing setup and physical hardware remain unverified.
 
 ## Decisions
 - Pin and verify the recovery image before extraction. Apply Google image changes only
@@ -37,12 +42,13 @@ no physical disk is written by the build or validation agent.
 - [tools/update_usb.py](../../tools/update_usb.py) and
   [tools/install_usb.py](../../tools/install_usb.py) — owner-run USB update/install.
 - [scripts/android-overlay.sh](../../scripts/android-overlay.sh) — apply declared changes.
+- [scripts/setup-overlay.sh](../../scripts/setup-overlay.sh) — build the signed setup overlay.
 - [tools/fs_metadata.py](../../tools/fs_metadata.py) — filesystem metadata checks.
 
 ## Verify
-Run `make test` and `make android-image`. Repeat the image build and confirm it writes
-no partitions or boot files and preserves output timestamps. Use disposable QEMU copies
-for boot checks; never write physical media during validation.
+Run focused tests, `make android-image` and `make qemu-check`. Repeat the image build and
+confirm it writes no partitions or boot files and preserves output timestamps. Use a fresh
+disposable QEMU disk to check the setup OTA path; never write physical media during validation.
 
 ## Pitfalls
 - `ANDROID_DATA_GIB` affects only new images; it does not shrink existing userdata.
@@ -52,10 +58,14 @@ for boot checks; never write physical media during validation.
   created ext4 image before installation. Preserve the existing image and its userdata.
 - Never weaken metadata, symlink, partition-fit, recovery-hash or USB identity checks.
 - Generate patches against Google's pristine files and apply them without fuzz.
+- Preserve `out/setup-overlay-key/` privately across builds and USB updates. Losing its
+  signing key can prevent an installed overlay from being updated; never commit the key.
 - An interrupted image update is repaired by rerunning `make android-image`; do not
   delete the disk or editable source trees.
 
 ## Actions
+- [ ] Verify complete setup — done when setup completes and Play app updates work on
+  physical hardware.
 - [ ] Owner tests fresh installation and update — done when a fresh USB reaches setup,
   the updater succeeds on the matching layout, user data is preserved by an ordinary
   update, and a repeat makes no writes.

@@ -8,6 +8,8 @@ etc/gbos-builder/              0755 0:0   system_file  -
 etc/gbos-builder/bootlog-prepare.sh 0644 0:0 system_file ./bootlog-prepare.sh
 etc/gbos-builder/hardware-snapshot.sh 0644 0:0 system_file ./hardware-snapshot.sh
 etc/gbos-builder/graphics-select.sh 0644 0:0 system_file ./graphics-select.sh
+# Skip Google's mandatory OTA during setup; our image is updated by the builder.
+overlay/gbos-setup-overlay.apk 0644 0:0 system_file build/setup-overlay.apk
 # recipe: qemu-virtio/system_ext.install
 # recipe: amdgpu/system_ext.install
 # recipe: msi-modern-15-b7m/system_ext.install

@@ -1,0 +1,11 @@
+Enable the setup overlay before mutable overlays; Android rejects the reverse order.
+Drop this when setup no longer requires Google's incompatible OTA.
+
+--- a/overlay/config/config.xml
++++ b/overlay/config/config.xml
+@@ -18,4 +18,5 @@
+ <config>
++  <overlay package="org.gbos.setupoverlay" mutable="false" enabled="true" />
+   <overlay package="com.google.android.desktop.default_wallpaper_overlay.ruby" mutable="true" enabled="true" />
+   <overlay package="com.google.android.ruby.framework_res_overlay" enabled="true" />
+ </config>
